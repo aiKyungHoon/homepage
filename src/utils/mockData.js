@@ -11,6 +11,24 @@ export const demoUsers = [
     zoneId: ""
   },
   {
+    userId: "admin_user_1",
+    username: "admin1",
+    password: "admin1234!",
+    name: "임원1",
+    role: "admin",
+    teamId: "",
+    zoneId: ""
+  },
+  {
+    userId: "admin_user_2",
+    username: "admin2",
+    password: "admin1234!",
+    name: "임원2",
+    role: "admin",
+    teamId: "",
+    zoneId: ""
+  },
+  {
     userId: "haebom_leader",
     username: "team_haebom",
     password: "haebom123",
