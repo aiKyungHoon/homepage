@@ -5,7 +5,7 @@ import {
   collection, getDocs, doc, setDoc, updateDoc, addDoc, 
   query, where, deleteDoc, writeBatch, orderBy, limit 
 } from "firebase/firestore";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import * as mockInitData from "../utils/mockData";
 
 const DataContext = createContext();
@@ -569,6 +569,7 @@ export function DataProvider({ children }) {
     }
 
     setLoading(true);
+    window.isFirebaseSeeding = true;
     try {
       const uidMap = {};
 
@@ -671,10 +672,14 @@ export function DataProvider({ children }) {
       }
       await logsBatch.commit();
 
+      console.log("Seeding complete. Signing out...");
+      await signOut(auth);
+      window.isFirebaseSeeding = false;
       alert("Firebase 데이터베이스 초기화 및 초기 데이터 업로드가 성공적으로 완료되었습니다! 웹 페이지를 새로고침합니다.");
       window.location.reload();
     } catch (err) {
       console.error(err);
+      window.isFirebaseSeeding = false;
       alert(`초기 데이터 업로드 실패: ${err.message}`);
     } finally {
       setLoading(false);

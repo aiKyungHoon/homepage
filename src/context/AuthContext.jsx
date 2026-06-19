@@ -26,6 +26,10 @@ export function AuthProvider({ children }) {
     } else {
       // Real Firebase Auth
       const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (window.isFirebaseSeeding) {
+          console.log("Firebase seeding in progress, skipping auth state updates.");
+          return;
+        }
         if (firebaseUser) {
           try {
             // Fetch additional user role data from Firestore users collection
