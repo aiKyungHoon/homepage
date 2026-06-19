@@ -34,6 +34,7 @@ export function DataProvider({ children }) {
   // 1. Initial Data Loading
   useEffect(() => {
     async function loadData() {
+      console.log("loadData() triggered. currentUser:", currentUser?.uid);
       if (!isMockEnabled && !currentUser) {
         setTeams([]);
         setZones([]);
@@ -135,6 +136,7 @@ export function DataProvider({ children }) {
     if (!activeMonthId) return;
 
     async function loadMonthRecords() {
+      console.log("loadMonthRecords() triggered. activeMonthId:", activeMonthId);
       if (isMockEnabled) {
         const allAtt = JSON.parse(localStorage.getItem("mock_attendance")) || [];
         const monthAtt = allAtt.filter(r => r.monthId === activeMonthId);
@@ -148,11 +150,13 @@ export function DataProvider({ children }) {
           // Fetch attendance records for this month
           const attQuery = query(collection(db, "attendanceRecords"), where("monthId", "==", activeMonthId));
           const attSnap = await getDocs(attQuery);
+          console.log(`Loaded ${attSnap.size} attendance records from Firestore for ${activeMonthId}`);
           setAttendanceRecords(attSnap.docs.map(d => ({ recordId: d.id, ...d.data() })));
 
           // Fetch achievements for this month
           const achQuery = query(collection(db, "monthlyAchievements"), where("monthId", "==", activeMonthId));
           const achSnap = await getDocs(achQuery);
+          console.log(`Loaded ${achSnap.size} monthly achievements from Firestore for ${activeMonthId}`);
           setMonthlyAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
         } catch (error) {
           console.error("Error fetching month records:", error);
@@ -245,6 +249,7 @@ export function DataProvider({ children }) {
       });
     } else {
       try {
+        console.log(`Saving attendance record to Firestore: ${recordId} = ${value}`);
         await setDoc(doc(db, "attendanceRecords", recordId), {
           memberId,
           monthId: activeMonthId,
@@ -252,6 +257,7 @@ export function DataProvider({ children }) {
           category,
           value
         });
+        console.log(`Saved attendance record ${recordId} successfully.`);
         setAttendanceRecords(prev => {
           const idx = prev.findIndex(r => r.recordId === recordId);
           if (idx >= 0) {
@@ -328,6 +334,7 @@ export function DataProvider({ children }) {
       });
     } else {
       try {
+        console.log(`Saving monthly achievement to Firestore: ${achievementId} = ${achieved}`);
         await setDoc(doc(db, "monthlyAchievements", achievementId), {
           memberId,
           monthId: activeMonthId,
@@ -335,6 +342,7 @@ export function DataProvider({ children }) {
           achieved,
           achievedWeekNo: achieved ? activeWeekNo : 0
         });
+        console.log(`Saved monthly achievement ${achievementId} successfully.`);
         setMonthlyAchievements(prev => {
           const idx = prev.findIndex(a => a.achievementId === achievementId);
           if (idx >= 0) {
