@@ -5,7 +5,7 @@ export const demoUsers = [
     userId: "admin_user",
     username: "admin",
     password: "admin123",
-    name: "김관리 (총괄 관리자)",
+    name: "김관리 (임원)",
     role: "admin",
     teamId: "",
     zoneId: ""
@@ -229,7 +229,7 @@ export const initialAuditLogs = [
   {
     logId: "l1",
     operatorId: "admin_user",
-    operatorName: "김관리 (총괄 관리자)",
+    operatorName: "김관리 (임원)",
     timestamp: "2026-06-18T10:30:00Z",
     memberId: "m1",
     memberName: "강민우",

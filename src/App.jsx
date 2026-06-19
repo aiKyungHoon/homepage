@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { DataProvider, useData } from "./context/DataContext";
 import Sidebar from "./components/Sidebar";
@@ -13,6 +13,12 @@ import HistoryLog from "./components/HistoryLog";
 function AppContent() {
   const { currentUser, loading } = useAuth();
   const [activePage, setActivePage] = useState("dashboard");
+
+  useEffect(() => {
+    if (currentUser) {
+      setActivePage(currentUser.role === "leader" ? "attendance" : "dashboard");
+    }
+  }, [currentUser]);
 
   if (loading) {
     return (

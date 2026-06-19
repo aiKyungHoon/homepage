@@ -351,7 +351,7 @@ export default function OrgManagement() {
                 <tr>
                   <th>구역명</th>
                   <th>소속 팀</th>
-                  <th>구역 리더</th>
+                  <th>구역장</th>
                   <th>인원수 (활동 중)</th>
                   <th>관리</th>
                 </tr>
@@ -470,9 +470,9 @@ export default function OrgManagement() {
                     <td style={{fontFamily: "monospace"}}>{u.password || "********"}</td>
                     <td>
                       <span className={`badge badge-${u.role}`}>
-                        {u.role === "admin" && "총괄 관리자"}
+                        {u.role === "admin" && "임원"}
                         {u.role === "team" && "팀장"}
-                        {u.role === "leader" && "구역 리더"}
+                        {u.role === "leader" && "구역장"}
                       </span>
                     </td>
                     <td>
@@ -761,9 +761,9 @@ export default function OrgManagement() {
                   value={userForm.role}
                   onChange={(e) => setUserForm(prev => ({ ...prev, role: e.target.value }))}
                 >
-                  <option value="leader">구역 리더</option>
+                  <option value="leader">구역장</option>
                   <option value="team">팀장</option>
-                  <option value="admin">총괄 관리자</option>
+                  <option value="admin">임원</option>
                 </select>
               </div>
 

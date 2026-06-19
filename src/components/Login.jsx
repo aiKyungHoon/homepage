@@ -89,9 +89,9 @@ export default function Login() {
                   <div className="quick-info">
                     <span className="quick-name">{user.name}</span>
                     <span className="quick-role">
-                      {user.role === "admin" && "총괄 관리자"}
+                      {user.role === "admin" && "임원"}
                       {user.role === "team" && "해봄 팀장"}
-                      {user.role === "leader" && (user.userId === "zone8_leader" ? "8구역 리더" : "9구역 리더")}
+                      {user.role === "leader" && (user.userId === "zone8_leader" ? "8구역장" : "9구역장")}
                     </span>
                     <span className="quick-credentials">ID: {user.username} / PW: {user.password}</span>
                   </div>
