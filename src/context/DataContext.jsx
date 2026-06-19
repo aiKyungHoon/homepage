@@ -622,38 +622,54 @@ export function DataProvider({ children }) {
         await setDoc(doc(db, "zones", zoneId), data);
       }
 
-      console.log("Writing members to Firestore...");
+      console.log("Writing members to Firestore in batches...");
+      const membersBatch = writeBatch(db);
       for (const m of mockInitData.initialMembers) {
         const { memberId, ...data } = m;
-        await setDoc(doc(db, "members", memberId), data);
+        membersBatch.set(doc(db, "members", memberId), data);
       }
+      await membersBatch.commit();
 
       console.log("Writing months to Firestore...");
+      const monthsBatch = writeBatch(db);
       for (const m of mockInitData.initialMonths) {
         const { monthId, ...data } = m;
-        await setDoc(doc(db, "months", monthId), data);
+        monthsBatch.set(doc(db, "months", monthId), data);
+      }
+      await monthsBatch.commit();
+
+      console.log("Writing attendance records to Firestore in batches...");
+      const records = mockInitData.initialAttendanceRecords;
+      const attBatchSize = 400;
+      for (let i = 0; i < records.length; i += attBatchSize) {
+        const batch = writeBatch(db);
+        const chunk = records.slice(i, i + attBatchSize);
+        for (const r of chunk) {
+          const { recordId, ...data } = r;
+          batch.set(doc(db, "attendanceRecords", recordId), data);
+        }
+        await batch.commit();
+        console.log(`Committed batch of ${chunk.length} attendance records.`);
       }
 
-      console.log("Writing attendance records to Firestore...");
-      for (const r of mockInitData.initialAttendanceRecords) {
-        const { recordId, ...data } = r;
-        await setDoc(doc(db, "attendanceRecords", recordId), data);
-      }
-
-      console.log("Writing monthly achievements to Firestore...");
+      console.log("Writing monthly achievements to Firestore in batches...");
+      const achBatch = writeBatch(db);
       for (const a of mockInitData.initialMonthlyAchievements) {
         const { achievementId, ...data } = a;
-        await setDoc(doc(db, "monthlyAchievements", achievementId), data);
+        achBatch.set(doc(db, "monthlyAchievements", achievementId), data);
       }
+      await achBatch.commit();
 
-      console.log("Writing audit logs to Firestore...");
+      console.log("Writing audit logs to Firestore in batches...");
+      const logsBatch = writeBatch(db);
       for (const l of mockInitData.initialAuditLogs) {
         const { logId, ...data } = l;
         if (data.operatorId && uidMap[data.operatorId]) {
           data.operatorId = uidMap[data.operatorId];
         }
-        await setDoc(doc(db, "auditLogs", logId), data);
+        logsBatch.set(doc(db, "auditLogs", logId), data);
       }
+      await logsBatch.commit();
 
       alert("Firebase 데이터베이스 초기화 및 초기 데이터 업로드가 성공적으로 완료되었습니다! 웹 페이지를 새로고침합니다.");
       window.location.reload();
