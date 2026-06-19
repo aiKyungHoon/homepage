@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useData } from "../context/DataContext";
 import { Sparkles, User, Lock, Shield, ArrowRight } from "lucide-react";
 import { demoUsers } from "../utils/mockData";
 
 export default function Login() {
   const { login, loginAsDemoUser, isMockMode } = useAuth();
+  const { seedFirebaseDatabase } = useData();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -96,6 +98,36 @@ export default function Login() {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {!isMockMode && (
+          <div className="quick-login-section">
+            <div className="quick-login-divider">
+              <span>Firebase 연동 초기화</span>
+            </div>
+            
+            <button
+              onClick={async () => {
+                if (window.confirm("Firebase Authentication 및 Firestore에 초기 데모 데이터(팀, 구역, 성도 및 로그인 계정들)를 업로드하겠습니까?\n이 작업은 Firestore 데이터베이스 규칙이 임시로 누구나 쓰기 가능한 상태(allow read, write: if true;)여야 성공합니다.")) {
+                  try {
+                    setLoading(true);
+                    setError("");
+                    await seedFirebaseDatabase();
+                  } catch (err) {
+                    setError(`초기화 실패: ${err.message}`);
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }}
+              className="btn btn-secondary"
+              style={{ width: "100%", borderColor: "var(--accent-gold)", color: "var(--accent-gold)", gap: "8px" }}
+              disabled={loading}
+            >
+              <Shield size={16} />
+              <span>{loading ? "데이터 업로드 중..." : "Firebase 초기 데이터 업로드 (Seed)"}</span>
+            </button>
           </div>
         )}
       </div>

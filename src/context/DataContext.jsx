@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { isMockEnabled, db } from "../firebase";
+import { isMockEnabled, db, auth } from "../firebase";
 import { useAuth } from "./AuthContext";
 import { 
   collection, getDocs, doc, setDoc, updateDoc, addDoc, 
   query, where, deleteDoc, writeBatch, orderBy, limit 
 } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import * as mockInitData from "../utils/mockData";
 
 const DataContext = createContext();
@@ -548,21 +549,55 @@ export function DataProvider({ children }) {
 
     setLoading(true);
     try {
-      console.log("Writing users to Firestore...");
+      const uidMap = {};
+
+      console.log("Writing users to Auth & Firestore...");
       for (const u of mockInitData.demoUsers) {
-        const { userId, ...data } = u;
-        await setDoc(doc(db, "users", userId), data);
+        const email = `${u.username}@church.com`;
+        let firebaseUid = u.userId; // fallback
+
+        try {
+          const userCredential = await createUserWithEmailAndPassword(auth, email, u.password);
+          firebaseUid = userCredential.user.uid;
+        } catch (err) {
+          if (err.code === "auth/email-already-in-use") {
+            try {
+              const userCredential = await signInWithEmailAndPassword(auth, email, u.password);
+              firebaseUid = userCredential.user.uid;
+            } catch (signInErr) {
+              console.error("Failed to sign in to retrieve existing UID:", signInErr);
+            }
+          } else {
+            console.error(`Failed to create Auth user for ${email}:`, err);
+          }
+        }
+
+        uidMap[u.userId] = firebaseUid;
+
+        // Write user profile to Firestore
+        await setDoc(doc(db, "users", firebaseUid), {
+          name: u.name,
+          role: u.role,
+          teamId: u.teamId,
+          zoneId: u.zoneId
+        });
       }
 
       console.log("Writing teams to Firestore...");
       for (const t of mockInitData.initialTeams) {
         const { teamId, ...data } = t;
+        if (data.leaderId && uidMap[data.leaderId]) {
+          data.leaderId = uidMap[data.leaderId];
+        }
         await setDoc(doc(db, "teams", teamId), data);
       }
 
       console.log("Writing zones to Firestore...");
       for (const z of mockInitData.initialZones) {
         const { zoneId, ...data } = z;
+        if (data.leaderId && uidMap[data.leaderId]) {
+          data.leaderId = uidMap[data.leaderId];
+        }
         await setDoc(doc(db, "zones", zoneId), data);
       }
 
@@ -593,6 +628,9 @@ export function DataProvider({ children }) {
       console.log("Writing audit logs to Firestore...");
       for (const l of mockInitData.initialAuditLogs) {
         const { logId, ...data } = l;
+        if (data.operatorId && uidMap[data.operatorId]) {
+          data.operatorId = uidMap[data.operatorId];
+        }
         await setDoc(doc(db, "auditLogs", logId), data);
       }
 
