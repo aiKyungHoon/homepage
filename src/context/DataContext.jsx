@@ -34,6 +34,19 @@ export function DataProvider({ children }) {
   // 1. Initial Data Loading
   useEffect(() => {
     async function loadData() {
+      if (!isMockEnabled && !currentUser) {
+        setTeams([]);
+        setZones([]);
+        setMembers([]);
+        setMonths([]);
+        setAttendanceRecords([]);
+        setMonthlyAchievements([]);
+        setAuditLogs([]);
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       if (isMockEnabled) {
         // --- LOCAL STORAGE MOCK MODE ---
@@ -115,7 +128,7 @@ export function DataProvider({ children }) {
       }
     }
     loadData();
-  }, []);
+  }, [currentUser]);
 
   // 2. Load month-specific records when activeMonthId changes
   useEffect(() => {
