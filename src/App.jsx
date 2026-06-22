@@ -11,7 +11,8 @@ import MonthClose from "./components/MonthClose";
 import HistoryLog from "./components/HistoryLog";
 
 function AppContent() {
-  const { currentUser, loading } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
+  const { loading: dataLoading } = useData();
   const [activePage, setActivePage] = useState("dashboard");
 
   useEffect(() => {
@@ -20,7 +21,9 @@ function AppContent() {
     }
   }, [currentUser]);
 
-  if (loading) {
+  const isAppLoading = authLoading || (currentUser && dataLoading);
+
+  if (isAppLoading) {
     return (
       <div style={{
         display: "flex", 

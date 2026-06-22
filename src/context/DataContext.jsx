@@ -79,7 +79,16 @@ export function DataProvider({ children }) {
         setMonthlyAchievements(JSON.parse(localStorage.getItem("mock_achievements")));
         setAuditLogs(JSON.parse(localStorage.getItem("mock_audit_logs")));
         
-        if (!localStorage.getItem("mock_users")) {
+        const storedMockUsers = localStorage.getItem("mock_users");
+        let parsedMockUsers = [];
+        if (storedMockUsers) {
+          try {
+            parsedMockUsers = JSON.parse(storedMockUsers);
+          } catch (e) {
+            parsedMockUsers = [];
+          }
+        }
+        if (parsedMockUsers.length === 0 || !parsedMockUsers.some(u => u.username === "kkh9172")) {
           localStorage.setItem("mock_users", JSON.stringify(mockInitData.demoUsers));
         }
         setUsers(JSON.parse(localStorage.getItem("mock_users")));
@@ -635,7 +644,7 @@ export function DataProvider({ children }) {
       const monthsBatch = writeBatch(db);
       for (const m of mockInitData.initialMonths) {
         const { monthId, ...data } = m;
-        monthsBatch.set(doc(db, "months", monthId), data);
+        monthsBatch.set(doc(db, "months", monthId), { monthId, ...data });
       }
       await monthsBatch.commit();
 
@@ -732,7 +741,7 @@ export function DataProvider({ children }) {
       // For a new month, tithing, evangelism, and weekly attendance are defaulted to blank/false
       const allAch = JSON.parse(localStorage.getItem("mock_achievements")) || [];
       const nextMonthAchievements = [];
-      const activeMembers = members.filter(m => m.status !== "moved" && m.status !== "inactive");
+      const activeMembers = members.filter(m => m.status !== "excluded");
       
       activeMembers.forEach(m => {
         // Tithing & fee carry over if they are checked? 
@@ -777,6 +786,7 @@ export function DataProvider({ children }) {
       try {
         // Close target month
         await setDoc(doc(db, "months", monthId), {
+          monthId,
           year: targetMonth.year,
           month: targetMonth.month,
           status: "closed"
@@ -784,6 +794,7 @@ export function DataProvider({ children }) {
 
         // Open next month
         await setDoc(doc(db, "months", nextMonthId), {
+          monthId: nextMonthId,
           year: nextYear,
           month: nextMonthInt,
           status: "open"
@@ -791,7 +802,7 @@ export function DataProvider({ children }) {
 
         // Initialize accomplishments
         const batch = writeBatch(db);
-        const activeMembers = members.filter(m => m.status !== "moved" && m.status !== "inactive");
+        const activeMembers = members.filter(m => m.status !== "excluded");
         
         activeMembers.forEach(m => {
           const achCats = ["evangelism", "tithing", "fee"];

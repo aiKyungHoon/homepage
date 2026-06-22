@@ -29,6 +29,15 @@ export const demoUsers = [
     zoneId: ""
   },
   {
+    userId: "kkh9172_user",
+    username: "kkh9172",
+    password: "admin1234!",
+    name: "김경훈 (임원)",
+    role: "admin",
+    teamId: "",
+    zoneId: ""
+  },
+  {
     userId: "haebom_leader",
     username: "team_haebom",
     password: "haebom123",
@@ -84,7 +93,7 @@ export const initialMembers = [
   { memberId: "m7", name: "한지민", phone: "010-7890-1234", birthDate: "1998-09-05", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
   { memberId: "m8", name: "윤성민", phone: "010-8901-2345", birthDate: "1991-12-08", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
   { memberId: "m9", name: "임수빈", phone: "010-9012-3456", birthDate: "1995-04-14", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m10", name: "조현우", phone: "010-1111-2222", birthDate: "1993-10-10", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "absent" },
+  { memberId: "m10", name: "조현우", phone: "010-1111-2222", birthDate: "1993-10-10", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "excluded" },
   { memberId: "m11", name: "황보라", phone: "010-2222-3333", birthDate: "1996-01-27", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
 
   // 해봄 9구역원 (9명)
