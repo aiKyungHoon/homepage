@@ -64,8 +64,8 @@ export default function AttendanceGrid() {
     if (filterStatus) {
       list = list.filter(m => m.status === filterStatus);
     } else {
-      // By default, exclude moved and inactive members from active lists
-      list = list.filter(m => m.status !== "moved" && m.status !== "inactive");
+      // By default, exclude members excluded from attendance
+      list = list.filter(m => m.status !== "excluded");
     }
 
     // Team Filter (locked for team leaders)
@@ -225,9 +225,7 @@ export default function AttendanceGrid() {
             <option value="">활동 성도 전체</option>
             <option value="normal">정상</option>
             <option value="new">새가족</option>
-            <option value="absent">장기결석</option>
-            <option value="moved">이동</option>
-            <option value="inactive">휴면</option>
+            <option value="excluded">출결제외자</option>
           </select>
         </div>
       </div>
@@ -569,9 +567,7 @@ export default function AttendanceGrid() {
 
         .status-dot.status-normal { background-color: var(--accent-emerald); }
         .status-dot.status-new { background-color: var(--accent-cyan); }
-        .status-dot.status-absent { background-color: var(--accent-gold); }
-        .status-dot.status-moved { background-color: var(--accent-red); }
-        .status-dot.status-inactive { background-color: var(--text-muted); }
+        .status-dot.status-excluded { background-color: var(--text-muted); }
 
         .member-rank {
           color: var(--text-secondary);

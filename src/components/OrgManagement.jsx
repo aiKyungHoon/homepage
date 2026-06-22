@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download } from "lucide-react";
 
 export default function OrgManagement() {
   const { currentUser } = useAuth();
@@ -237,6 +237,26 @@ export default function OrgManagement() {
     }
   };
 
+  // Download Users CSV
+  const handleDownloadCSV = () => {
+    const headers = ["이름", "로그인 아이디", "비밀번호", "권한"];
+    const rows = users.map(u => [
+      u.name,
+      u.username,
+      u.password || "********",
+      u.role === "admin" ? "임원" : u.role === "team" ? "팀장" : "구역장"
+    ]);
+    const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `교구_계정_및_리더_목록_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "없음";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "구역 없음";
 
@@ -312,9 +332,7 @@ export default function OrgManagement() {
                       <span className={`badge status-${m.status}`}>
                         {m.status === "normal" && "정상"}
                         {m.status === "new" && "새가족"}
-                        {m.status === "absent" && "장기결석"}
-                        {m.status === "moved" && "이동"}
-                        {m.status === "inactive" && "휴면"}
+                        {m.status === "excluded" && "출결제외자"}
                       </span>
                     </td>
                     <td>
@@ -358,7 +376,7 @@ export default function OrgManagement() {
               </thead>
               <tbody>
                 {getScopedZones().map(z => {
-                  const zMembersCount = members.filter(m => m.zoneId === z.zoneId && ["normal", "new", "absent"].includes(m.status)).length;
+                  const zMembersCount = members.filter(m => m.zoneId === z.zoneId && ["normal", "new"].includes(m.status)).length;
                   const leaderUser = users.find(u => u.userId === z.leaderId);
                   const leaderName = leaderUser ? leaderUser.name : (z.leaderId || "리더 미정");
                   return (
@@ -445,10 +463,16 @@ export default function OrgManagement() {
         <div className="org-tab-panel glass-panel">
           <div className="panel-header-actions">
             <h3>계정 및 리더 목록 ({users.length}명)</h3>
-            <button onClick={handleOpenAddUser} className="btn btn-primary btn-sm">
-              <Plus size={14} />
-              <span>계정 등록</span>
-            </button>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={handleDownloadCSV} className="btn btn-secondary btn-sm">
+                <Download size={14} />
+                <span>CSV 다운로드</span>
+              </button>
+              <button onClick={handleOpenAddUser} className="btn btn-primary btn-sm">
+                <Plus size={14} />
+                <span>계정 등록</span>
+              </button>
+            </div>
           </div>
 
           <div className="table-responsive">
@@ -574,9 +598,7 @@ export default function OrgManagement() {
                 >
                   <option value="normal">정상</option>
                   <option value="new">새가족</option>
-                  <option value="absent">장기결석</option>
-                  <option value="moved">이동</option>
-                  <option value="inactive">휴면</option>
+                  <option value="excluded">출결제외자</option>
                 </select>
               </div>
 

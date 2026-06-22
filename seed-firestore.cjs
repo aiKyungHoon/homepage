@@ -70,7 +70,7 @@ const initialMembers = [
   { memberId: "m7", name: "한지민", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
   { memberId: "m8", name: "윤성민", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
   { memberId: "m9", name: "임수빈", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m10", name: "조현우", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "absent" },
+  { memberId: "m10", name: "조현우", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "excluded" },
   { memberId: "m11", name: "황보라", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
 
   // 해봄 9구역원 (9명)

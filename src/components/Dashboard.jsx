@@ -9,7 +9,8 @@ import {
   HeartHandshake, 
   Coins, 
   Award,
-  TrendingUp
+  TrendingUp,
+  UserX
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -28,8 +29,8 @@ export default function Dashboard() {
 
   // Filter members based on user role
   const getScopedMembers = () => {
-    // Active members only (normal, new, absent). Exclude moved and inactive.
-    const activeStates = ["normal", "new", "absent"];
+    // Active members only (normal, new). Exclude excluded.
+    const activeStates = ["normal", "new"];
     let filtered = members.filter(m => activeStates.includes(m.status));
 
     if (role === "team") {
@@ -40,8 +41,19 @@ export default function Dashboard() {
     return filtered;
   };
 
+  const getExcludedCount = () => {
+    let filtered = members.filter(m => m.status === "excluded");
+    if (role === "team") {
+      filtered = filtered.filter(m => m.teamId === currentUser.teamId);
+    } else if (role === "leader") {
+      filtered = filtered.filter(m => m.zoneId === currentUser.zoneId);
+    }
+    return filtered.length;
+  };
+
   const scopedMembers = getScopedMembers();
   const totalCount = scopedMembers.length;
+  const excludedCount = getExcludedCount();
 
   // Helper: Count attendance status for activeWeekNo
   const getAttendanceStats = () => {
@@ -115,7 +127,7 @@ export default function Dashboard() {
   const getTeamRankings = () => {
     const activeTeams = teams.filter(t => t.status === "active");
     const list = activeTeams.map(t => {
-      const tMembers = members.filter(m => m.teamId === t.teamId && ["normal", "new", "absent"].includes(m.status));
+      const tMembers = members.filter(m => m.teamId === t.teamId && ["normal", "new"].includes(m.status));
       const rate = calculateAttendanceRate(tMembers);
       return { teamId: t.teamId, name: t.name, rate, count: tMembers.length };
     });
@@ -130,7 +142,7 @@ export default function Dashboard() {
     }
 
     const list = targetZones.map(z => {
-      const zMembers = members.filter(m => m.zoneId === z.zoneId && ["normal", "new", "absent"].includes(m.status));
+      const zMembers = members.filter(m => m.zoneId === z.zoneId && ["normal", "new"].includes(m.status));
       const rate = calculateAttendanceRate(zMembers);
       const team = teams.find(t => t.teamId === z.teamId);
       return { 
@@ -220,6 +232,17 @@ export default function Dashboard() {
             <p className="stats-label">미보고</p>
             <h2 className="stats-value">{attStats.unreported}명</h2>
             <p className="stats-subtext">출결 입력 필요</p>
+          </div>
+        </div>
+
+        <div className="stats-card glass-panel">
+          <div className="stats-icon-wrapper purple">
+            <UserX size={22} />
+          </div>
+          <div className="stats-info">
+            <p className="stats-label">출결 제외</p>
+            <h2 className="stats-value">{excludedCount}명</h2>
+            <p className="stats-subtext">관리 대상 출결 제외자</p>
           </div>
         </div>
       </div>
@@ -434,6 +457,11 @@ export default function Dashboard() {
         .stats-icon-wrapper.cyan {
           background-color: hsla(185, 90%, 48%, 0.1);
           color: var(--accent-cyan);
+        }
+
+        .stats-icon-wrapper.purple {
+          background-color: hsla(280, 80%, 60%, 0.10);
+          color: hsl(280, 80%, 65%);
         }
 
         .stats-info {
