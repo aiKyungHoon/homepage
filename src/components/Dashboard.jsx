@@ -128,6 +128,82 @@ export default function Dashboard() {
 
   const overallRate = calculateAttendanceRate(scopedMembers);
 
+  // Previous week comparison calculation
+  const getPrevWeekStats = () => {
+    let prevWeekNo = activeWeekNo - 1;
+    let prevMonthId = activeMonthId;
+    
+    if (activeWeekNo === 1) {
+      const sortedMonths = [...months].sort((a, b) => a.monthId.localeCompare(b.monthId));
+      const idx = sortedMonths.findIndex(m => m.monthId === activeMonthId);
+      if (idx > 0) {
+        prevMonthId = sortedMonths[idx - 1].monthId;
+        const monthRecs = attendanceRecords.filter(r => r.monthId === prevMonthId);
+        if (monthRecs.length > 0) {
+          prevWeekNo = Math.max(...monthRecs.map(r => r.weekNo));
+        } else {
+          prevWeekNo = 4;
+        }
+      } else {
+        return null;
+      }
+    }
+    
+    let totalPossible = scopedMembers.length * 3;
+    if (totalPossible === 0) return null;
+    
+    let totalPresent = 0;
+    let sundayPresent = 0;
+    let sundayAbsent = 0;
+    let sundayUnreported = 0;
+    
+    let evangelism = 0;
+    let tithing = 0;
+    let fee = 0;
+    
+    scopedMembers.forEach(m => {
+      ["samil", "sunday", "zone"].forEach(cat => {
+        const rec = attendanceRecords.find(
+          r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
+        );
+        const val = rec ? rec.value : "미보고";
+        if (val === "대면" || val === "비대면" || val === "대체" || val === "O") {
+          totalPresent++;
+        }
+      });
+      
+      const sunRec = attendanceRecords.find(
+        r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === "sunday"
+      );
+      const sunVal = sunRec ? sunRec.value : "미보고";
+      if (sunVal === "대면" || sunVal === "비대면" || sunVal === "대체" || sunVal === "O") {
+        sundayPresent++;
+      } else if (sunVal === "결석" || sunVal === "X") {
+        sundayAbsent++;
+      } else {
+        sundayUnreported++;
+      }
+      
+      const evAch = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "evangelism");
+      if (evAch && evAch.achieved && evAch.achievedWeekNo <= prevWeekNo) {
+        evangelism++;
+      }
+      const tiAch = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "tithing");
+      if (tiAch && tiAch.achieved && tiAch.achievedWeekNo <= prevWeekNo) {
+        tithing++;
+      }
+      const feAch = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "fee");
+      if (feAch && feAch.achieved && feAch.achievedWeekNo <= prevWeekNo) {
+        fee++;
+      }
+    });
+    
+    const rate = Math.round((totalPresent / totalPossible) * 100);
+    return { rate, sundayPresent, sundayAbsent, sundayUnreported, evangelism, tithing, fee };
+  };
+
+  const prevStats = getPrevWeekStats();
+
   // Helper: Calculate rankings
   const getTeamRankings = () => {
     const activeTeams = teams.filter(t => t.status === "active");
@@ -399,81 +475,7 @@ export default function Dashboard() {
 
   const svgData = generateSvgElements();
 
-  // Previous week comparison calculation
-  const getPrevWeekStats = () => {
-    let prevWeekNo = activeWeekNo - 1;
-    let prevMonthId = activeMonthId;
-    
-    if (activeWeekNo === 1) {
-      const sortedMonths = [...months].sort((a, b) => a.monthId.localeCompare(b.monthId));
-      const idx = sortedMonths.findIndex(m => m.monthId === activeMonthId);
-      if (idx > 0) {
-        prevMonthId = sortedMonths[idx - 1].monthId;
-        const monthRecs = attendanceRecords.filter(r => r.monthId === prevMonthId);
-        if (monthRecs.length > 0) {
-          prevWeekNo = Math.max(...monthRecs.map(r => r.weekNo));
-        } else {
-          prevWeekNo = 4;
-        }
-      } else {
-        return null;
-      }
-    }
-    
-    let totalPossible = scopedMembers.length * 3;
-    if (totalPossible === 0) return null;
-    
-    let totalPresent = 0;
-    let sundayPresent = 0;
-    let sundayAbsent = 0;
-    let sundayUnreported = 0;
-    
-    let evangelism = 0;
-    let tithing = 0;
-    let fee = 0;
-    
-    scopedMembers.forEach(m => {
-      ["samil", "sunday", "zone"].forEach(cat => {
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
-        );
-        const val = rec ? rec.value : "미보고";
-        if (val === "대면" || val === "비대면" || val === "대체" || val === "O") {
-          totalPresent++;
-        }
-      });
-      
-      const sunRec = attendanceRecords.find(
-        r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === "sunday"
-      );
-      const sunVal = sunRec ? sunRec.value : "미보고";
-      if (sunVal === "대면" || sunVal === "비대면" || sunVal === "대체" || sunVal === "O") {
-        sundayPresent++;
-      } else if (sunVal === "결석" || sunVal === "X") {
-        sundayAbsent++;
-      } else {
-        sundayUnreported++;
-      }
-      
-      const evAch = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "evangelism");
-      if (evAch && evAch.achieved && evAch.achievedWeekNo <= prevWeekNo) {
-        evangelism++;
-      }
-      const tiAch = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "tithing");
-      if (tiAch && tiAch.achieved && tiAch.achievedWeekNo <= prevWeekNo) {
-        tithing++;
-      }
-      const feAch = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "fee");
-      if (feAch && feAch.achieved && feAch.achievedWeekNo <= prevWeekNo) {
-        fee++;
-      }
-    });
-    
-    const rate = Math.round((totalPresent / totalPossible) * 100);
-    return { rate, sundayPresent, sundayAbsent, sundayUnreported, evangelism, tithing, fee };
-  };
 
-  const prevStats = getPrevWeekStats();
 
   // Scope label for dashboard card header
   const getScopeLabel = () => {
