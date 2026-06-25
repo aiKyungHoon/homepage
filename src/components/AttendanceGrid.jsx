@@ -82,10 +82,12 @@ export default function AttendanceGrid() {
       list = list.filter(m => m.zoneId === filterZoneId);
     }
 
-    // Search query
+    // Search query (supports multiple names separated by comma or space)
     if (searchQuery) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(m => m.name.toLowerCase().includes(q));
+      const tokens = searchQuery.split(/[\s,]+/).map(t => t.trim().toLowerCase()).filter(t => t);
+      if (tokens.length > 0) {
+        list = list.filter(m => tokens.some(token => m.name.toLowerCase().includes(token)));
+      }
     }
 
     return list;
@@ -178,7 +180,7 @@ export default function AttendanceGrid() {
             <Search size={14} className="search-icon" />
             <input
               type="text"
-              placeholder="성도 이름 검색..."
+              placeholder="성도 이름 검색 (쉼표, 공백 구분)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
