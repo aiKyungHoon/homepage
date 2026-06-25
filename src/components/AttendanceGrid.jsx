@@ -122,7 +122,8 @@ export default function AttendanceGrid() {
   const getCategoryOptions = (cat) => {
     if (cat === "zone") return ["들어옴", "개별전달", "미전달"];
     if (["sunday", "samil"].includes(cat)) return cellOptions.weeklyWorship;
-    if (["test", "radio", "simon", "visit"].includes(cat)) return cellOptions.weeklyEdu;
+    if (cat === "test") return cellOptions.weeklyActivity;
+    if (["radio", "simon", "visit"].includes(cat)) return cellOptions.weeklyEdu;
     return cellOptions.weeklyActivity;
   };
 
