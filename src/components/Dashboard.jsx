@@ -1170,169 +1170,203 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats Summary Cards */}
-      <div className="dashboard-grid">
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper blue">
-            <Users size={22} />
+      {/* General Summary Cards */}
+      <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div className="stats-card glass-panel" style={{ padding: "14px 20px" }}>
+          <div className="stats-icon-wrapper blue" style={{ width: "40px", height: "40px" }}>
+            <Users size={20} />
           </div>
           <div className="stats-info">
-            <p className="stats-label">총원</p>
-            <h2 className="stats-value">{totalCount}명</h2>
-            <p className="stats-subtext">활동 가능 성도</p>
+            <p className="stats-label" style={{ fontSize: "11px" }}>교구 총원</p>
+            <h2 className="stats-value" style={{ fontSize: "20px", margin: "2px 0 0 0" }}>{totalCount}명</h2>
+            <p className="stats-subtext" style={{ fontSize: "10px" }}>활동 가능 성도</p>
           </div>
         </div>
 
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper emerald">
-            <CheckCircle size={22} />
+        <div className="stats-card glass-panel" style={{ padding: "14px 20px" }}>
+          <div className="stats-icon-wrapper purple" style={{ width: "40px", height: "40px" }}>
+            <UserX size={20} />
           </div>
           <div className="stats-info">
-            <p className="stats-label">주일 출석</p>
-            <h2 className="stats-value">{attStats.present}명</h2>
-            <p className="stats-subtext">대면/비대면/대체 포함</p>
-          </div>
-        </div>
-
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper gold">
-            <AlertCircle size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">결석</p>
-            <h2 className="stats-value">{attStats.absent}명</h2>
-            <p className="stats-subtext">보고된 결석자</p>
-          </div>
-        </div>
-
-        <div 
-          onClick={() => attStats.unreported > 0 && setShowUnreportedModal(true)}
-          className={`stats-card glass-panel ${attStats.unreported > 0 ? "clickable-card" : ""}`}
-          style={{ cursor: attStats.unreported > 0 ? "pointer" : "default" }}
-          title={attStats.unreported > 0 ? "클릭 시 미보고자 명단 확인" : ""}
-        >
-          <div className="stats-icon-wrapper muted">
-            <HelpCircle size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">미보고</p>
-            <h2 className="stats-value">{attStats.unreported}명</h2>
-            <p className="stats-subtext">출결 입력 필요</p>
-          </div>
-        </div>
-
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper purple">
-            <UserX size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">출결 제외</p>
-            <h2 className="stats-value">{excludedCount}명</h2>
-            <p className="stats-subtext">관리 대상 출결 제외자</p>
+            <p className="stats-label" style={{ fontSize: "11px" }}>출결 제외</p>
+            <h2 className="stats-value" style={{ fontSize: "20px", margin: "2px 0 0 0" }}>{excludedCount}명</h2>
+            <p className="stats-subtext" style={{ fontSize: "10px" }}>관리 대상 제외자</p>
           </div>
         </div>
       </div>
 
-      {/* Zone Worship Stats Section */}
-      <h3 style={{ marginTop: "24px", marginBottom: "12px", fontSize: "16px", fontWeight: "600", color: "var(--text-primary)" }}>
-        구역예배 현황
-      </h3>
-      <div className="dashboard-grid">
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper emerald">
-            <CheckCircle size={22} />
+      {/* 예배 현황 Section */}
+      <div className="dashboard-section-group">
+        <h3 className="section-group-title">
+          <span className="title-decorator"></span> 예배 현황
+        </h3>
+        <div className="dashboard-grid">
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper emerald">
+              <CheckCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">주일 출석</p>
+              <h2 className="stats-value">{attStats.present}명</h2>
+              <p className="stats-subtext">대면/비대면/대체 포함</p>
+            </div>
           </div>
-          <div className="stats-info">
-            <p className="stats-label">들어옴</p>
-            <h2 className="stats-value">{zoneWorshipStats.entered}명</h2>
-            <p className="stats-subtext">구역예배 참석</p>
-          </div>
-        </div>
 
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper blue">
-            <HeartHandshake size={22} />
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper gold">
+              <AlertCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">주일 결석</p>
+              <h2 className="stats-value">{attStats.absent}명</h2>
+              <p className="stats-subtext">보고된 결석자</p>
+            </div>
           </div>
-          <div className="stats-info">
-            <p className="stats-label">개별전달</p>
-            <h2 className="stats-value">{zoneWorshipStats.delivered}명</h2>
-            <p className="stats-subtext">자료 개별전달</p>
-          </div>
-        </div>
 
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper gold">
-            <AlertCircle size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">미전달</p>
-            <h2 className="stats-value">{zoneWorshipStats.undelivered}명</h2>
-            <p className="stats-subtext">자료 미전달</p>
-          </div>
-        </div>
-
-        <div className="stats-card glass-panel">
-          <div className="stats-icon-wrapper muted">
-            <HelpCircle size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">미보고</p>
-            <h2 className="stats-value">{zoneWorshipStats.unreported}명</h2>
-            <p className="stats-subtext">출결 입력 필요</p>
+          <div 
+            onClick={() => attStats.unreported > 0 && setShowUnreportedModal(true)}
+            className={`stats-card glass-panel ${attStats.unreported > 0 ? "clickable-card" : ""}`}
+            style={{ cursor: attStats.unreported > 0 ? "pointer" : "default" }}
+            title={attStats.unreported > 0 ? "클릭 시 미보고자 명단 확인" : ""}
+          >
+            <div className="stats-icon-wrapper muted">
+              <HelpCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">주일 미보고</p>
+              <h2 className="stats-value">{attStats.unreported}명</h2>
+              <p className="stats-subtext">출결 입력 필요</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Monthly Achievements Summary Cards */}
-      <div className="dashboard-grid achievements-grid">
-        <div className="stats-card glass-panel ach-card">
-          <div className="stats-icon-wrapper cyan">
-            <HeartHandshake size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">전도 인원</p>
-            <h2 className="stats-value">{evangelismCount}명</h2>
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill cyan" 
-                style={{ width: `${totalCount ? (evangelismCount / totalCount) * 100 : 0}%` }}
-              ></div>
+      {/* 교육 현황 Section */}
+      <div className="dashboard-section-group">
+        <h3 className="section-group-title">
+          <span className="title-decorator"></span> 소그룹 및 교육 현황
+        </h3>
+        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper emerald">
+              <CheckCircle size={22} />
             </div>
-            <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((evangelismCount / totalCount) * 100) : 0}%</p>
+            <div className="stats-info">
+              <p className="stats-label">구역예배 들어옴</p>
+              <h2 className="stats-value">{zoneWorshipStats.entered}명</h2>
+              <p className="stats-subtext">구역예배 참석</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper blue">
+              <HeartHandshake size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">구역예배 개별전달</p>
+              <h2 className="stats-value">{zoneWorshipStats.delivered}명</h2>
+              <p className="stats-subtext">공과 자료 전달</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper gold">
+              <AlertCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">구역예배 미전달</p>
+              <h2 className="stats-value">{zoneWorshipStats.undelivered}명</h2>
+              <p className="stats-subtext">미참석 및 미전달</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper muted">
+              <HelpCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">구역예배 미보고</p>
+              <h2 className="stats-value">{zoneWorshipStats.unreported}명</h2>
+              <p className="stats-subtext">보고 대기 인원</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper purple">
+              <Award size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">심야라디오</p>
+              <h2 className="stats-value">{getWeeklyCount("radio")}명</h2>
+              <p className="stats-subtext">라디오 동참 인원</p>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="stats-card glass-panel ach-card">
-          <div className="stats-icon-wrapper gold">
-            <Coins size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">십일조 인원</p>
-            <h2 className="stats-value">{tithingCount}명</h2>
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill gold" 
-                style={{ width: `${totalCount ? (tithingCount / totalCount) * 100 : 0}%` }}
-              ></div>
+      {/* 회계 현황 Section */}
+      <div className="dashboard-section-group">
+        <h3 className="section-group-title">
+          <span className="title-decorator"></span> 회계 및 재정 현황
+        </h3>
+        <div className="dashboard-grid achievements-grid">
+          <div className="stats-card glass-panel ach-card">
+            <div className="stats-icon-wrapper gold">
+              <Coins size={22} />
             </div>
-            <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((tithingCount / totalCount) * 100) : 0}%</p>
+            <div className="stats-info">
+              <p className="stats-label">십일조 인원</p>
+              <h2 className="stats-value">{tithingCount}명</h2>
+              <div className="progress-bar-container">
+                <div 
+                  className="progress-bar-fill gold" 
+                  style={{ width: `${totalCount ? (tithingCount / totalCount) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((tithingCount / totalCount) * 100) : 0}%</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel ach-card">
+            <div className="stats-icon-wrapper blue">
+              <Award size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">청체비 납부</p>
+              <h2 className="stats-value">{feeCount}명</h2>
+              <div className="progress-bar-container">
+                <div 
+                  className="progress-bar-fill blue" 
+                  style={{ width: `${totalCount ? (feeCount / totalCount) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((feeCount / totalCount) * 100) : 0}%</p>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="stats-card glass-panel ach-card">
-          <div className="stats-icon-wrapper blue">
-            <Award size={22} />
-          </div>
-          <div className="stats-info">
-            <p className="stats-label">청체비 납부</p>
-            <h2 className="stats-value">{feeCount}명</h2>
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar-fill blue" 
-                style={{ width: `${totalCount ? (feeCount / totalCount) * 100 : 0}%` }}
-              ></div>
+      {/* 전도 현황 Section */}
+      <div className="dashboard-section-group" style={{ marginBottom: "8px" }}>
+        <h3 className="section-group-title">
+          <span className="title-decorator"></span> 전도 및 사역 현황
+        </h3>
+        <div className="dashboard-grid achievements-grid" style={{ gridTemplateColumns: "1fr" }}>
+          <div className="stats-card glass-panel ach-card" style={{ maxWidth: "420px" }}>
+            <div className="stats-icon-wrapper cyan">
+              <HeartHandshake size={22} />
             </div>
-            <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((feeCount / totalCount) * 100) : 0}%</p>
+            <div className="stats-info">
+              <p className="stats-label">전도 인원</p>
+              <h2 className="stats-value">{evangelismCount}명</h2>
+              <div className="progress-bar-container">
+                <div 
+                  className="progress-bar-fill cyan" 
+                  style={{ width: `${totalCount ? (evangelismCount / totalCount) * 100 : 0}%` }}
+                ></div>
+              </div>
+              <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((evangelismCount / totalCount) * 100) : 0}%</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1666,6 +1700,37 @@ export default function Dashboard() {
           text-transform: uppercase;
           margin-top: 4px;
           font-weight: 600;
+        }
+
+        .dashboard-section-group {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-lg);
+          padding: 20px;
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          margin-top: 8px;
+        }
+
+        .section-group-title {
+          font-size: 14px;
+          font-weight: 700;
+          color: var(--text-secondary);
+          margin: 0;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .title-decorator {
+          width: 4px;
+          height: 14px;
+          background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-blue));
+          border-radius: 2px;
+          display: inline-block;
         }
 
         .stats-card {
