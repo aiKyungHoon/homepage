@@ -117,7 +117,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (val === "대면" || val === "비대면" || val === "대체" || val === "O") {
+        if (["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(val)) {
           totalPresent++;
         }
       });
@@ -167,7 +167,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (val === "대면" || val === "비대면" || val === "대체" || val === "O") {
+        if (["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(val)) {
           totalPresent++;
         }
       });
@@ -250,7 +250,7 @@ export default function Dashboard() {
       const rec = attendanceRecords.find(
         r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
       );
-      return rec && ["대면", "비대면", "대체", "O"].includes(rec.value);
+      return rec && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
     }).length;
   };
 
@@ -392,7 +392,7 @@ export default function Dashboard() {
           if (rec) {
             hasRecords = true;
             const val = rec.value;
-            if (val === "대면" || val === "비대면" || val === "대체" || val === "O") {
+            if (["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(val)) {
               totalPresent++;
             }
           }
@@ -513,7 +513,7 @@ export default function Dashboard() {
         const rec = attendanceRecords.find(
           r => r.memberId === m.memberId && r.monthId === mId && r.weekNo === wNo && r.category === cat
         );
-        return rec && ["대면", "비대면", "대체", "O"].includes(rec.value);
+        return rec && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
       }).length;
     };
 

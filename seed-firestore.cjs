@@ -139,7 +139,7 @@ const generateInitialAttendance = () => {
         monthId,
         weekNo: w,
         category: "zone",
-        value: idx % 7 === 0 ? "X" : idx % 7 === 1 ? "대체" : "O"
+        value: idx % 7 === 0 ? "미전달" : idx % 7 === 1 ? "개별전달" : "들어옴"
       });
 
       records.push({
