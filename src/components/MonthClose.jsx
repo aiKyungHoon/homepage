@@ -30,7 +30,7 @@ export default function MonthClose() {
       const memberIds = zMembers.map(m => m.memberId);
       
       attRecs.forEach(r => {
-        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O"].includes(r.value)) {
+        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
           totalPresent++;
         }
       });
@@ -58,7 +58,7 @@ export default function MonthClose() {
       const memberIds = tMembers.map(m => m.memberId);
       
       attRecs.forEach(r => {
-        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O"].includes(r.value)) {
+        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
           totalPresent++;
         }
       });
@@ -106,7 +106,7 @@ export default function MonthClose() {
       let totalPossible = activeMembers.length * 3 * totalWeeks;
       let totalPresent = 0;
       targetAtt.forEach(r => {
-        if (["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O"].includes(r.value)) {
+        if (["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
           totalPresent++;
         }
       });
@@ -153,7 +153,7 @@ export default function MonthClose() {
         let weekPossible = activeMembers.length * 3;
         let weekPresent = 0;
         targetAtt.forEach(r => {
-          if (r.weekNo === w && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O"].includes(r.value)) {
+          if (r.weekNo === w && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
             weekPresent++;
           }
         });

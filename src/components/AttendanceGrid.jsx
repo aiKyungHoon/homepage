@@ -120,7 +120,8 @@ export default function AttendanceGrid() {
   };
 
   const getCategoryOptions = (cat) => {
-    if (["sunday", "samil", "zone"].includes(cat)) return cellOptions.weeklyWorship;
+    if (cat === "zone") return ["들어옴", "개별전달", "미전달"];
+    if (["sunday", "samil"].includes(cat)) return cellOptions.weeklyWorship;
     if (["test", "radio", "simon", "visit"].includes(cat)) return cellOptions.weeklyEdu;
     return cellOptions.weeklyActivity;
   };
@@ -155,10 +156,10 @@ export default function AttendanceGrid() {
 
   // Get status color coding class
   const getCellStyle = (val) => {
-    if (val === "대면" || val === "O" || val === true) return "cell-present";
-    if (val === "비대면") return "cell-online";
+    if (val === "대면" || val === "O" || val === true || val === "들어옴") return "cell-present";
+    if (val === "비대면" || val === "개별전달") return "cell-online";
     if (val === "대체") return "cell-substitute";
-    if (val === "결석" || val === "X" || val === false) return "cell-absent";
+    if (val === "결석" || val === "X" || val === false || val === "미전달") return "cell-absent";
     return "cell-unreported";
   };
 
