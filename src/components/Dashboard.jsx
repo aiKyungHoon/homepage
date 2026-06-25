@@ -139,6 +139,31 @@ export default function Dashboard() {
 
   const evTeamStats = getEvangelismTeamStats();
 
+  const getTestStats = () => {
+    let present = 0; // 대면
+    let online = 0;  // 비대면
+    let unreported = 0; // 미보고
+
+    scopedMembers.forEach(m => {
+      const rec = attendanceRecords.find(
+        r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test"
+      );
+      const val = rec ? rec.value : "미보고";
+
+      if (val === "대면") {
+        present++;
+      } else if (val === "비대면") {
+        online++;
+      } else {
+        unreported++;
+      }
+    });
+
+    return { present, online, unreported };
+  };
+
+  const testStats = getTestStats();
+
   // Helper: Count monthly achievements (evangelism, tithing, fee)
   const getAchievementCount = (category) => {
     let count = 0;
@@ -411,6 +436,24 @@ export default function Dashboard() {
     } else if (categoryOrType === "evteam_unreported") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
+        const val = rec ? rec.value : "미보고";
+        return !["대면", "비대면"].includes(val);
+      });
+    } else if (categoryOrType === "test_present") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
+        const val = rec ? rec.value : "미보고";
+        return val === "대면";
+      });
+    } else if (categoryOrType === "test_online") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
+        const val = rec ? rec.value : "미보고";
+        return val === "비대면";
+      });
+    } else if (categoryOrType === "test_unreported") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
         const val = rec ? rec.value : "미보고";
         return !["대면", "비대면"].includes(val);
       });
@@ -1481,6 +1524,54 @@ export default function Dashboard() {
               <p className="stats-label">심야라디오</p>
               <h2 className="stats-value">{getWeeklyCount("radio")}명</h2>
               <p className="stats-subtext">라디오 동참 인원</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => handleCardClick("시험 대면", "test_present")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 대면 시험 참석자 명단 확인"
+          >
+            <div className="stats-icon-wrapper emerald">
+              <CheckCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">시험 대면</p>
+              <h2 className="stats-value">{testStats.present}명</h2>
+              <p className="stats-subtext">대면 시험 인원</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => handleCardClick("시험 비대면", "test_online")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 비대면 시험 참석자 명단 확인"
+          >
+            <div className="stats-icon-wrapper blue">
+              <HeartHandshake size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">시험 비대면</p>
+              <h2 className="stats-value">{testStats.online}명</h2>
+              <p className="stats-subtext">비대면 시험 인원</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => handleCardClick("시험 미보고", "test_unreported")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 시험 미보고자 명단 확인"
+          >
+            <div className="stats-icon-wrapper muted">
+              <HelpCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">시험 미보고</p>
+              <h2 className="stats-value">{testStats.unreported}명</h2>
+              <p className="stats-subtext">보고 대기 인원</p>
             </div>
           </div>
         </div>
