@@ -184,7 +184,7 @@ const generateInitialAttendance = () => {
         monthId,
         weekNo: w,
         category: "activity",
-        value: idx % 8 === 0 ? "대체" : "O"
+        value: idx % 8 === 0 ? "비대면" : "대면"
       });
     }
 

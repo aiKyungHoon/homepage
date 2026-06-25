@@ -116,7 +116,7 @@ export default function AttendanceGrid() {
     weeklyWorship: ["대면", "비대면", "대체", "결석", "미보고"],
     weeklyEdu: ["O", "X"],
     weeklyVisit: ["O", "X"],
-    weeklyActivity: ["O", "X", "대체", "미보고"]
+    weeklyActivity: ["대면", "비대면", "미보고"]
   };
 
   const getCategoryOptions = (cat) => {
@@ -260,7 +260,7 @@ export default function AttendanceGrid() {
                 <th className="sep-col monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">전도*</th>
                 <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">십일조*</th>
                 <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">청체비*</th>
-                <th className="sep-col">활동</th>
+                <th className="sep-col">전도단</th>
               </tr>
             </thead>
             <tbody>

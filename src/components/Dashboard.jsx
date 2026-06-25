@@ -114,6 +114,31 @@ export default function Dashboard() {
 
   const zoneWorshipStats = getZoneWorshipStats();
 
+  const getEvangelismTeamStats = () => {
+    let present = 0; // 대면
+    let online = 0;  // 비대면
+    let unreported = 0; // 미보고
+
+    scopedMembers.forEach(m => {
+      const rec = attendanceRecords.find(
+        r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity"
+      );
+      const val = rec ? rec.value : "미보고";
+
+      if (val === "대면") {
+        present++;
+      } else if (val === "비대면") {
+        online++;
+      } else {
+        unreported++;
+      }
+    });
+
+    return { present, online, unreported };
+  };
+
+  const evTeamStats = getEvangelismTeamStats();
+
   // Helper: Count monthly achievements (evangelism, tithing, fee)
   const getAchievementCount = (category) => {
     let count = 0;
@@ -1351,8 +1376,8 @@ export default function Dashboard() {
         <h3 className="section-group-title">
           <span className="title-decorator"></span> 전도 및 사역 현황
         </h3>
-        <div className="dashboard-grid achievements-grid" style={{ gridTemplateColumns: "1fr" }}>
-          <div className="stats-card glass-panel ach-card" style={{ maxWidth: "420px" }}>
+        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          <div className="stats-card glass-panel ach-card">
             <div className="stats-icon-wrapper cyan">
               <HeartHandshake size={22} />
             </div>
@@ -1366,6 +1391,39 @@ export default function Dashboard() {
                 ></div>
               </div>
               <p className="stats-subtext">전체 인원 대비 {totalCount ? Math.round((evangelismCount / totalCount) * 100) : 0}%</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper emerald">
+              <CheckCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">전도단 대면</p>
+              <h2 className="stats-value">{evTeamStats.present}명</h2>
+              <p className="stats-subtext">대면 참석 인원</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper blue">
+              <HeartHandshake size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">전도단 비대면</p>
+              <h2 className="stats-value">{evTeamStats.online}명</h2>
+              <p className="stats-subtext">비대면 참석 인원</p>
+            </div>
+          </div>
+
+          <div className="stats-card glass-panel">
+            <div className="stats-icon-wrapper muted">
+              <HelpCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">전도단 미보고</p>
+              <h2 className="stats-value">{evTeamStats.unreported}명</h2>
+              <p className="stats-subtext">보고 대기 인원</p>
             </div>
           </div>
         </div>
