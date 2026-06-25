@@ -86,6 +86,34 @@ export default function Dashboard() {
 
   const attStats = getAttendanceStats();
 
+  const getZoneWorshipStats = () => {
+    let entered = 0;      // 들어옴
+    let delivered = 0;    // 개별전달
+    let undelivered = 0;  // 미전달
+    let unreported = 0;   // 미보고
+
+    scopedMembers.forEach(m => {
+      const rec = attendanceRecords.find(
+        r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone"
+      );
+      const val = rec ? rec.value : "미보고";
+
+      if (val === "들어옴") {
+        entered++;
+      } else if (val === "개별전달") {
+        delivered++;
+      } else if (val === "미전달") {
+        undelivered++;
+      } else {
+        unreported++;
+      }
+    });
+
+    return { entered, delivered, undelivered, unreported };
+  };
+
+  const zoneWorshipStats = getZoneWorshipStats();
+
   // Helper: Count monthly achievements (evangelism, tithing, fee)
   const getAchievementCount = (category) => {
     let count = 0;
@@ -1201,6 +1229,56 @@ export default function Dashboard() {
             <p className="stats-label">출결 제외</p>
             <h2 className="stats-value">{excludedCount}명</h2>
             <p className="stats-subtext">관리 대상 출결 제외자</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Zone Worship Stats Section */}
+      <h3 style={{ marginTop: "24px", marginBottom: "12px", fontSize: "16px", fontWeight: "600", color: "var(--text-primary)" }}>
+        구역예배 현황
+      </h3>
+      <div className="dashboard-grid">
+        <div className="stats-card glass-panel">
+          <div className="stats-icon-wrapper emerald">
+            <CheckCircle size={22} />
+          </div>
+          <div className="stats-info">
+            <p className="stats-label">들어옴</p>
+            <h2 className="stats-value">{zoneWorshipStats.entered}명</h2>
+            <p className="stats-subtext">구역예배 참석</p>
+          </div>
+        </div>
+
+        <div className="stats-card glass-panel">
+          <div className="stats-icon-wrapper blue">
+            <HeartHandshake size={22} />
+          </div>
+          <div className="stats-info">
+            <p className="stats-label">개별전달</p>
+            <h2 className="stats-value">{zoneWorshipStats.delivered}명</h2>
+            <p className="stats-subtext">자료 개별전달</p>
+          </div>
+        </div>
+
+        <div className="stats-card glass-panel">
+          <div className="stats-icon-wrapper gold">
+            <AlertCircle size={22} />
+          </div>
+          <div className="stats-info">
+            <p className="stats-label">미전달</p>
+            <h2 className="stats-value">{zoneWorshipStats.undelivered}명</h2>
+            <p className="stats-subtext">자료 미전달</p>
+          </div>
+        </div>
+
+        <div className="stats-card glass-panel">
+          <div className="stats-icon-wrapper muted">
+            <HelpCircle size={22} />
+          </div>
+          <div className="stats-info">
+            <p className="stats-label">미보고</p>
+            <h2 className="stats-value">{zoneWorshipStats.unreported}명</h2>
+            <p className="stats-subtext">출결 입력 필요</p>
           </div>
         </div>
       </div>
