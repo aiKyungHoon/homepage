@@ -297,6 +297,7 @@ export default function Dashboard() {
   const [showUnreportedModal, setShowUnreportedModal] = useState(false);
   const [showMoreRankingsModal, setShowMoreRankingsModal] = useState(false);
   const [showWeeklyReportModal, setShowWeeklyReportModal] = useState(false);
+  const [clickedCardDetails, setClickedCardDetails] = useState(null);
 
   const getWeeklyCount = (cat) => {
     return scopedMembers.filter(m => {
@@ -305,6 +306,117 @@ export default function Dashboard() {
       );
       return rec && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
     }).length;
+  };
+
+  const handleCopyList = (title, list) => {
+    const groups = {};
+    list.forEach(m => {
+      const zName = getZoneName(m.zoneId) || "구역 없음";
+      if (!groups[zName]) groups[zName] = [];
+      groups[zName].push(m.name);
+    });
+
+    let text = `[${getScopeLabel()} ${activeMonthId.split("-")[0]}년 ${parseInt(activeMonthId.split("-")[1])}월 ${activeWeekNo}주차 ${title} (총 ${list.length}명)]\n`;
+    Object.keys(groups).forEach(zName => {
+      text += `- ${zName}: ${groups[zName].join(", ")}\n`;
+    });
+
+    navigator.clipboard.writeText(text)
+      .then(() => alert("명단이 클립보드에 복사되었습니다. 카카오톡 등 게시판에 붙여넣기 하실 수 있습니다."))
+      .catch(err => alert("복사 실패: " + err));
+  };
+
+  const handleCardClick = (title, categoryOrType) => {
+    let list = [];
+    
+    if (categoryOrType === "total") {
+      list = scopedMembers;
+    } else if (categoryOrType === "excluded") {
+      list = members.filter(m => m.status === "excluded" && (role === "admin" || (role === "team" && m.teamId === currentUser?.teamId) || (role === "leader" && m.zoneId === currentUser?.zoneId)));
+    } else if (categoryOrType === "sunday_present") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
+        const val = rec ? rec.value : "미보고";
+        return ["대면", "비대면", "대체", "O"].includes(val);
+      });
+    } else if (categoryOrType === "sunday_absent") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
+        const val = rec ? rec.value : "미보고";
+        return ["결석", "X"].includes(val);
+      });
+    } else if (categoryOrType === "sunday_unreported") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
+        const val = rec ? rec.value : "미보고";
+        return !["대면", "비대면", "대체", "O", "결석", "X"].includes(val);
+      });
+    } else if (categoryOrType === "zone_entered") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
+        const val = rec ? rec.value : "미보고";
+        return val === "들어옴";
+      });
+    } else if (categoryOrType === "zone_delivered") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
+        const val = rec ? rec.value : "미보고";
+        return val === "개별전달";
+      });
+    } else if (categoryOrType === "zone_undelivered") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
+        const val = rec ? rec.value : "미보고";
+        return val === "미전달";
+      });
+    } else if (categoryOrType === "zone_unreported") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
+        const val = rec ? rec.value : "미보고";
+        return !["들어옴", "개별전달", "미전달"].includes(val);
+      });
+    } else if (categoryOrType === "radio") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "radio");
+        const val = rec ? rec.value : "미보고";
+        return ["대면", "비대면", "대체", "O"].includes(val);
+      });
+    } else if (categoryOrType === "tithing") {
+      list = scopedMembers.filter(m => {
+        const ach = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "tithing");
+        return ach && ach.achieved;
+      });
+    } else if (categoryOrType === "fee") {
+      list = scopedMembers.filter(m => {
+        const ach = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "fee");
+        return ach && ach.achieved;
+      });
+    } else if (categoryOrType === "evangelism") {
+      list = scopedMembers.filter(m => {
+        const ach = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "evangelism");
+        return ach && ach.achieved;
+      });
+    } else if (categoryOrType === "evteam_present") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
+        const val = rec ? rec.value : "미보고";
+        return val === "대면";
+      });
+    } else if (categoryOrType === "evteam_online") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
+        const val = rec ? rec.value : "미보고";
+        return val === "비대면";
+      });
+    } else if (categoryOrType === "evteam_unreported") {
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
+        const val = rec ? rec.value : "미보고";
+        return !["대면", "비대면"].includes(val);
+      });
+    }
+
+    setClickedCardDetails({ title, members: list });
   };
 
   const getWeekDateRange = (year, month, weekNo) => {
@@ -1197,7 +1309,12 @@ export default function Dashboard() {
 
       {/* General Summary Cards */}
       <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-        <div className="stats-card glass-panel" style={{ padding: "14px 20px" }}>
+        <div 
+          onClick={() => handleCardClick("교구 총원", "total")}
+          className="stats-card glass-panel clickable-card" 
+          style={{ padding: "14px 20px", cursor: "pointer" }}
+          title="클릭 시 전체 명단 확인"
+        >
           <div className="stats-icon-wrapper blue" style={{ width: "40px", height: "40px" }}>
             <Users size={20} />
           </div>
@@ -1208,7 +1325,12 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="stats-card glass-panel" style={{ padding: "14px 20px" }}>
+        <div 
+          onClick={() => handleCardClick("출결 제외 성도", "excluded")}
+          className="stats-card glass-panel clickable-card" 
+          style={{ padding: "14px 20px", cursor: "pointer" }}
+          title="클릭 시 출결 제외자 명단 확인"
+        >
           <div className="stats-icon-wrapper purple" style={{ width: "40px", height: "40px" }}>
             <UserX size={20} />
           </div>
@@ -1226,7 +1348,12 @@ export default function Dashboard() {
           <span className="title-decorator"></span> 예배 현황
         </h3>
         <div className="dashboard-grid">
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("주일 출석", "sunday_present")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 출석자 명단 확인"
+          >
             <div className="stats-icon-wrapper emerald">
               <CheckCircle size={22} />
             </div>
@@ -1237,7 +1364,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("주일 결석", "sunday_absent")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 결석자 명단 확인"
+          >
             <div className="stats-icon-wrapper gold">
               <AlertCircle size={22} />
             </div>
@@ -1249,10 +1381,10 @@ export default function Dashboard() {
           </div>
 
           <div 
-            onClick={() => attStats.unreported > 0 && setShowUnreportedModal(true)}
-            className={`stats-card glass-panel ${attStats.unreported > 0 ? "clickable-card" : ""}`}
-            style={{ cursor: attStats.unreported > 0 ? "pointer" : "default" }}
-            title={attStats.unreported > 0 ? "클릭 시 미보고자 명단 확인" : ""}
+            onClick={() => handleCardClick("주일 미보고", "sunday_unreported")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 미보고자 명단 확인"
           >
             <div className="stats-icon-wrapper muted">
               <HelpCircle size={22} />
@@ -1272,7 +1404,12 @@ export default function Dashboard() {
           <span className="title-decorator"></span> 소그룹 및 교육 현황
         </h3>
         <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("구역예배 들어옴", "zone_entered")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 참석자 명단 확인"
+          >
             <div className="stats-icon-wrapper emerald">
               <CheckCircle size={22} />
             </div>
@@ -1283,7 +1420,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("구역예배 개별전달", "zone_delivered")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 개별전달자 명단 확인"
+          >
             <div className="stats-icon-wrapper blue">
               <HeartHandshake size={22} />
             </div>
@@ -1294,7 +1436,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("구역예배 미전달", "zone_undelivered")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 미전달자 명단 확인"
+          >
             <div className="stats-icon-wrapper gold">
               <AlertCircle size={22} />
             </div>
@@ -1305,7 +1452,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("구역예배 미보고", "zone_unreported")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 미보고자 명단 확인"
+          >
             <div className="stats-icon-wrapper muted">
               <HelpCircle size={22} />
             </div>
@@ -1316,7 +1468,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("심야라디오", "radio")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 라디오 동참자 명단 확인"
+          >
             <div className="stats-icon-wrapper purple">
               <Award size={22} />
             </div>
@@ -1335,7 +1492,12 @@ export default function Dashboard() {
           <span className="title-decorator"></span> 회계 및 재정 현황
         </h3>
         <div className="dashboard-grid achievements-grid">
-          <div className="stats-card glass-panel ach-card">
+          <div 
+            onClick={() => handleCardClick("십일조 인원", "tithing")}
+            className="stats-card glass-panel ach-card clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 십일조 명단 확인"
+          >
             <div className="stats-icon-wrapper gold">
               <Coins size={22} />
             </div>
@@ -1352,7 +1514,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel ach-card">
+          <div 
+            onClick={() => handleCardClick("청체비 납부", "fee")}
+            className="stats-card glass-panel ach-card clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 청체비 납부 명단 확인"
+          >
             <div className="stats-icon-wrapper blue">
               <Award size={22} />
             </div>
@@ -1377,7 +1544,12 @@ export default function Dashboard() {
           <span className="title-decorator"></span> 전도 및 사역 현황
         </h3>
         <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-          <div className="stats-card glass-panel ach-card">
+          <div 
+            onClick={() => handleCardClick("전도 인원", "evangelism")}
+            className="stats-card glass-panel ach-card clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 전도 인원 명단 확인"
+          >
             <div className="stats-icon-wrapper cyan">
               <HeartHandshake size={22} />
             </div>
@@ -1394,7 +1566,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("전도단 대면", "evteam_present")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 대면 참석 명단 확인"
+          >
             <div className="stats-icon-wrapper emerald">
               <CheckCircle size={22} />
             </div>
@@ -1405,7 +1582,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("전도단 비대면", "evteam_online")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 비대면 참석 명단 확인"
+          >
             <div className="stats-icon-wrapper blue">
               <HeartHandshake size={22} />
             </div>
@@ -1416,7 +1598,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="stats-card glass-panel">
+          <div 
+            onClick={() => handleCardClick("전도단 미보고", "evteam_unreported")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 미보고 명단 확인"
+          >
             <div className="stats-icon-wrapper muted">
               <HelpCircle size={22} />
             </div>
@@ -1582,6 +1769,111 @@ export default function Dashboard() {
 
       {/* ---------------- MODALS & PRINT TARGET ---------------- */}
       
+      {/* 0. Card Details Popup Modal */}
+      {clickedCardDetails && (
+        <div className="modal-backdrop no-print" onClick={() => setClickedCardDetails(null)}>
+          <div className="modal-content glass-panel animate-slide" style={{ maxWidth: "520px" }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{clickedCardDetails.title} ({clickedCardDetails.members.length}명)</h3>
+              <button onClick={() => setClickedCardDetails(null)} className="modal-close-btn">
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div style={{ maxHeight: "350px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", margin: "10px 0", paddingRight: "4px" }}>
+              {(() => {
+                // Group members by teamId
+                const groups = {};
+                clickedCardDetails.members.forEach(m => {
+                  const tName = getTeamName(m.teamId) || "소속 없음";
+                  if (!groups[tName]) groups[tName] = [];
+                  groups[tName].push(m);
+                });
+                
+                const teamNames = Object.keys(groups).sort();
+                
+                if (clickedCardDetails.members.length === 0) {
+                  return (
+                    <p style={{ textAlign: "center", color: "var(--text-muted)", padding: "20px" }}>
+                      해당하는 인원이 없습니다.
+                    </p>
+                  );
+                }
+                
+                return teamNames.map(tName => (
+                  <div key={tName} style={{ 
+                    border: "1px solid var(--glass-border)", 
+                    borderRadius: "8px", 
+                    padding: "12px", 
+                    backgroundColor: "rgba(255,255,255,0.02)" 
+                  }}>
+                    <h4 style={{ fontSize: "14px", color: "var(--accent-cyan)", marginBottom: "8px", fontWeight: "700", display: "flex", justifyContent: "space-between" }}>
+                      <span>{tName}</span>
+                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{groups[tName].length}명</span>
+                    </h4>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                      {groups[tName].map(m => {
+                        const zName = getZoneName(m.zoneId) || "구역 없음";
+                        return (
+                          <span key={m.memberId} style={{ 
+                            fontSize: "12px", 
+                            color: "var(--text-primary)", 
+                            backgroundColor: "var(--bg-primary)", 
+                            border: "1px solid var(--glass-border)", 
+                            padding: "4px 8px", 
+                            borderRadius: "4px" 
+                          }}>
+                            {m.name} <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>({zName})</span>
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+            
+            <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
+              {clickedCardDetails.members.length > 0 && (
+                <button 
+                  onClick={() => {
+                    const textLines = [];
+                    const groups = {};
+                    clickedCardDetails.members.forEach(m => {
+                      const tName = getTeamName(m.teamId) || "소속 없음";
+                      if (!groups[tName]) groups[tName] = [];
+                      groups[tName].push(m);
+                    });
+                    
+                    textLines.push(`[${getScopeLabel()} ${activeMonthId.split("-")[0]}년 ${parseInt(activeMonthId.split("-")[1])}월 ${activeWeekNo}주차 - ${clickedCardDetails.title} (총 ${clickedCardDetails.members.length}명)]`);
+                    
+                    Object.keys(groups).sort().forEach(tName => {
+                      const names = groups[tName].map(m => {
+                        const zName = getZoneName(m.zoneId) || "구역 없음";
+                        return `${m.name}(${zName})`;
+                      }).join(", ");
+                      textLines.push(`- ${tName}: ${names}`);
+                    });
+                    
+                    navigator.clipboard.writeText(textLines.join("\n"))
+                      .then(() => alert("명단이 클립보드에 복사되었습니다."))
+                      .catch(err => alert("복사 실패: " + err));
+                  }} 
+                  className="btn btn-primary" 
+                  style={{ flex: 1 }}
+                >
+                  <Clipboard size={14} />
+                  <span>명단 복사 (카톡용)</span>
+                </button>
+              )}
+              <button onClick={() => setClickedCardDetails(null)} className="btn btn-secondary" style={{ flex: clickedCardDetails.members.length > 0 ? 0.4 : 1 }}>
+                <span>닫기</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Unreported Members Modal */}
       {showUnreportedModal && (
         <div className="modal-backdrop no-print" onClick={() => setShowUnreportedModal(false)}>
