@@ -113,7 +113,7 @@ export default function AttendanceGrid() {
 
   // Grid Cell Config
   const cellOptions = {
-    weeklyWorship: ["대면", "비대면", "대체", "결석", "미보고"],
+    weeklyWorship: ["대면", "온라인", "대체", "결석", "미보고"],
     weeklyEdu: ["O", "X"],
     weeklyVisit: ["O", "X"],
     weeklyActivity: ["대면", "비대면", "미보고"]
@@ -157,7 +157,7 @@ export default function AttendanceGrid() {
   // Get status color coding class
   const getCellStyle = (val) => {
     if (val === "대면" || val === "O" || val === true || val === "들어옴") return "cell-present";
-    if (val === "비대면" || val === "개별전달") return "cell-online";
+    if (val === "비대면" || val === "온라인" || val === "개별전달") return "cell-online";
     if (val === "대체") return "cell-substitute";
     if (val === "결석" || val === "X" || val === false || val === "미전달") return "cell-absent";
     return "cell-unreported";

@@ -72,7 +72,7 @@ export default function Dashboard() {
       );
       const val = rec ? rec.value : "미보고";
 
-      if (val === "대면" || val === "비대면" || val === "대체" || val === "O") {
+      if (val === "대면" || val === "비대면" || val === "온라인" || val === "대체" || val === "O") {
         present++;
       } else if (val === "결석" || val === "X") {
         absent++;
@@ -170,7 +170,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(val)) {
+        if (["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(val)) {
           totalPresent++;
         }
       });
@@ -220,7 +220,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(val)) {
+        if (["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(val)) {
           totalPresent++;
         }
       });
@@ -229,7 +229,7 @@ export default function Dashboard() {
         r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === "sunday"
       );
       const sunVal = sunRec ? sunRec.value : "미보고";
-      if (sunVal === "대면" || sunVal === "비대면" || sunVal === "대체" || sunVal === "O") {
+      if (sunVal === "대면" || sunVal === "비대면" || sunVal === "온라인" || sunVal === "대체" || sunVal === "O") {
         sundayPresent++;
       } else if (sunVal === "결석" || sunVal === "X") {
         sundayAbsent++;
@@ -304,7 +304,7 @@ export default function Dashboard() {
       const rec = attendanceRecords.find(
         r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
       );
-      return rec && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
+      return rec && ["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
     }).length;
   };
 
@@ -337,7 +337,7 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
         const val = rec ? rec.value : "미보고";
-        return ["대면", "비대면", "대체", "O"].includes(val);
+        return ["대면", "비대면", "온라인", "대체", "O"].includes(val);
       });
     } else if (categoryOrType === "sunday_absent") {
       list = scopedMembers.filter(m => {
@@ -349,7 +349,7 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
         const val = rec ? rec.value : "미보고";
-        return !["대면", "비대면", "대체", "O", "결석", "X"].includes(val);
+        return !["대면", "비대면", "온라인", "대체", "O", "결석", "X"].includes(val);
       });
     } else if (categoryOrType === "zone_entered") {
       list = scopedMembers.filter(m => {
@@ -379,7 +379,7 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "radio");
         const val = rec ? rec.value : "미보고";
-        return ["대면", "비대면", "대체", "O"].includes(val);
+        return ["대면", "비대면", "온라인", "대체", "O"].includes(val);
       });
     } else if (categoryOrType === "tithing") {
       list = scopedMembers.filter(m => {
@@ -436,7 +436,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
         );
         const val = rec ? rec.value : "미보고";
-        if (!["대면", "비대면", "대체", "O"].includes(val)) {
+        if (!["대면", "비대면", "온라인", "대체", "O"].includes(val)) {
           return false;
         }
       }
@@ -452,7 +452,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
         );
         const val = rec ? rec.value : "미보고";
-        if (["대면", "비대면", "대체", "O"].includes(val)) {
+        if (["대면", "비대면", "온라인", "대체", "O"].includes(val)) {
           attendCount++;
         }
       }
@@ -513,7 +513,7 @@ export default function Dashboard() {
         r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === activeWeekNo && r.category === "sunday"
       );
       const val = rec ? rec.value : "미보고";
-      return !(val === "대면" || val === "비대면" || val === "대체" || val === "O" || val === "결석" || val === "X");
+      return !(val === "대면" || val === "비대면" || val === "온라인" || val === "대체" || val === "O" || val === "결석" || val === "X");
     });
   };
 
@@ -557,7 +557,7 @@ export default function Dashboard() {
           if (rec) {
             hasRecords = true;
             const val = rec.value;
-            if (["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(val)) {
+            if (["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(val)) {
               totalPresent++;
             }
           }
@@ -678,7 +678,7 @@ export default function Dashboard() {
         const rec = attendanceRecords.find(
           r => r.memberId === m.memberId && r.monthId === mId && r.weekNo === wNo && r.category === cat
         );
-        return rec && ["대면", "비대면", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
+        return rec && ["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
       }).length;
     };
 
@@ -968,7 +968,7 @@ export default function Dashboard() {
                       r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
                     );
                     const val = rec ? rec.value : "미보고";
-                    if (["대면", "비대면", "대체", "O"].includes(val)) present++;
+                    if (["대면", "비대면", "온라인", "대체", "O"].includes(val)) present++;
                     else if (["결석", "X"].includes(val)) absent++;
                     else unreported++;
                   });
@@ -1010,7 +1010,7 @@ export default function Dashboard() {
                       r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
                     );
                     const val = rec ? rec.value : "미보고";
-                    if (["대면", "비대면", "대체", "O"].includes(val)) present++;
+                    if (["대면", "비대면", "온라인", "대체", "O"].includes(val)) present++;
                     else if (["결석", "X"].includes(val)) absent++;
                     else unreported++;
                   });
