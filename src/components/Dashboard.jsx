@@ -588,8 +588,8 @@ export default function Dashboard() {
     for (let w = 1; w <= totalWeeks; w++) {
       let hasRecords = false;
       
-      // Worship: sunday + samil
-      let worshipPossible = scopedMembers.length * 2;
+      // Worship: sunday only
+      let worshipPossible = scopedMembers.length;
       let worshipPresent = 0;
       
       // Test: test
@@ -601,18 +601,16 @@ export default function Dashboard() {
       let evPresent = 0;
       
       scopedMembers.forEach(m => {
-        // Worship
-        ["samil", "sunday"].forEach(cat => {
-          const rec = attendanceRecords.find(
-            r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === w && r.category === cat
-          );
-          if (rec) {
-            hasRecords = true;
-            if (["대면", "비대면", "온라인", "대체", "O"].includes(rec.value)) {
-              worshipPresent++;
-            }
+        // Worship (Sunday only)
+        const rec = attendanceRecords.find(
+          r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === w && r.category === "sunday"
+        );
+        if (rec) {
+          hasRecords = true;
+          if (["대면", "비대면", "온라인", "대체", "O"].includes(rec.value)) {
+            worshipPresent++;
           }
-        });
+        }
         
         // Test
         const testRec = attendanceRecords.find(
