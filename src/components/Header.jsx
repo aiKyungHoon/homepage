@@ -14,13 +14,22 @@ export default function Header() {
   } = useData();
 
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem("theme") || "dark";
+    try {
+      return localStorage.getItem("theme") || "dark";
+    } catch (e) {
+      console.warn("localStorage is disabled or not available:", e);
+      return "dark";
+    }
   });
 
   // Apply theme to document body
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
+    try {
+      localStorage.setItem("theme", theme);
+    } catch (e) {
+      console.warn("localStorage write failed:", e);
+    }
   }, [theme]);
 
   const toggleTheme = () => {
