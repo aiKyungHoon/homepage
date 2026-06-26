@@ -586,30 +586,64 @@ export default function Dashboard() {
     const totalWeeks = 5;
     
     for (let w = 1; w <= totalWeeks; w++) {
-      let totalPossible = scopedMembers.length * 3;
-      if (totalPossible === 0) continue;
-      
-      let totalPresent = 0;
       let hasRecords = false;
       
+      // Worship: sunday + samil
+      let worshipPossible = scopedMembers.length * 2;
+      let worshipPresent = 0;
+      
+      // Test: test
+      let testPossible = scopedMembers.length;
+      let testPresent = 0;
+      
+      // Evangelism: activity
+      let evPossible = scopedMembers.length;
+      let evPresent = 0;
+      
       scopedMembers.forEach(m => {
-        ["samil", "sunday", "zone"].forEach(cat => {
+        // Worship
+        ["samil", "sunday"].forEach(cat => {
           const rec = attendanceRecords.find(
             r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === w && r.category === cat
           );
           if (rec) {
             hasRecords = true;
-            const val = rec.value;
-            if (["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(val)) {
-              totalPresent++;
+            if (["대면", "비대면", "온라인", "대체", "O"].includes(rec.value)) {
+              worshipPresent++;
             }
           }
         });
+        
+        // Test
+        const testRec = attendanceRecords.find(
+          r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === w && r.category === "test"
+        );
+        if (testRec) {
+          hasRecords = true;
+          if (["대면", "비대면"].includes(testRec.value)) {
+            testPresent++;
+          }
+        }
+        
+        // Evangelism / Activity
+        const evRec = attendanceRecords.find(
+          r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === w && r.category === "activity"
+        );
+        if (evRec) {
+          hasRecords = true;
+          if (["대면", "비대면"].includes(evRec.value)) {
+            evPresent++;
+          }
+        }
       });
       
       if (hasRecords) {
-        const rate = Math.round((totalPresent / totalPossible) * 100);
-        trend.push({ week: w, rate });
+        trend.push({
+          week: w,
+          worshipRate: worshipPossible ? Math.round((worshipPresent / worshipPossible) * 100) : 0,
+          testRate: testPossible ? Math.round((testPresent / testPossible) * 100) : 0,
+          evRate: evPossible ? Math.round((evPresent / evPossible) * 100) : 0
+        });
       }
     }
     return trend;
@@ -662,23 +696,34 @@ export default function Dashboard() {
       </g>
     ));
     
-    const points = trendData.map((d, idx) => ({ x: getX(idx), y: getY(d.rate), ...d }));
-    
-    let pathD = "";
-    if (points.length > 1) {
-      pathD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ");
-    } else if (points.length === 1) {
-      pathD = `M ${points[0].x - 20} ${points[0].y} L ${points[0].x + 20} ${points[0].y}`;
+    // 1. Worship Points & Path
+    const worshipPoints = trendData.map((d, idx) => ({ x: getX(idx), y: getY(d.worshipRate), rate: d.worshipRate, week: d.week }));
+    let worshipPathD = "";
+    if (worshipPoints.length > 1) {
+      worshipPathD = `M ${worshipPoints[0].x} ${worshipPoints[0].y} ` + worshipPoints.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ");
+    } else if (worshipPoints.length === 1) {
+      worshipPathD = `M ${worshipPoints[0].x - 20} ${worshipPoints[0].y} L ${worshipPoints[0].x + 20} ${worshipPoints[0].y}`;
+    }
+
+    // 2. Test Points & Path
+    const testPoints = trendData.map((d, idx) => ({ x: getX(idx), y: getY(d.testRate), rate: d.testRate, week: d.week }));
+    let testPathD = "";
+    if (testPoints.length > 1) {
+      testPathD = `M ${testPoints[0].x} ${testPoints[0].y} ` + testPoints.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ");
+    } else if (testPoints.length === 1) {
+      testPathD = `M ${testPoints[0].x - 20} ${testPoints[0].y} L ${testPoints[0].x + 20} ${testPoints[0].y}`;
+    }
+
+    // 3. Evangelism Points & Path
+    const evPoints = trendData.map((d, idx) => ({ x: getX(idx), y: getY(d.evRate), rate: d.evRate, week: d.week }));
+    let evPathD = "";
+    if (evPoints.length > 1) {
+      evPathD = `M ${evPoints[0].x} ${evPoints[0].y} ` + evPoints.slice(1).map(p => `L ${p.x} ${p.y}`).join(" ");
+    } else if (evPoints.length === 1) {
+      evPathD = `M ${evPoints[0].x - 20} ${evPoints[0].y} L ${evPoints[0].x + 20} ${evPoints[0].y}`;
     }
     
-    let areaD = "";
-    if (points.length > 1) {
-      areaD = `${pathD} L ${points[points.length - 1].x} ${height - paddingBottom} L ${points[0].x} ${height - paddingBottom} Z`;
-    } else if (points.length === 1) {
-      areaD = `M ${points[0].x - 20} ${points[0].y} L ${points[0].x + 20} ${points[0].y} L ${points[0].x + 20} ${height - paddingBottom} L ${points[0].x - 20} ${height - paddingBottom} Z`;
-    }
-    
-    return { grids, points, pathD, areaD, width, height };
+    return { grids, width, height, paddingBottom, worshipPoints, worshipPathD, testPoints, testPathD, evPoints, evPathD };
   };
 
   const svgData = generateSvgElements();
@@ -1710,28 +1755,35 @@ export default function Dashboard() {
       {/* Attendance Trend Section */}
       {trendData.length > 0 && (
         <div className="stats-card glass-panel trend-card-panel">
-          <div className="panel-header" style={{ width: "100%", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px", marginBottom: "16px" }}>
-            <h3 style={{ fontSize: "15px", color: "var(--text-primary)" }}>출석률 추이</h3>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>주차별 출석률 변화 흐름 (당월)</span>
+          <div className="panel-header" style={{ width: "100%", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px", marginBottom: "8px" }}>
+            <h3 style={{ fontSize: "15px", color: "var(--text-primary)" }}>출석률 및 참여율 추이</h3>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>주차별 예배 출석, 시험 제출, 전도단 참석률 변화 흐름 (당월)</span>
           </div>
-          <div className="trend-chart-container" style={{ width: "100%", height: "220px", display: "flex", justifyContent: "center", alignItems: "center" }}>
+
+          {/* Legend */}
+          <div style={{ display: "flex", gap: "16px", marginBottom: "16px", fontSize: "11px", justifyContent: "flex-end", width: "100%" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ display: "inline-block", width: "12px", height: "3px", backgroundColor: "var(--accent-cyan)", borderRadius: "2px" }}></span>
+              <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>예배 출석률</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ display: "inline-block", width: "12px", height: "3px", backgroundColor: "var(--accent-emerald)", borderRadius: "2px" }}></span>
+              <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>시험 참여율</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ display: "inline-block", width: "12px", height: "3px", backgroundColor: "#a855f7", borderRadius: "2px" }}></span>
+              <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>전도단 참석률</span>
+            </div>
+          </div>
+
+          <div className="trend-chart-container" style={{ width: "100%", height: "240px", display: "flex", justifyContent: "center", alignItems: "center" }}>
             <svg viewBox={`0 0 ${svgData.width} ${svgData.height}`} style={{ width: "100%", height: "100%", overflow: "visible" }}>
-              <defs>
-                <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--accent-cyan)" stopOpacity="0.15" />
-                  <stop offset="100%" stopColor="var(--accent-cyan)" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              
               {svgData.grids}
               
-              {svgData.areaD && (
-                <path d={svgData.areaD} fill="url(#chartAreaGrad)" />
-              )}
-              
-              {svgData.pathD && (
+              {/* 1. Worship Line & Points (Cyan) */}
+              {svgData.worshipPathD && (
                 <path 
-                  d={svgData.pathD} 
+                  d={svgData.worshipPathD} 
                   fill="none" 
                   stroke="var(--accent-cyan)" 
                   strokeWidth="3" 
@@ -1739,24 +1791,24 @@ export default function Dashboard() {
                   strokeLinejoin="round" 
                 />
               )}
-              
-              {svgData.points.map((p, idx) => (
-                <g key={idx}>
+              {svgData.worshipPoints.map((p, idx) => (
+                <g key={`worship-${idx}`}>
                   <circle 
                     cx={p.x} 
                     cy={p.y} 
-                    r="5" 
+                    r="4" 
                     fill="var(--bg-secondary)" 
                     stroke="var(--accent-cyan)" 
-                    strokeWidth="3" 
+                    strokeWidth="2.5" 
                   />
                   <text 
                     x={p.x} 
-                    y={p.y - 12} 
+                    y={p.y - 10} 
                     fill="var(--text-primary)" 
-                    fontSize="11" 
+                    fontSize="9" 
                     fontWeight="700"
                     textAnchor="middle"
+                    style={{ textShadow: "0 0 3px var(--bg-primary)" }}
                   >
                     {p.rate}%
                   </text>
@@ -1764,10 +1816,80 @@ export default function Dashboard() {
                     x={p.x} 
                     y={svgData.height - 8} 
                     fill="var(--text-secondary)" 
-                    fontSize="11" 
+                    fontSize="10" 
                     textAnchor="middle"
                   >
                     {p.week}주차
+                  </text>
+                </g>
+              ))}
+
+              {/* 2. Test Line & Points (Emerald) */}
+              {svgData.testPathD && (
+                <path 
+                  d={svgData.testPathD} 
+                  fill="none" 
+                  stroke="var(--accent-emerald)" 
+                  strokeWidth="3" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+              )}
+              {svgData.testPoints.map((p, idx) => (
+                <g key={`test-${idx}`}>
+                  <circle 
+                    cx={p.x} 
+                    cy={p.y} 
+                    r="4" 
+                    fill="var(--bg-secondary)" 
+                    stroke="var(--accent-emerald)" 
+                    strokeWidth="2.5" 
+                  />
+                  <text 
+                    x={p.x} 
+                    y={p.y + 14} 
+                    fill="var(--text-primary)" 
+                    fontSize="9" 
+                    fontWeight="700"
+                    textAnchor="middle"
+                    style={{ textShadow: "0 0 3px var(--bg-primary)" }}
+                  >
+                    {p.rate}%
+                  </text>
+                </g>
+              ))}
+
+              {/* 3. Evangelism Line & Points (Purple) */}
+              {svgData.evPathD && (
+                <path 
+                  d={svgData.evPathD} 
+                  fill="none" 
+                  stroke="#a855f7" 
+                  strokeWidth="3" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                />
+              )}
+              {svgData.evPoints.map((p, idx) => (
+                <g key={`ev-${idx}`}>
+                  <circle 
+                    cx={p.x} 
+                    cy={p.y} 
+                    r="4" 
+                    fill="var(--bg-secondary)" 
+                    stroke="#a855f7" 
+                    strokeWidth="2.5" 
+                  />
+                  <text 
+                    x={p.x} 
+                    y={p.y - 10} 
+                    fill="var(--text-primary)" 
+                    fontSize="9" 
+                    fontWeight="700"
+                    textAnchor="middle"
+                    style={{ textShadow: "0 0 3px var(--bg-primary)" }}
+                  >
+                    {p.rate}%
                   </text>
                 </g>
               ))}
