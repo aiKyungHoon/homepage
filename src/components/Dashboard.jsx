@@ -1489,7 +1489,7 @@ export default function Dashboard() {
         <h3 className="section-group-title">
           <span className="title-decorator"></span> 소그룹 및 교육 현황
         </h3>
-        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "16px" }}>
           <div 
             onClick={() => handleCardClick("구역예배 들어옴", "zone_entered")}
             className="stats-card glass-panel clickable-card"
@@ -1569,6 +1569,24 @@ export default function Dashboard() {
               <p className="stats-subtext">라디오 동참 인원</p>
             </div>
           </div>
+        </div>
+
+        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          <div 
+            onClick={() => handleCardClick("시험 대면", "test_present")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 대면 시험 참석자 명단 확인"
+          >
+            <div className="stats-icon-wrapper emerald">
+              <CheckCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">시험 대면</p>
+              <h2 className="stats-value">{testStats.present}명</h2>
+              <p className="stats-subtext">대면 시험 인원</p>
+            </div>
+          </div>
 
           <div 
             onClick={() => handleCardClick("시험 비대면", "test_online")}
@@ -1599,22 +1617,6 @@ export default function Dashboard() {
               <p className="stats-label">시험 미보고</p>
               <h2 className="stats-value">{testStats.unreported}명</h2>
               <p className="stats-subtext">보고 대기 인원</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("시험 대면", "test_present")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 대면 시험 참석자 명단 확인"
-          >
-            <div className="stats-icon-wrapper emerald">
-              <CheckCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">시험 대면</p>
-              <h2 className="stats-value">{testStats.present}명</h2>
-              <p className="stats-subtext">대면 시험 인원</p>
             </div>
           </div>
         </div>
