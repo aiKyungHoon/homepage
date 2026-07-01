@@ -259,7 +259,8 @@ export default function MonthClose() {
       };
       
       const getY = (rate) => {
-        return paddingTop + (100 - rate) * (chartHeight / 100);
+        const safeRate = (typeof rate === "number" && !isNaN(rate)) ? rate : 0;
+        return paddingTop + (100 - safeRate) * (chartHeight / 100);
       };
       
       const points = trend.map((d, idx) => ({ x: getX(idx), y: getY(d.rate), ...d }));

@@ -7,7 +7,8 @@ import {
   Lock, 
   History, 
   LogOut,
-  Sparkles
+  Sparkles,
+  HeartHandshake
 } from "lucide-react";
 
 export default function Sidebar({ activePage, setActivePage }) {
@@ -21,6 +22,7 @@ export default function Sidebar({ activePage, setActivePage }) {
   const menuItems = [
     { id: "dashboard", label: "대시보드", icon: LayoutDashboard, roles: ["admin", "team"] },
     { id: "attendance", label: "출결 관리", icon: CalendarCheck, roles: ["admin", "team", "leader"] },
+    { id: "visit_manage", label: "심방 관리", icon: HeartHandshake, roles: ["admin", "team", "leader"] },
     { id: "org", label: "조직/성도 관리", icon: Users, roles: ["admin", "team"] },
     { id: "month", label: "월 마감 설정", icon: Lock, roles: ["admin"] },
     { id: "history", label: "수정 이력", icon: History, roles: ["admin"] }

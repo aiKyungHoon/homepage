@@ -323,6 +323,7 @@ export default function Dashboard() {
   const [showMoreRankingsModal, setShowMoreRankingsModal] = useState(false);
   const [showWeeklyReportModal, setShowWeeklyReportModal] = useState(false);
   const [clickedCardDetails, setClickedCardDetails] = useState(null);
+  const [visibleLines, setVisibleLines] = useState({ worship: true, test: true, ev: true });
 
   const getWeeklyCount = (cat) => {
     return scopedMembers.filter(m => {
@@ -636,11 +637,15 @@ export default function Dashboard() {
       });
       
       if (hasRecords) {
+        const rawWorshipRate = worshipPossible ? Math.round((worshipPresent / worshipPossible) * 100) : 0;
+        const rawTestRate = testPossible ? Math.round((testPresent / testPossible) * 100) : 0;
+        const rawEvRate = evPossible ? Math.round((evPresent / evPossible) * 100) : 0;
+
         trend.push({
           week: w,
-          worshipRate: worshipPossible ? Math.round((worshipPresent / worshipPossible) * 100) : 0,
-          testRate: testPossible ? Math.round((testPresent / testPossible) * 100) : 0,
-          evRate: evPossible ? Math.round((evPresent / evPossible) * 100) : 0
+          worshipRate: isNaN(rawWorshipRate) ? 0 : rawWorshipRate,
+          testRate: isNaN(rawTestRate) ? 0 : rawTestRate,
+          evRate: isNaN(rawEvRate) ? 0 : rawEvRate
         });
       }
     }
@@ -668,7 +673,8 @@ export default function Dashboard() {
     };
     
     const getY = (rate) => {
-      return paddingTop + (100 - rate) * (chartHeight / 100);
+      const safeRate = (typeof rate === "number" && !isNaN(rate)) ? rate : 0;
+      return paddingTop + (100 - safeRate) * (chartHeight / 100);
     };
     
     const grids = [25, 50, 75, 100].map(val => (
@@ -820,10 +826,16 @@ export default function Dashboard() {
       };
       
       const getY = (rate) => {
-        return paddingTop + (100 - rate) * (chartHeight / 100);
+        const safeRate = (typeof rate === "number" && !isNaN(rate)) ? rate : 0;
+        return paddingTop + (100 - safeRate) * (chartHeight / 100);
       };
       
-      const points = trendData.map((d, idx) => ({ x: getX(idx), y: getY(d.rate), ...d }));
+      const points = trendData.map((d, idx) => ({ 
+        x: getX(idx), 
+        y: getY(d.worshipRate), 
+        rate: d.worshipRate, 
+        ...d 
+      }));
       
       let pathD = "";
       if (points.length > 1) {
@@ -1762,15 +1774,51 @@ export default function Dashboard() {
 
           {/* Legend */}
           <div style={{ display: "flex", gap: "16px", marginBottom: "16px", fontSize: "11px", justifyContent: "flex-end", width: "100%" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div 
+              onClick={() => setVisibleLines(prev => ({ ...prev, worship: !prev.worship }))}
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "6px", 
+                cursor: "pointer", 
+                userSelect: "none",
+                opacity: visibleLines.worship ? 1 : 0.4,
+                textDecoration: visibleLines.worship ? "none" : "line-through",
+                transition: "opacity 0.2s ease"
+              }}
+            >
               <span style={{ display: "inline-block", width: "12px", height: "3px", backgroundColor: "var(--accent-cyan)", borderRadius: "2px" }}></span>
               <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>예배 출석률</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div 
+              onClick={() => setVisibleLines(prev => ({ ...prev, test: !prev.test }))}
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "6px", 
+                cursor: "pointer", 
+                userSelect: "none",
+                opacity: visibleLines.test ? 1 : 0.4,
+                textDecoration: visibleLines.test ? "none" : "line-through",
+                transition: "opacity 0.2s ease"
+              }}
+            >
               <span style={{ display: "inline-block", width: "12px", height: "3px", backgroundColor: "var(--accent-emerald)", borderRadius: "2px" }}></span>
               <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>시험 참여율</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <div 
+              onClick={() => setVisibleLines(prev => ({ ...prev, ev: !prev.ev }))}
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "6px", 
+                cursor: "pointer", 
+                userSelect: "none",
+                opacity: visibleLines.ev ? 1 : 0.4,
+                textDecoration: visibleLines.ev ? "none" : "line-through",
+                transition: "opacity 0.2s ease"
+              }}
+            >
               <span style={{ display: "inline-block", width: "12px", height: "3px", backgroundColor: "#a855f7", borderRadius: "2px" }}></span>
               <span style={{ color: "var(--text-secondary)", fontWeight: "600" }}>전도단 참석률</span>
             </div>
@@ -1780,8 +1828,22 @@ export default function Dashboard() {
             <svg viewBox={`0 0 ${svgData.width} ${svgData.height}`} style={{ width: "100%", height: "100%", overflow: "visible" }}>
               {svgData.grids}
               
+              {/* Week labels (X-Axis labels) */}
+              {svgData.worshipPoints && svgData.worshipPoints.map((p, idx) => (
+                <text 
+                  key={`week-${idx}`}
+                  x={p.x} 
+                  y={svgData.height - 8} 
+                  fill="var(--text-secondary)" 
+                  fontSize="10" 
+                  textAnchor="middle"
+                >
+                  {p.week}주차
+                </text>
+              ))}
+
               {/* 1. Worship Line & Points (Cyan) */}
-              {svgData.worshipPathD && (
+              {visibleLines.worship && svgData.worshipPathD && (
                 <path 
                   d={svgData.worshipPathD} 
                   fill="none" 
@@ -1791,7 +1853,7 @@ export default function Dashboard() {
                   strokeLinejoin="round" 
                 />
               )}
-              {svgData.worshipPoints.map((p, idx) => (
+              {visibleLines.worship && svgData.worshipPoints && svgData.worshipPoints.map((p, idx) => (
                 <g key={`worship-${idx}`}>
                   <circle 
                     cx={p.x} 
@@ -1812,20 +1874,11 @@ export default function Dashboard() {
                   >
                     {p.rate}%
                   </text>
-                  <text 
-                    x={p.x} 
-                    y={svgData.height - 8} 
-                    fill="var(--text-secondary)" 
-                    fontSize="10" 
-                    textAnchor="middle"
-                  >
-                    {p.week}주차
-                  </text>
                 </g>
               ))}
 
               {/* 2. Test Line & Points (Emerald) */}
-              {svgData.testPathD && (
+              {visibleLines.test && svgData.testPathD && (
                 <path 
                   d={svgData.testPathD} 
                   fill="none" 
@@ -1835,7 +1888,7 @@ export default function Dashboard() {
                   strokeLinejoin="round" 
                 />
               )}
-              {svgData.testPoints.map((p, idx) => (
+              {visibleLines.test && svgData.testPoints && svgData.testPoints.map((p, idx) => (
                 <g key={`test-${idx}`}>
                   <circle 
                     cx={p.x} 
@@ -1860,7 +1913,7 @@ export default function Dashboard() {
               ))}
 
               {/* 3. Evangelism Line & Points (Purple) */}
-              {svgData.evPathD && (
+              {visibleLines.ev && svgData.evPathD && (
                 <path 
                   d={svgData.evPathD} 
                   fill="none" 
@@ -1870,7 +1923,7 @@ export default function Dashboard() {
                   strokeLinejoin="round" 
                 />
               )}
-              {svgData.evPoints.map((p, idx) => (
+              {visibleLines.ev && svgData.evPoints && svgData.evPoints.map((p, idx) => (
                 <g key={`ev-${idx}`}>
                   <circle 
                     cx={p.x} 
