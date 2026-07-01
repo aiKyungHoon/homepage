@@ -19,7 +19,35 @@ export default function Login() {
     try {
       await login(username, password);
     } catch (err) {
-      setError(err.message || "로그인 중 오류가 발생했습니다.");
+      console.error("Login failed:", err);
+      let errMsg = "로그인 중 오류가 발생했습니다.";
+      if (err.code) {
+        switch (err.code) {
+          case "auth/invalid-credential":
+            errMsg = "아이디 또는 비밀번호가 올바르지 않습니다.\n만약 Firebase에 초기 데이터를 업로드하지 않으셨다면 하단의 'Firebase 초기 데이터 업로드' 버튼을 클릭하여 DB를 먼저 생성해 주세요.";
+            break;
+          case "auth/user-not-found":
+            errMsg = "등록되지 않은 아이디입니다. 하단의 'Firebase 초기 데이터 업로드 (Seed)' 버튼을 클릭해 계정을 먼저 생성해 주세요.";
+            break;
+          case "auth/wrong-password":
+            errMsg = "비밀번호가 올바르지 않습니다.";
+            break;
+          case "auth/invalid-email":
+            errMsg = "올바른 아이디/이메일 형식이 아닙니다.";
+            break;
+          case "auth/network-request-failed":
+            errMsg = "네트워크 연결에 실패했습니다. 인터넷 연결 상태를 확인해 주세요.";
+            break;
+          case "auth/too-many-requests":
+            errMsg = "로그인 시도가 너무 많아 계정이 일시적으로 잠겼습니다. 잠시 후 다시 시도해 주세요.";
+            break;
+          default:
+            errMsg = `로그인 실패 (${err.code}): ${err.message}`;
+        }
+      } else {
+        errMsg = err.message || errMsg;
+      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -52,6 +80,10 @@ export default function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck="false"
+              autoComplete="username"
             />
           </div>
 
@@ -63,6 +95,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              autoComplete="current-password"
             />
           </div>
 
@@ -128,6 +161,7 @@ export default function Login() {
               <Shield size={16} />
               <span>{loading ? "데이터 업로드 중..." : "Firebase 초기 데이터 업로드 (Seed)"}</span>
             </button>
+
           </div>
         )}
       </div>

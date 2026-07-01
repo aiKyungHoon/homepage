@@ -24,6 +24,8 @@ export function DataProvider({ children }) {
   const [months, setMonths] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [monthlyAchievements, setMonthlyAchievements] = useState([]);
+  const [memberNotes, setMemberNotes] = useState([]);
+  const [visitationRecords, setVisitationRecords] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
   
@@ -42,6 +44,8 @@ export function DataProvider({ children }) {
         setMonths([]);
         setAttendanceRecords([]);
         setMonthlyAchievements([]);
+        setMemberNotes([]);
+        setVisitationRecords([]);
         setAuditLogs([]);
         setUsers([]);
         setLoading(false);
@@ -59,7 +63,11 @@ export function DataProvider({ children }) {
           localStorage.setItem("mock_months", JSON.stringify(mockInitData.initialMonths));
           localStorage.setItem("mock_attendance", JSON.stringify(mockInitData.initialAttendanceRecords));
           localStorage.setItem("mock_achievements", JSON.stringify(mockInitData.initialMonthlyAchievements));
+          localStorage.setItem("mock_member_notes", JSON.stringify([]));
           localStorage.setItem("mock_audit_logs", JSON.stringify(mockInitData.initialAuditLogs));
+        }
+        if (!localStorage.getItem("mock_member_notes")) {
+          localStorage.setItem("mock_member_notes", JSON.stringify([]));
         }
 
         setTeams(JSON.parse(localStorage.getItem("mock_teams")));
@@ -92,6 +100,9 @@ export function DataProvider({ children }) {
           localStorage.setItem("mock_users", JSON.stringify(mockInitData.demoUsers));
         }
         setUsers(JSON.parse(localStorage.getItem("mock_users")));
+        
+        const mockVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
+        setVisitationRecords(mockVisits);
         
         setLoading(false);
       } else {
@@ -129,6 +140,11 @@ export function DataProvider({ children }) {
           const usersSnap = await getDocs(collection(db, "users"));
           const loadedUsers = usersSnap.docs.map(d => ({ userId: d.id, ...d.data() }));
           setUsers(loadedUsers);
+
+          // Load visitation records
+          const visitsSnap = await getDocs(collection(db, "visitationRecords"));
+          const loadedVisits = visitsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setVisitationRecords(loadedVisits);
           
           setLoading(false);
         } catch (error) {
@@ -154,6 +170,10 @@ export function DataProvider({ children }) {
         const allAch = JSON.parse(localStorage.getItem("mock_achievements")) || [];
         const monthAch = allAch.filter(a => a.monthId === activeMonthId);
         setMonthlyAchievements(monthAch);
+
+        const allNotes = JSON.parse(localStorage.getItem("mock_member_notes")) || [];
+        const monthNotes = allNotes.filter(n => n.monthId === activeMonthId);
+        setMemberNotes(monthNotes);
       } else {
         try {
           // Fetch attendance records for this month
@@ -167,6 +187,11 @@ export function DataProvider({ children }) {
           const achSnap = await getDocs(achQuery);
           console.log(`Loaded ${achSnap.size} monthly achievements from Firestore for ${activeMonthId}`);
           setMonthlyAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
+
+          const notesQuery = query(collection(db, "memberNotes"), where("monthId", "==", activeMonthId));
+          const notesSnap = await getDocs(notesQuery);
+          console.log(`Loaded ${notesSnap.size} member notes from Firestore for ${activeMonthId}`);
+          setMemberNotes(notesSnap.docs.map(d => ({ noteId: d.id, ...d.data() })));
         } catch (error) {
           console.error("Error fetching month records:", error);
         }
@@ -373,7 +398,123 @@ export function DataProvider({ children }) {
     logChange(memberId, memberName, `${activeMonthId.split("-")[1]}월 누적 ${label}: ${oldAchieved ? "체크" : "해제"} -> ${achieved ? "체크" : "해제"}`);
   };
 
-  // 5. Members CRUD
+  // 5. Member Notes CRUD
+  const saveMemberNote = async (memberId, text) => {
+    const member = members.find(m => m.memberId === memberId);
+    const memberName = member ? member.name : "성도";
+    const noteText = text.trim();
+    const noteId = `${memberId}_${activeMonthId}`;
+
+    const activeMonth = months.find(m => m.monthId === activeMonthId);
+    const isClosed = activeMonth && activeMonth.status === "closed";
+    if (isClosed && currentUser?.role !== "admin") {
+      alert("마감된 월의 데이터는 팀장/리더 권한으로 수정할 수 없습니다.");
+      return;
+    }
+
+    if (!noteText) {
+      alert("특이사항 내용을 입력해 주세요.");
+      return;
+    }
+
+    const existing = memberNotes.find(n => n.noteId === noteId);
+    const oldText = existing ? existing.text : "";
+    if (oldText === noteText) return;
+
+    const now = new Date().toISOString();
+    const newNote = {
+      noteId,
+      memberId,
+      monthId: activeMonthId,
+      text: noteText,
+      createdAt: existing?.createdAt || now,
+      createdBy: existing?.createdBy || (currentUser?.name || "System"),
+      updatedAt: now,
+      updatedBy: currentUser?.name || "System"
+    };
+
+    if (isMockEnabled) {
+      const allNotes = JSON.parse(localStorage.getItem("mock_member_notes")) || [];
+      const index = allNotes.findIndex(n => n.noteId === noteId);
+
+      if (index >= 0) {
+        allNotes[index] = newNote;
+      } else {
+        allNotes.push(newNote);
+      }
+
+      localStorage.setItem("mock_member_notes", JSON.stringify(allNotes));
+      setMemberNotes(prev => {
+        const idx = prev.findIndex(n => n.noteId === noteId);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = newNote;
+          return next;
+        }
+        return [...prev, newNote];
+      });
+    } else {
+      try {
+        await setDoc(doc(db, "memberNotes", noteId), {
+          memberId,
+          monthId: activeMonthId,
+          text: noteText,
+          createdAt: newNote.createdAt,
+          createdBy: newNote.createdBy,
+          updatedAt: newNote.updatedAt,
+          updatedBy: newNote.updatedBy
+        });
+        setMemberNotes(prev => {
+          const idx = prev.findIndex(n => n.noteId === noteId);
+          if (idx >= 0) {
+            const next = [...prev];
+            next[idx] = newNote;
+            return next;
+          }
+          return [...prev, newNote];
+        });
+      } catch (error) {
+        console.error("Firestore member note save failed:", error);
+        return;
+      }
+    }
+
+    logChange(memberId, memberName, `${activeMonthId.split("-")[1]}월 특이사항 ${existing ? "수정" : "저장"}: ${noteText}`);
+  };
+
+  const deleteMemberNote = async (memberId) => {
+    const member = members.find(m => m.memberId === memberId);
+    const memberName = member ? member.name : "성도";
+    const noteId = `${memberId}_${activeMonthId}`;
+    const existing = memberNotes.find(n => n.noteId === noteId);
+    if (!existing) return;
+
+    const activeMonth = months.find(m => m.monthId === activeMonthId);
+    const isClosed = activeMonth && activeMonth.status === "closed";
+    if (isClosed && currentUser?.role !== "admin") {
+      alert("마감된 월의 데이터는 팀장/리더 권한으로 수정할 수 없습니다.");
+      return;
+    }
+
+    if (isMockEnabled) {
+      const allNotes = JSON.parse(localStorage.getItem("mock_member_notes")) || [];
+      const nextNotes = allNotes.filter(n => n.noteId !== noteId);
+      localStorage.setItem("mock_member_notes", JSON.stringify(nextNotes));
+      setMemberNotes(prev => prev.filter(n => n.noteId !== noteId));
+    } else {
+      try {
+        await deleteDoc(doc(db, "memberNotes", noteId));
+        setMemberNotes(prev => prev.filter(n => n.noteId !== noteId));
+      } catch (error) {
+        console.error("Firestore member note delete failed:", error);
+        return;
+      }
+    }
+
+    logChange(memberId, memberName, `${activeMonthId.split("-")[1]}월 특이사항 삭제`);
+  };
+
+  // 6. Members CRUD
   const addMember = async (memberData) => {
     const newId = `m_${Date.now()}`;
     const newMember = { memberId: newId, ...memberData };
@@ -437,7 +578,7 @@ export function DataProvider({ children }) {
     logChange(memberId, memberName, "성도 삭제 처리");
   };
 
-  // 6. Teams CRUD
+  // 7. Teams CRUD
   const addTeam = async (name, leaderId) => {
     const teamId = `team_${Date.now()}`;
     const newTeam = { teamId, name, leaderId, createdAt: new Date().toISOString().split("T")[0], status: "active" };
@@ -476,7 +617,7 @@ export function DataProvider({ children }) {
     }
   };
 
-  // 7. Zones CRUD
+  // 8. Zones CRUD
   const addZone = async (name, teamId, leaderId) => {
     const zoneId = `zone_${Date.now()}`;
     const newZone = { zoneId, teamId, name, leaderId };
@@ -515,7 +656,7 @@ export function DataProvider({ children }) {
     }
   };
 
-  // 7.5 Users CRUD
+  // 8.5 Users CRUD
   const addUser = async (userData) => {
     const userId = `user_${Date.now()}`;
     const newUser = { userId, ...userData };
@@ -570,7 +711,7 @@ export function DataProvider({ children }) {
     }
   };
 
-  // 7.8 Seeding Firebase database with initial structures
+  // 8.8 Seeding Firebase database with initial structures
   const seedFirebaseDatabase = async () => {
     if (isMockEnabled) {
       alert("현재 로컬 Mock 모드입니다. Firebase가 연동되어 있지 않습니다. .env.local 파일을 구성해 주세요.");
@@ -695,7 +836,7 @@ export function DataProvider({ children }) {
     }
   };
 
-  // 8. Close Month Routine
+  // 9. Close Month Routine
   const closeMonth = async (monthId) => {
     if (currentUser?.role !== "admin") {
       alert("월 마감 권한이 없습니다. (관리자만 마감할 수 있습니다.)");
@@ -832,6 +973,94 @@ export function DataProvider({ children }) {
     logChange("month_close", "system", `${monthId} 월 마감 및 ${nextMonthId} 월 신규 생성`);
   };
 
+  // 5. Visitation CRUD
+  const addVisitationRecord = async (recordData) => {
+    const newRecord = {
+      ...recordData,
+      createdAt: new Date().toISOString(),
+      createdBy: currentUser?.name || "System"
+    };
+
+    if (isMockEnabled) {
+      const allVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
+      const newId = `visit_${Date.now()}`;
+      const recordWithId = { id: newId, ...newRecord };
+      allVisits.push(recordWithId);
+      localStorage.setItem("mock_visitation_records", JSON.stringify(allVisits));
+      setVisitationRecords(allVisits);
+      logChange(recordData.memberId, recordData.memberName, `심방 기록 등록: ${recordData.visitor} (${recordData.type})`);
+      return recordWithId;
+    } else {
+      try {
+        const docRef = await addDoc(collection(db, "visitationRecords"), newRecord);
+        const recordWithId = { id: docRef.id, ...newRecord };
+        setVisitationRecords(prev => [...prev, recordWithId]);
+        logChange(recordData.memberId, recordData.memberName, `심방 기록 등록: ${recordData.visitor} (${recordData.type})`);
+        return recordWithId;
+      } catch (error) {
+        console.error("Firestore addDoc failed for visitationRecord:", error);
+        throw error;
+      }
+    }
+  };
+
+  const deleteVisitationRecord = async (recordId) => {
+    const record = visitationRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    if (isMockEnabled) {
+      const allVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
+      const filtered = allVisits.filter(r => r.id !== recordId);
+      localStorage.setItem("mock_visitation_records", JSON.stringify(filtered));
+      setVisitationRecords(filtered);
+      logChange(record.memberId, record.memberName, `심방 기록 삭제: ${record.visitor} (${record.type})`);
+    } else {
+      try {
+        await deleteDoc(doc(db, "visitationRecords", recordId));
+        setVisitationRecords(prev => prev.filter(r => r.id !== recordId));
+        logChange(record.memberId, record.memberName, `심방 기록 삭제: ${record.visitor} (${record.type})`);
+      } catch (error) {
+        console.error("Firestore deleteDoc failed for visitationRecord:", error);
+        throw error;
+      }
+    }
+  };
+
+  const updateVisitationFeedback = async (recordId, feedbackType, text) => {
+    const record = visitationRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    const writerName = currentUser?.name || "System";
+    const updatedFields = {};
+    if (feedbackType === "team") {
+      updatedFields.teamFeedback = text;
+      updatedFields.teamFeedbackBy = writerName;
+    } else if (feedbackType === "admin") {
+      updatedFields.adminFeedback = text;
+      updatedFields.adminFeedbackBy = writerName;
+    }
+
+    if (isMockEnabled) {
+      const allVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
+      const index = allVisits.findIndex(r => r.id === recordId);
+      if (index >= 0) {
+        allVisits[index] = { ...allVisits[index], ...updatedFields };
+        localStorage.setItem("mock_visitation_records", JSON.stringify(allVisits));
+        setVisitationRecords(allVisits);
+        logChange(record.memberId, record.memberName, `심방 피드백 등록 (${feedbackType}): ${writerName}`);
+      }
+    } else {
+      try {
+        await updateDoc(doc(db, "visitationRecords", recordId), updatedFields);
+        setVisitationRecords(prev => prev.map(r => r.id === recordId ? { ...r, ...updatedFields } : r));
+        logChange(record.memberId, record.memberName, `심방 피드백 등록 (${feedbackType}): ${writerName}`);
+      } catch (error) {
+        console.error("Firestore updateDoc failed for visitation feedback:", error);
+        throw error;
+      }
+    }
+  };
+
   const value = {
     teams,
     zones,
@@ -839,6 +1068,8 @@ export function DataProvider({ children }) {
     months,
     attendanceRecords,
     monthlyAchievements,
+    memberNotes,
+    visitationRecords,
     auditLogs,
     users,
     activeMonthId,
@@ -848,6 +1079,8 @@ export function DataProvider({ children }) {
     loading,
     updateAttendance,
     updateMonthlyAchievement,
+    saveMemberNote,
+    deleteMemberNote,
     addMember,
     updateMember,
     deleteMember,
@@ -860,7 +1093,10 @@ export function DataProvider({ children }) {
     deleteUser,
     seedFirebaseDatabase,
     closeMonth,
-    logChange
+    logChange,
+    addVisitationRecord,
+    deleteVisitationRecord,
+    updateVisitationFeedback
   };
 
   return (

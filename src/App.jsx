@@ -9,6 +9,7 @@ import AttendanceGrid from "./components/AttendanceGrid";
 import OrgManagement from "./components/OrgManagement";
 import MonthClose from "./components/MonthClose";
 import HistoryLog from "./components/HistoryLog";
+import VisitManagement from "./components/VisitManagement";
 
 function AppContent() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -73,6 +74,7 @@ function AppContent() {
         {/* Active Tab Switcher */}
         {activePage === "dashboard" && <Dashboard />}
         {activePage === "attendance" && <AttendanceGrid />}
+        {activePage === "visit_manage" && <VisitManagement />}
         {activePage === "org" && <OrgManagement />}
         {activePage === "month" && <MonthClose />}
         {activePage === "history" && <HistoryLog />}

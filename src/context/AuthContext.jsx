@@ -18,9 +18,13 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (isMockEnabled) {
       // Mock Auth: Load logged-in user from localStorage if it exists
-      const storedUser = localStorage.getItem("mock_auth_user");
-      if (storedUser) {
-        setCurrentUser(JSON.parse(storedUser));
+      try {
+        const storedUser = localStorage.getItem("mock_auth_user");
+        if (storedUser) {
+          setCurrentUser(JSON.parse(storedUser));
+        }
+      } catch (e) {
+        console.warn("Failed to load mock user from localStorage:", e);
       }
       setLoading(false);
     } else {
@@ -82,12 +86,21 @@ export function AuthProvider({ children }) {
   // Login
   async function login(username, password) {
     setLoading(true);
+    const cleanUsername = (username || "").trim().toLowerCase();
+    const cleanPassword = (password || "").trim();
+
     if (isMockEnabled) {
+      // If mock mode, strip email domain if entered
+      const mockUsername = cleanUsername.split("@")[0];
       // Look up user in demoUsers
-      const user = demoUsers.find(u => u.username === username && u.password === password);
+      const user = demoUsers.find(u => u.username === mockUsername && u.password === cleanPassword);
       if (user) {
         setCurrentUser(user);
-        localStorage.setItem("mock_auth_user", JSON.stringify(user));
+        try {
+          localStorage.setItem("mock_auth_user", JSON.stringify(user));
+        } catch (e) {
+          console.warn("Failed to save mock user to localStorage:", e);
+        }
         setLoading(false);
         return user;
       } else {
@@ -95,9 +108,10 @@ export function AuthProvider({ children }) {
         throw new Error("가입되지 않은 아이디이거나 비밀번호가 올바르지 않습니다. (로컬 테스트 아이디를 입력하거나 원클릭 로그인을 이용하세요)");
       }
     } else {
-      // Map username to a standard email format for Firebase Auth compatibility
-      const email = `${username}@church.com`;
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // Map username to a standard email format for Firebase Auth compatibility (or use directly if already an email)
+      const email = cleanUsername.includes("@") ? cleanUsername : `${cleanUsername}@church.com`;
+      console.log(`[Auth] Attempting login. Original username: "${username}", Cleaned username: "${cleanUsername}", Derived Email: "${email}"`);
+      const userCredential = await signInWithEmailAndPassword(auth, email, cleanPassword);
       // Details are fetched in onAuthStateChanged
       return userCredential.user;
     }
@@ -108,7 +122,11 @@ export function AuthProvider({ children }) {
     setLoading(true);
     if (isMockEnabled) {
       setCurrentUser(null);
-      localStorage.removeItem("mock_auth_user");
+      try {
+        localStorage.removeItem("mock_auth_user");
+      } catch (e) {
+        console.warn("Failed to remove mock user from localStorage:", e);
+      }
       setLoading(false);
     } else {
       await signOut(auth);
@@ -121,7 +139,11 @@ export function AuthProvider({ children }) {
     const user = demoUsers.find(u => u.userId === userId);
     if (user) {
       setCurrentUser(user);
-      localStorage.setItem("mock_auth_user", JSON.stringify(user));
+      try {
+        localStorage.setItem("mock_auth_user", JSON.stringify(user));
+      } catch (e) {
+        console.warn("Failed to save mock user to localStorage:", e);
+      }
     }
   }
 
