@@ -127,13 +127,14 @@ export default function AttendanceGrid() {
     weeklyWorship: ["정식예배", "온라인예배", "대체예배", "영상예배", "심방예배", "결석", "미보고"],
     weeklyEdu: ["O", "X"],
     weeklyVisit: ["O", "X"],
-    weeklyActivity: ["대면", "비대면", "미보고"]
+    weeklyActivity: ["대면", "비대면", "미보고"],
+    test: ["정규시험", "비대면", "비공식(연락)", "비공식(줌예배 참석)", "비공식(텔 퀴즈 응시)", "미보고"]
   };
 
   const getCategoryOptions = (cat) => {
-    if (cat === "zone") return ["들어옴", "개별전달", "미전달"];
+    if (cat === "zone") return ["대면", "줌", "개별", "불참", "미보고"];
     if (["sunday", "samil"].includes(cat)) return cellOptions.weeklyWorship;
-    if (cat === "test") return cellOptions.weeklyActivity;
+    if (cat === "test") return cellOptions.test;
     if (["radio", "simon", "visit"].includes(cat)) return cellOptions.weeklyEdu;
     return cellOptions.weeklyActivity;
   };
@@ -205,10 +206,11 @@ export default function AttendanceGrid() {
 
   // Get status color coding class
   const getCellStyle = (val) => {
-    if (val === "대면" || val === "O" || val === true || val === "들어옴") return "cell-present";
-    if (val === "비대면" || val === "온라인" || val === "개별전달") return "cell-online";
-    if (val === "대체") return "cell-substitute";
-    if (val === "결석" || val === "X" || val === false || val === "미전달") return "cell-absent";
+    if (val === "대면" || val === "정규시험" || val === "O" || val === true || val === "들어옴") return "cell-present";
+    if (val === "비대면" || val === "줌" || val === "온라인" || val === "개별전달") return "cell-online";
+    if (typeof val === "string" && val.startsWith("비공식(")) return "cell-substitute";
+    if (val === "대체" || val === "개별") return "cell-substitute";
+    if (val === "결석" || val === "불참" || val === "X" || val === false || val === "미전달") return "cell-absent";
     if (typeof val === "string" && val.includes("-")) {
       if (val.includes("대면")) return "cell-present";
       if (val.includes("전화") || val.includes("SNS")) return "cell-online";
@@ -1113,6 +1115,8 @@ export default function AttendanceGrid() {
           padding: 4px;
           display: flex;
           flex-direction: column;
+          min-width: 190px;
+          max-width: min(260px, calc(100vw - 24px));
           background-color: var(--bg-tertiary) !important;
           border-color: var(--accent-cyan) !important;
           box-shadow: 0 10px 25px 0 rgba(0,0,0,0.3);
@@ -1127,6 +1131,8 @@ export default function AttendanceGrid() {
           color: var(--text-primary);
           border-radius: var(--radius-sm);
           width: 100%;
+          white-space: normal;
+          word-break: keep-all;
         }
 
         .popover-option:hover {

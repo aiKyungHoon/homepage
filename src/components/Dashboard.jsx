@@ -31,6 +31,21 @@ export default function Dashboard() {
   } = useData();
 
   const role = currentUser?.role;
+  const TEST_REGULAR_VALUES = ["정규시험", "대면"];
+  const TEST_ONLINE_VALUES = ["비대면"];
+  const TEST_UNOFFICIAL_VALUES = ["비공식(연락)", "비공식(줌예배 참석)", "비공식(텔 퀴즈 응시)"];
+  const TEST_REPORTED_VALUES = [...TEST_REGULAR_VALUES, ...TEST_ONLINE_VALUES, ...TEST_UNOFFICIAL_VALUES];
+  const ZONE_FACE_TO_FACE_VALUES = ["대면", "들어옴"];
+  const ZONE_ZOOM_VALUES = ["줌"];
+  const ZONE_INDIVIDUAL_VALUES = ["개별", "개별전달"];
+  const ZONE_ABSENT_VALUES = ["불참", "미전달"];
+  const ZONE_REPORTED_VALUES = [
+    ...ZONE_FACE_TO_FACE_VALUES,
+    ...ZONE_ZOOM_VALUES,
+    ...ZONE_INDIVIDUAL_VALUES,
+    ...ZONE_ABSENT_VALUES
+  ];
+  const WORSHIP_PRESENT_VALUES = ["대면", "비대면", "줌", "개별", "온라인", "대체", "O", "들어옴", "개별전달"];
 
   // Filter members based on user role
   const getScopedMembers = () => {
@@ -87,9 +102,9 @@ export default function Dashboard() {
   const attStats = getAttendanceStats();
 
   const getZoneWorshipStats = () => {
-    let entered = 0;      // 들어옴
-    let delivered = 0;    // 개별전달
-    let undelivered = 0;  // 미전달
+    let entered = 0;      // 대면
+    let delivered = 0;    // 줌/개별
+    let undelivered = 0;  // 불참
     let unreported = 0;   // 미보고
 
     scopedMembers.forEach(m => {
@@ -98,13 +113,13 @@ export default function Dashboard() {
       );
       const val = rec ? rec.value : "미보고";
 
-      if (val === "들어옴") {
+      if (ZONE_FACE_TO_FACE_VALUES.includes(val)) {
         entered++;
-      } else if (val === "개별전달") {
+      } else if ([...ZONE_ZOOM_VALUES, ...ZONE_INDIVIDUAL_VALUES].includes(val)) {
         delivered++;
-      } else if (val === "미전달") {
+      } else if (ZONE_ABSENT_VALUES.includes(val)) {
         undelivered++;
-      } else {
+      } else if (!ZONE_REPORTED_VALUES.includes(val)) {
         unreported++;
       }
     });
@@ -125,11 +140,11 @@ export default function Dashboard() {
       );
       const val = rec ? rec.value : "미보고";
 
-      if (val === "대면") {
+      if (TEST_REGULAR_VALUES.includes(val)) {
         present++;
-      } else if (val === "비대면") {
+      } else if (TEST_ONLINE_VALUES.includes(val)) {
         online++;
-      } else {
+      } else if (!TEST_REPORTED_VALUES.includes(val)) {
         unreported++;
       }
     });
@@ -195,7 +210,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(val)) {
+        if (WORSHIP_PRESENT_VALUES.includes(val)) {
           totalPresent++;
         }
       });
@@ -245,7 +260,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(val)) {
+        if (WORSHIP_PRESENT_VALUES.includes(val)) {
           totalPresent++;
         }
       });
@@ -330,7 +345,7 @@ export default function Dashboard() {
       const rec = attendanceRecords.find(
         r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
       );
-      return rec && ["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
+      return rec && WORSHIP_PRESENT_VALUES.includes(rec.value);
     }).length;
   };
 
@@ -381,25 +396,25 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
         const val = rec ? rec.value : "미보고";
-        return val === "들어옴";
+        return ZONE_FACE_TO_FACE_VALUES.includes(val);
       });
     } else if (categoryOrType === "zone_delivered") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
         const val = rec ? rec.value : "미보고";
-        return val === "개별전달";
+        return [...ZONE_ZOOM_VALUES, ...ZONE_INDIVIDUAL_VALUES].includes(val);
       });
     } else if (categoryOrType === "zone_undelivered") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
         const val = rec ? rec.value : "미보고";
-        return val === "미전달";
+        return ZONE_ABSENT_VALUES.includes(val);
       });
     } else if (categoryOrType === "zone_unreported") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
         const val = rec ? rec.value : "미보고";
-        return !["들어옴", "개별전달", "미전달"].includes(val);
+        return !ZONE_REPORTED_VALUES.includes(val);
       });
     } else if (categoryOrType === "radio") {
       list = scopedMembers.filter(m => {
@@ -444,19 +459,19 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
         const val = rec ? rec.value : "미보고";
-        return val === "대면";
+        return TEST_REGULAR_VALUES.includes(val);
       });
     } else if (categoryOrType === "test_online") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
         const val = rec ? rec.value : "미보고";
-        return val === "비대면";
+        return TEST_ONLINE_VALUES.includes(val);
       });
     } else if (categoryOrType === "test_unreported") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
         const val = rec ? rec.value : "미보고";
-        return !["대면", "비대면"].includes(val);
+        return !TEST_REPORTED_VALUES.includes(val);
       });
     }
 
@@ -619,7 +634,7 @@ export default function Dashboard() {
         );
         if (testRec) {
           hasRecords = true;
-          if (["대면", "비대면"].includes(testRec.value)) {
+          if (TEST_REPORTED_VALUES.includes(testRec.value)) {
             testPresent++;
           }
         }
@@ -770,7 +785,7 @@ export default function Dashboard() {
         const rec = attendanceRecords.find(
           r => r.memberId === m.memberId && r.monthId === mId && r.weekNo === wNo && r.category === cat
         );
-        return rec && ["대면", "비대면", "온라인", "대체", "O", "들어옴", "개별전달"].includes(rec.value);
+        return rec && WORSHIP_PRESENT_VALUES.includes(rec.value);
       }).length;
     };
 
@@ -1503,50 +1518,50 @@ export default function Dashboard() {
         </h3>
         <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", marginBottom: "16px" }}>
           <div 
-            onClick={() => handleCardClick("구역예배 들어옴", "zone_entered")}
+            onClick={() => handleCardClick("구역예배 대면", "zone_entered")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
-            title="클릭 시 참석자 명단 확인"
+            title="클릭 시 대면 참석자 명단 확인"
           >
             <div className="stats-icon-wrapper emerald">
               <CheckCircle size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">구역예배 들어옴</p>
+              <p className="stats-label">구역예배 대면</p>
               <h2 className="stats-value">{zoneWorshipStats.entered}명</h2>
-              <p className="stats-subtext">구역예배 참석</p>
+              <p className="stats-subtext">대면 참석</p>
             </div>
           </div>
 
           <div 
-            onClick={() => handleCardClick("구역예배 개별전달", "zone_delivered")}
+            onClick={() => handleCardClick("구역예배 줌/개별", "zone_delivered")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
-            title="클릭 시 개별전달자 명단 확인"
+            title="클릭 시 줌/개별 참석자 명단 확인"
           >
             <div className="stats-icon-wrapper blue">
               <HeartHandshake size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">구역예배 개별전달</p>
+              <p className="stats-label">구역예배 줌/개별</p>
               <h2 className="stats-value">{zoneWorshipStats.delivered}명</h2>
-              <p className="stats-subtext">공과 자료 전달</p>
+              <p className="stats-subtext">줌/개별 참석</p>
             </div>
           </div>
 
           <div 
-            onClick={() => handleCardClick("구역예배 미전달", "zone_undelivered")}
+            onClick={() => handleCardClick("구역예배 불참", "zone_undelivered")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
-            title="클릭 시 미전달자 명단 확인"
+            title="클릭 시 불참자 명단 확인"
           >
             <div className="stats-icon-wrapper gold">
               <AlertCircle size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">구역예배 미전달</p>
+              <p className="stats-label">구역예배 불참</p>
               <h2 className="stats-value">{zoneWorshipStats.undelivered}명</h2>
-              <p className="stats-subtext">미참석 및 미전달</p>
+              <p className="stats-subtext">불참 인원</p>
             </div>
           </div>
 
@@ -1585,18 +1600,18 @@ export default function Dashboard() {
 
         <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
           <div 
-            onClick={() => handleCardClick("시험 대면", "test_present")}
+            onClick={() => handleCardClick("정규시험", "test_present")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
-            title="클릭 시 대면 시험 참석자 명단 확인"
+            title="클릭 시 정규시험 응시자 명단 확인"
           >
             <div className="stats-icon-wrapper emerald">
               <CheckCircle size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">시험 대면</p>
+              <p className="stats-label">정규시험</p>
               <h2 className="stats-value">{testStats.present}명</h2>
-              <p className="stats-subtext">대면 시험 인원</p>
+              <p className="stats-subtext">정규시험 인원</p>
             </div>
           </div>
 
