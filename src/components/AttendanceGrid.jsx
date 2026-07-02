@@ -1003,7 +1003,7 @@ export default function AttendanceGrid() {
         /* Color classes */
         .cell-present {
           background-color: hsla(150, 70%, 38%, 0.32) !important;
-          color: #d9ffed;
+          color: var(--accent-emerald);
         }
 
         .cell-online {
@@ -1018,7 +1018,7 @@ export default function AttendanceGrid() {
 
         .cell-absent {
           background-color: hsla(355, 82%, 55%, 0.32) !important;
-          color: #ffe1e6;
+          color: var(--accent-red);
         }
 
         .cell-unreported {
