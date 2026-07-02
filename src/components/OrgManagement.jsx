@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search } from "lucide-react";
 
 export default function OrgManagement() {
   const { currentUser } = useAuth();
@@ -26,6 +26,10 @@ export default function OrgManagement() {
 
   // Tabs: members, zones, teams
   const [activeSubTab, setActiveSubTab] = useState("members");
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [memberTeamFilter, setMemberTeamFilter] = useState("");
+  const [memberZoneFilter, setMemberZoneFilter] = useState("");
+  const [memberStatusFilter, setMemberStatusFilter] = useState("");
 
   // Modals / Form toggles
   const [showMemberModal, setShowMemberModal] = useState(false);
@@ -83,6 +87,36 @@ export default function OrgManagement() {
       return zones.filter(z => z.teamId === currentUser.teamId);
     }
     return zones;
+  };
+
+  const getFilteredMembers = () => {
+    let list = getScopedMembers();
+    const query = memberSearchQuery.trim().toLowerCase();
+
+    if (query) {
+      const tokens = query.split(/[\s,]+/).filter(Boolean);
+      list = list.filter(m => tokens.some(token => String(m.name || "").toLowerCase().includes(token)));
+    }
+
+    if (role !== "team" && memberTeamFilter) {
+      list = list.filter(m => m.teamId === memberTeamFilter);
+    }
+
+    if (memberZoneFilter) {
+      list = list.filter(m => m.zoneId === memberZoneFilter);
+    }
+
+    if (memberStatusFilter) {
+      list = list.filter(m => m.status === memberStatusFilter);
+    }
+
+    return [...list].sort((a, b) => {
+      const teamDiff = getTeamName(a.teamId).localeCompare(getTeamName(b.teamId), "ko");
+      if (teamDiff !== 0) return teamDiff;
+      const zoneDiff = getZoneName(a.zoneId).localeCompare(getZoneName(b.zoneId), "ko");
+      if (zoneDiff !== 0) return zoneDiff;
+      return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+    });
   };
 
   // Open Add Member Modal
@@ -259,6 +293,12 @@ export default function OrgManagement() {
 
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "없음";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "구역 없음";
+  const filteredMembers = getFilteredMembers();
+  const memberFilterZones = getScopedZones().filter(z => {
+    if (role === "team") return true;
+    if (!memberTeamFilter) return true;
+    return z.teamId === memberTeamFilter;
+  });
 
   return (
     <div className="org-wrapper animate-fade">
@@ -302,11 +342,73 @@ export default function OrgManagement() {
       {activeSubTab === "members" && (
         <div className="org-tab-panel glass-panel">
           <div className="panel-header-actions">
-            <h3>소속 성도 목록 ({getScopedMembers().length}명)</h3>
+            <h3>소속 성도 목록 ({filteredMembers.length}명 / 전체 {getScopedMembers().length}명)</h3>
             <button onClick={handleOpenAddMember} className="btn btn-primary btn-sm">
               <Plus size={14} />
               <span>성도 등록</span>
             </button>
+          </div>
+
+          <div className="member-filter-bar">
+            <div className="member-search-box">
+              <Search size={14} className="member-search-icon" />
+              <input
+                type="text"
+                value={memberSearchQuery}
+                onChange={(e) => setMemberSearchQuery(e.target.value)}
+                placeholder="성도 이름 검색..."
+              />
+            </div>
+
+            {role !== "team" && (
+              <select
+                value={memberTeamFilter}
+                onChange={(e) => {
+                  setMemberTeamFilter(e.target.value);
+                  setMemberZoneFilter("");
+                }}
+              >
+                <option value="">전체 팀</option>
+                {teams.map(t => (
+                  <option key={t.teamId} value={t.teamId}>{t.name}</option>
+                ))}
+              </select>
+            )}
+
+            <select
+              value={memberZoneFilter}
+              onChange={(e) => setMemberZoneFilter(e.target.value)}
+            >
+              <option value="">전체 구역</option>
+              {memberFilterZones.map(z => (
+                <option key={z.zoneId} value={z.zoneId}>{z.name}</option>
+              ))}
+            </select>
+
+            <select
+              value={memberStatusFilter}
+              onChange={(e) => setMemberStatusFilter(e.target.value)}
+            >
+              <option value="">전체 상태</option>
+              <option value="normal">정상</option>
+              <option value="new">새가족</option>
+              <option value="excluded">출결제외자</option>
+            </select>
+
+            {(memberSearchQuery || memberTeamFilter || memberZoneFilter || memberStatusFilter) && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setMemberSearchQuery("");
+                  setMemberTeamFilter("");
+                  setMemberZoneFilter("");
+                  setMemberStatusFilter("");
+                }}
+              >
+                초기화
+              </button>
+            )}
           </div>
 
           <div className="table-responsive">
@@ -322,7 +424,7 @@ export default function OrgManagement() {
                 </tr>
               </thead>
               <tbody>
-                {getScopedMembers().map(m => (
+                {filteredMembers.map(m => (
                   <tr key={m.memberId}>
                     <td style={{fontWeight: 600}}>{m.name}</td>
                     <td>{m.rank}</td>
@@ -347,6 +449,11 @@ export default function OrgManagement() {
                     </td>
                   </tr>
                 ))}
+                {filteredMembers.length === 0 && (
+                  <tr>
+                    <td colSpan="6" className="empty-table-cell">검색/필터 조건에 맞는 성도가 없습니다.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -847,6 +954,57 @@ export default function OrgManagement() {
           color: var(--text-primary);
         }
 
+        .member-filter-bar {
+          display: grid;
+          grid-template-columns: minmax(220px, 1.3fr) minmax(140px, 0.7fr) minmax(140px, 0.7fr) minmax(140px, 0.7fr) auto;
+          gap: 10px;
+          align-items: center;
+          margin-bottom: 16px;
+          padding: 12px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-md);
+          background-color: var(--bg-secondary);
+        }
+
+        .member-search-box {
+          position: relative;
+          min-width: 0;
+        }
+
+        .member-search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: var(--text-muted);
+        }
+
+        .member-search-box input,
+        .member-filter-bar select {
+          width: 100%;
+          height: 38px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          background-color: var(--bg-primary);
+          color: var(--text-primary);
+          font-size: 12px;
+          outline: none;
+        }
+
+        .member-search-box input {
+          padding: 0 12px 0 34px;
+        }
+
+        .member-filter-bar select {
+          padding: 0 10px;
+        }
+
+        .member-search-box input:focus,
+        .member-filter-bar select:focus {
+          border-color: var(--accent-cyan);
+          box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.12);
+        }
+
         .btn-sm {
           padding: 8px 12px;
           font-size: 12px;
@@ -869,6 +1027,12 @@ export default function OrgManagement() {
           color: var(--text-secondary);
           font-weight: 600;
           background-color: var(--bg-secondary);
+        }
+
+        .empty-table-cell {
+          text-align: center;
+          color: var(--text-muted);
+          padding: 28px 12px !important;
         }
 
         .leader-id-badge {
@@ -913,6 +1077,28 @@ export default function OrgManagement() {
         .row-action-btn.delete:hover {
           background-color: var(--accent-red);
           color: white;
+        }
+
+        @media (max-width: 900px) {
+          .member-filter-bar {
+            grid-template-columns: 1fr 1fr;
+          }
+
+          .member-search-box {
+            grid-column: 1 / -1;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .panel-header-actions {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 10px;
+          }
+
+          .member-filter-bar {
+            grid-template-columns: 1fr;
+          }
         }
 
         /* Modals style */

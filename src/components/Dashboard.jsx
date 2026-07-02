@@ -46,7 +46,8 @@ export default function Dashboard() {
     ...ZONE_ABSENT_VALUES
   ];
   const WORSHIP_PRESENT_VALUES = ["대면", "비대면", "줌", "개별", "온라인", "대체", "O", "들어옴", "개별전달"];
-  const WORSHIP_NOT_PRESENT_VALUES = ["미보고", "미확인", "결석", "X", "불참", "미전달", "출결제외자"];
+  const WORSHIP_ABSENT_VALUES = ["결석", "X", "일회성", "장기관리가능", "장기관리불가능"];
+  const WORSHIP_NOT_PRESENT_VALUES = ["미보고", "미확인", "불참", "미전달", "출결제외자", ...WORSHIP_ABSENT_VALUES];
   const getWorshipTypeValue = (value) => String(value || "미보고").split("|")[0].trim();
   const isWorshipPresentValue = (value) => {
     const type = getWorshipTypeValue(value);
@@ -54,6 +55,68 @@ export default function Dashboard() {
     if (WORSHIP_NOT_PRESENT_VALUES.includes(type)) return false;
     return Boolean(type);
   };
+  const isWorshipAbsentValue = (value) => WORSHIP_ABSENT_VALUES.includes(getWorshipTypeValue(value));
+  const PARTNER_CHURCH_VALUES = [
+    "협력교회(덕양)",
+    "협력교회(일산)",
+    "협력교회(마포)",
+    "협력교회(마포구청)",
+    "협력교회(그외-특이사항에 기재)"
+  ];
+  const BROTHER_CHURCH_VALUES = [
+    "형제교회(서대문)",
+    "형제교회(파주)",
+    "형제교회(남산)",
+    "형제교회(불광)",
+    "형제교회(영등포)",
+    "형제교회(화곡)",
+    "형제교회(광명)",
+    "형제교회(왕십리)",
+    "형제교회(수원)",
+    "형제교회(서울)",
+    "형제교회(동대문)",
+    "형제교회(의정부)",
+    "형제교회(계양)",
+    "형제교회(만수)",
+    "형제교회(주안)",
+    "형제교회(성남)",
+    "형제교회(강동)",
+    "형제교회(하남)",
+    "형제교회(평택)",
+    "형제교회(연수)",
+    "형제교회(인천)",
+    "형제교회(청주)",
+    "형제교회(해외)",
+    "형제교회(그외-특이사항에 기재)"
+  ];
+  const SUBSTITUTE_WORSHIP_VALUES = [
+    "1:1대체예배(수주일)",
+    "만남대체예배(수주일)",
+    "마이심대체예배(특이사항에 요일기재)",
+    "대체성전",
+    "대체줌",
+    "대체만남예배(수주일 외)",
+    "대체1:1예배(수주일 외)"
+  ];
+  const ZOOM_WORSHIP_VALUES = ["줌/화면O", "줌/화면X"];
+  const SUNDAY_WORSHIP_GROUPS = [
+    { key: "regular", label: "정규성전", values: ["정규성전", "정식예배"], icon: "emerald", subtext: "정규 예배 참석" },
+    { key: "meeting", label: "모임방", values: ["모임방"], icon: "cyan", subtext: "모임방 참석" },
+    { key: "partner", label: "협력교회", values: PARTNER_CHURCH_VALUES, icon: "blue", subtext: "덕양/일산/마포 등" },
+    { key: "outdoor", label: "야외예배", values: ["야외예배"], icon: "gold", subtext: "야외예배 참석" },
+    { key: "branchEducation", label: "지파교육대체", values: ["지파교육대체(지복사,지구사 등)"], icon: "purple", subtext: "지복사/지구사 등" },
+    { key: "love", label: "사랑예배", values: ["사랑예배"], icon: "emerald", subtext: "사랑예배 참석" },
+    { key: "other", label: "그 외 예배", values: ["그 외 예배(특이사항에 기재)"], icon: "muted", subtext: "특이사항 확인" },
+    { key: "brother", label: "형제교회", values: BROTHER_CHURCH_VALUES, icon: "blue", subtext: "형제교회 참석" },
+    { key: "substitute", label: "대체예배", values: SUBSTITUTE_WORSHIP_VALUES, icon: "purple", subtext: "수주일/외 대체" },
+    { key: "zoom", label: "줌", values: ZOOM_WORSHIP_VALUES, icon: "cyan", subtext: "화면O/화면X" },
+    { key: "absent", label: "결석", values: WORSHIP_ABSENT_VALUES, icon: "gold", subtext: "일회성/장기관리" },
+    { key: "excluded", label: "출결제외자", values: ["출결제외자"], icon: "muted", subtext: "출결 제외 처리" },
+    { key: "unreported", label: "미보고", values: ["미보고"], icon: "muted", subtext: "출결 입력 필요" },
+    { key: "unchecked", label: "미확인", values: ["미확인"], icon: "muted", subtext: "확인 필요" }
+  ];
+  const getWorshipGroupByKey = (key) => SUNDAY_WORSHIP_GROUPS.find(group => group.key === key);
+  const isWorshipValueInGroup = (value, group) => group?.values.includes(getWorshipTypeValue(value));
 
   // Filter members based on user role
   const getScopedMembers = () => {
@@ -95,9 +158,9 @@ export default function Dashboard() {
       );
       const val = rec ? rec.value : "미보고";
 
-      if (val === "대면" || val === "비대면" || val === "온라인" || val === "대체" || val === "O") {
+      if (isWorshipPresentValue(val)) {
         present++;
-      } else if (val === "결석" || val === "X") {
+      } else if (isWorshipAbsentValue(val)) {
         absent++;
       } else {
         unreported++;
@@ -108,6 +171,13 @@ export default function Dashboard() {
   };
 
   const attStats = getAttendanceStats();
+
+  const getSundayWorshipGroupCount = (group) => scopedMembers.filter(m => {
+    const rec = attendanceRecords.find(
+      r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
+    );
+    return isWorshipValueInGroup(rec ? rec.value : "미보고", group);
+  }).length;
 
   const getZoneWorshipStats = () => {
     let entered = 0;      // 대면
@@ -277,9 +347,9 @@ export default function Dashboard() {
         r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === "sunday"
       );
       const sunVal = sunRec ? sunRec.value : "미보고";
-      if (sunVal === "대면" || sunVal === "비대면" || sunVal === "온라인" || sunVal === "대체" || sunVal === "O") {
+      if (isWorshipPresentValue(sunVal)) {
         sundayPresent++;
-      } else if (sunVal === "결석" || sunVal === "X") {
+      } else if (isWorshipAbsentValue(sunVal)) {
         sundayAbsent++;
       } else {
         sundayUnreported++;
@@ -392,13 +462,19 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
         const val = rec ? rec.value : "미보고";
-        return ["결석", "X"].includes(val);
+        return isWorshipAbsentValue(val);
       });
     } else if (categoryOrType === "sunday_unreported") {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
         const val = rec ? rec.value : "미보고";
-        return !isWorshipPresentValue(val) && !["결석", "X"].includes(getWorshipTypeValue(val));
+        return getWorshipTypeValue(val) === "미보고";
+      });
+    } else if (String(categoryOrType).startsWith("worship_group:")) {
+      const group = getWorshipGroupByKey(String(categoryOrType).replace("worship_group:", ""));
+      list = scopedMembers.filter(m => {
+        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
+        return isWorshipValueInGroup(rec ? rec.value : "미보고", group);
       });
     } else if (categoryOrType === "zone_entered") {
       list = scopedMembers.filter(m => {
@@ -580,7 +656,7 @@ export default function Dashboard() {
         r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === activeWeekNo && r.category === "sunday"
       );
       const val = rec ? rec.value : "미보고";
-      return !(val === "대면" || val === "비대면" || val === "온라인" || val === "대체" || val === "O" || val === "결석" || val === "X");
+      return getWorshipTypeValue(val) === "미보고";
     });
   };
 
@@ -1090,7 +1166,7 @@ export default function Dashboard() {
                     );
                     const val = rec ? rec.value : "미보고";
                     if (isWorshipPresentValue(val)) present++;
-                    else if (["결석", "X"].includes(getWorshipTypeValue(val))) absent++;
+                    else if (isWorshipAbsentValue(val)) absent++;
                     else unreported++;
                   });
                   return (
@@ -1132,7 +1208,7 @@ export default function Dashboard() {
                     );
                     const val = rec ? rec.value : "미보고";
                     if (isWorshipPresentValue(val)) present++;
-                    else if (["결석", "X"].includes(getWorshipTypeValue(val))) absent++;
+                    else if (isWorshipAbsentValue(val)) absent++;
                     else unreported++;
                   });
                   return (
@@ -1516,6 +1592,34 @@ export default function Dashboard() {
               <p className="stats-subtext">출결 입력 필요</p>
             </div>
           </div>
+        </div>
+
+        <div className="worship-breakdown-header">
+          <span>주일 예배분류</span>
+          <small>카드를 클릭하면 해당 예배분류 명단을 확인할 수 있습니다.</small>
+        </div>
+        <div className="dashboard-grid worship-breakdown-grid">
+          {SUNDAY_WORSHIP_GROUPS.map((group) => {
+            const count = getSundayWorshipGroupCount(group);
+            return (
+              <div
+                key={group.key}
+                onClick={() => handleCardClick(group.label, `worship_group:${group.key}`)}
+                className="stats-card glass-panel clickable-card worship-breakdown-card"
+                style={{ cursor: "pointer" }}
+                title={`${group.label} 명단 확인`}
+              >
+                <div className={`stats-icon-wrapper ${group.icon}`}>
+                  {group.key === "absent" ? <AlertCircle size={18} /> : group.key === "unreported" || group.key === "unchecked" ? <HelpCircle size={18} /> : <CheckCircle size={18} />}
+                </div>
+                <div className="stats-info">
+                  <p className="stats-label">{group.label}</p>
+                  <h2 className="stats-value">{count}명</h2>
+                  <p className="stats-subtext">{group.subtext}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -2399,6 +2503,53 @@ export default function Dashboard() {
         .stats-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
         .stats-value { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
         .stats-subtext { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+        .worship-breakdown-header {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid var(--glass-border);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .worship-breakdown-header small {
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 500;
+        }
+
+        .worship-breakdown-grid {
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 10px;
+        }
+
+        .worship-breakdown-card {
+          gap: 10px;
+          padding: 12px;
+          min-height: 86px;
+        }
+
+        .worship-breakdown-card .stats-icon-wrapper {
+          width: 36px;
+          height: 36px;
+          border-radius: 8px;
+          flex-shrink: 0;
+        }
+
+        .worship-breakdown-card .stats-value {
+          font-size: 18px;
+        }
+
+        .worship-breakdown-card .stats-subtext {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
 
         .ach-card { flex-direction: column; align-items: stretch; gap: 12px; }
         .ach-card .stats-icon-wrapper { align-self: flex-start; }
