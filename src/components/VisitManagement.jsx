@@ -341,7 +341,7 @@ export default function VisitManagement() {
             <div className="form-group">
               <label>심방 형태 (어떤 것)</label>
               <div className="btn-selector-grid">
-                {["전화심방", "대면심방", "상담", "SNS소통", "기타"].map(t => (
+                {["전화심방", "대면심방"].map(t => (
                   <button
                     key={t}
                     type="button"
