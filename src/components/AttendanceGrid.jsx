@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare } from "lucide-react";
+import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download } from "lucide-react";
 
 export default function AttendanceGrid() {
   const { currentUser } = useAuth();
@@ -166,6 +166,73 @@ export default function AttendanceGrid() {
 
   const getMemberNote = (memberId) => {
     return memberNotes.find(n => n.memberId === memberId);
+  };
+
+  const escapeCsvCell = (value) => {
+    const text = value === null || value === undefined ? "" : String(value);
+    return `"${text.replace(/"/g, '""')}"`;
+  };
+
+  const formatCheckboxValue = (value) => value ? "O" : "";
+
+  const handleDownloadExcel = () => {
+    const baseHeaders = ["이름", "직분"];
+    if (role === "admin") baseHeaders.push("소속 팀");
+    if (role !== "leader") baseHeaders.push("소속 구역");
+
+    const headers = [
+      ...baseHeaders,
+      "삼일",
+      "주일",
+      "구역예배",
+      "특이사항",
+      "시험",
+      "심야라디오",
+      "시몬스쿨",
+      "심방",
+      "전도",
+      "십일조",
+      "청체비",
+      "전도단"
+    ];
+
+    const rows = filteredMembers.map((member) => {
+      const baseCells = [member.name, member.rank];
+      if (role === "admin") baseCells.push(getTeamName(member.teamId));
+      if (role !== "leader") baseCells.push(getZoneName(member.zoneId));
+
+      const note = getMemberNote(member.memberId);
+      return [
+        ...baseCells,
+        getWeeklyValue(member.memberId, "samil"),
+        getWeeklyValue(member.memberId, "sunday"),
+        getWeeklyValue(member.memberId, "zone"),
+        note?.text || "",
+        getWeeklyValue(member.memberId, "test"),
+        getWeeklyValue(member.memberId, "radio"),
+        getWeeklyValue(member.memberId, "simon"),
+        getWeeklyValue(member.memberId, "visit"),
+        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "evangelism")),
+        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
+        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee")),
+        getWeeklyValue(member.memberId, "activity")
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [headers, ...rows]
+      .map(row => row.map(escapeCsvCell).join(","))
+      .join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const safeMonth = activeMonthId || "month";
+    const safeWeek = activeWeekNo || "week";
+    link.href = url;
+    link.download = `출결관리_${safeMonth}_${safeWeek}주차.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // Grid Cell Config
@@ -395,6 +462,16 @@ export default function AttendanceGrid() {
             <option value="new">새가족</option>
             <option value="excluded">출결제외자</option>
           </select>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm attendance-download-btn"
+            onClick={handleDownloadExcel}
+            disabled={filteredMembers.length === 0}
+          >
+            <Download size={14} />
+            <span>엑셀 다운로드</span>
+          </button>
         </div>
       </div>
 
@@ -856,6 +933,7 @@ export default function AttendanceGrid() {
           display: flex;
           flex-wrap: wrap;
           gap: 12px;
+          align-items: center;
         }
 
         .search-box {
@@ -886,6 +964,19 @@ export default function AttendanceGrid() {
           font-size: 13px;
           border-radius: var(--radius-sm);
           min-width: 120px;
+        }
+
+        .attendance-download-btn {
+          min-height: 34px;
+          padding: 6px 12px;
+          font-size: 13px;
+          flex-shrink: 0;
+        }
+
+        .attendance-download-btn:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          transform: none;
         }
 
         /* Grid spreadsheet styling */
