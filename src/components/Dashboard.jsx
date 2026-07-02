@@ -46,6 +46,14 @@ export default function Dashboard() {
     ...ZONE_ABSENT_VALUES
   ];
   const WORSHIP_PRESENT_VALUES = ["대면", "비대면", "줌", "개별", "온라인", "대체", "O", "들어옴", "개별전달"];
+  const WORSHIP_NOT_PRESENT_VALUES = ["미보고", "미확인", "결석", "X", "불참", "미전달", "출결제외자"];
+  const getWorshipTypeValue = (value) => String(value || "미보고").split("|")[0].trim();
+  const isWorshipPresentValue = (value) => {
+    const type = getWorshipTypeValue(value);
+    if (WORSHIP_PRESENT_VALUES.includes(type)) return true;
+    if (WORSHIP_NOT_PRESENT_VALUES.includes(type)) return false;
+    return Boolean(type);
+  };
 
   // Filter members based on user role
   const getScopedMembers = () => {
@@ -210,7 +218,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (WORSHIP_PRESENT_VALUES.includes(val)) {
+        if (isWorshipPresentValue(val)) {
           totalPresent++;
         }
       });
@@ -260,7 +268,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
         );
         const val = rec ? rec.value : "미보고";
-        if (WORSHIP_PRESENT_VALUES.includes(val)) {
+        if (isWorshipPresentValue(val)) {
           totalPresent++;
         }
       });
@@ -345,7 +353,7 @@ export default function Dashboard() {
       const rec = attendanceRecords.find(
         r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
       );
-      return rec && WORSHIP_PRESENT_VALUES.includes(rec.value);
+      return rec && isWorshipPresentValue(rec.value);
     }).length;
   };
 
@@ -378,7 +386,7 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
         const val = rec ? rec.value : "미보고";
-        return ["대면", "비대면", "온라인", "대체", "O"].includes(val);
+        return isWorshipPresentValue(val);
       });
     } else if (categoryOrType === "sunday_absent") {
       list = scopedMembers.filter(m => {
@@ -390,7 +398,7 @@ export default function Dashboard() {
       list = scopedMembers.filter(m => {
         const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
         const val = rec ? rec.value : "미보고";
-        return !["대면", "비대면", "온라인", "대체", "O", "결석", "X"].includes(val);
+        return !isWorshipPresentValue(val) && !["결석", "X"].includes(getWorshipTypeValue(val));
       });
     } else if (categoryOrType === "zone_entered") {
       list = scopedMembers.filter(m => {
@@ -495,7 +503,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
         );
         const val = rec ? rec.value : "미보고";
-        if (!["대면", "비대면", "온라인", "대체", "O"].includes(val)) {
+        if (!isWorshipPresentValue(val)) {
           return false;
         }
       }
@@ -511,7 +519,7 @@ export default function Dashboard() {
           r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
         );
         const val = rec ? rec.value : "미보고";
-        if (["대면", "비대면", "온라인", "대체", "O"].includes(val)) {
+        if (isWorshipPresentValue(val)) {
           attendCount++;
         }
       }
@@ -623,7 +631,7 @@ export default function Dashboard() {
         );
         if (rec) {
           hasRecords = true;
-          if (["대면", "비대면", "온라인", "대체", "O"].includes(rec.value)) {
+          if (isWorshipPresentValue(rec.value)) {
             worshipPresent++;
           }
         }
@@ -785,7 +793,7 @@ export default function Dashboard() {
         const rec = attendanceRecords.find(
           r => r.memberId === m.memberId && r.monthId === mId && r.weekNo === wNo && r.category === cat
         );
-        return rec && WORSHIP_PRESENT_VALUES.includes(rec.value);
+        return rec && isWorshipPresentValue(rec.value);
       }).length;
     };
 
@@ -1081,8 +1089,8 @@ export default function Dashboard() {
                       r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
                     );
                     const val = rec ? rec.value : "미보고";
-                    if (["대면", "비대면", "온라인", "대체", "O"].includes(val)) present++;
-                    else if (["결석", "X"].includes(val)) absent++;
+                    if (isWorshipPresentValue(val)) present++;
+                    else if (["결석", "X"].includes(getWorshipTypeValue(val))) absent++;
                     else unreported++;
                   });
                   return (
@@ -1123,8 +1131,8 @@ export default function Dashboard() {
                       r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
                     );
                     const val = rec ? rec.value : "미보고";
-                    if (["대면", "비대면", "온라인", "대체", "O"].includes(val)) present++;
-                    else if (["결석", "X"].includes(val)) absent++;
+                    if (isWorshipPresentValue(val)) present++;
+                    else if (["결석", "X"].includes(getWorshipTypeValue(val))) absent++;
                     else unreported++;
                   });
                   return (

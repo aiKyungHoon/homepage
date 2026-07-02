@@ -33,9 +33,106 @@ export default function AttendanceGrid() {
   const [activeCell, setActiveCell] = useState(null); // { memberId, category, x, y }
   const [visitVisitor, setVisitVisitor] = useState("구역장");
   const [visitType, setVisitType] = useState("전화심방");
+  const [worshipType, setWorshipType] = useState("정규성전");
+  const [worshipTime, setWorshipTime] = useState("9:00");
   const [noteModalMemberId, setNoteModalMemberId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const popoverRef = useRef(null);
+
+  const worshipTypes = [
+    "정규성전",
+    "모임방",
+    "협력교회(덕양)",
+    "협력교회(일산)",
+    "협력교회(마포)",
+    "협력교회(마포구청)",
+    "협력교회(그외-특이사항에 기재)",
+    "줌/화면O",
+    "줌/화면X",
+    "1:1대체예배(수주일)",
+    "만남대체예배(수주일)",
+    "마이심대체예배(특이사항에 요일기재)",
+    "미보고",
+    "미확인",
+    "대체성전",
+    "대체줌",
+    "대체만남예배(수주일 외)",
+    "대체1:1예배(수주일 외)",
+    "일회성",
+    "장기관리가능",
+    "장기관리불가능",
+    "야외예배",
+    "출결제외자",
+    "지파교육대체(지복사,지구사 등)",
+    "사랑예배",
+    "그 외 예배(특이사항에 기재)",
+    "형제교회(서대문)",
+    "형제교회(파주)",
+    "형제교회(남산)",
+    "형제교회(불광)",
+    "형제교회(영등포)",
+    "형제교회(화곡)",
+    "형제교회(광명)",
+    "형제교회(왕십리)",
+    "형제교회(수원)",
+    "형제교회(서울)",
+    "형제교회(동대문)",
+    "형제교회(의정부)",
+    "형제교회(계양)",
+    "형제교회(만수)",
+    "형제교회(주안)",
+    "형제교회(성남)",
+    "형제교회(강동)",
+    "형제교회(하남)",
+    "형제교회(평택)",
+    "형제교회(연수)",
+    "형제교회(인천)",
+    "형제교회(청주)",
+    "형제교회(해외)",
+    "형제교회(그외-특이사항에 기재)"
+  ];
+
+  const worshipTimes = [
+    "9:00",
+    "12:00",
+    "15:00",
+    "19:30",
+    "20:00",
+    "22:00",
+    "7:00",
+    "7:30",
+    "8:00",
+    "8:30",
+    "9:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "20:30",
+    "21:00",
+    "21:30",
+    "22:30",
+    "23:00",
+    "23:30",
+    "24:00",
+    "5:00",
+    "5:30",
+    "6:00",
+    "6:30"
+  ];
 
   // Map team and zone IDs to names
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "";
@@ -168,6 +265,34 @@ export default function AttendanceGrid() {
     return memberNotes.find(n => n.memberId === memberId);
   };
 
+  const parseWorshipValue = (value) => {
+    if (!value || value === "미보고") return { type: "미보고", time: "" };
+    if (typeof value !== "string") return { type: String(value), time: "" };
+    const [type, time = ""] = value.split("|").map(part => part.trim());
+    return { type: type || "미보고", time };
+  };
+
+  const buildWorshipValue = (type, time) => {
+    if (!type || type === "미보고") return "미보고";
+    return time ? `${type} | ${time}` : type;
+  };
+
+  const formatWorshipValue = (value) => {
+    const { type, time } = parseWorshipValue(value);
+    return time ? `${type} ${time}` : type;
+  };
+
+  const renderWorshipCell = (value) => {
+    const { type, time } = parseWorshipValue(value);
+    if (!time) return type;
+    return (
+      <span className="worship-cell-value">
+        <span className="worship-cell-type">{type}</span>
+        <span className="worship-cell-time">{time}</span>
+      </span>
+    );
+  };
+
   const escapeCsvCell = (value) => {
     const text = value === null || value === undefined ? "" : String(value);
     return `"${text.replace(/"/g, '""')}"`;
@@ -204,8 +329,8 @@ export default function AttendanceGrid() {
       const note = getMemberNote(member.memberId);
       return [
         ...baseCells,
-        getWeeklyValue(member.memberId, "samil"),
-        getWeeklyValue(member.memberId, "sunday"),
+        formatWorshipValue(getWeeklyValue(member.memberId, "samil")),
+        formatWorshipValue(getWeeklyValue(member.memberId, "sunday")),
         getWeeklyValue(member.memberId, "zone"),
         note?.text || "",
         getWeeklyValue(member.memberId, "test"),
@@ -263,9 +388,14 @@ export default function AttendanceGrid() {
     } else {
       // Open selector popover
       const rect = e.currentTarget.getBoundingClientRect();
-      const popoverWidth = category === "visit" ? 240 : Math.min(260, Math.max(rect.width, 190));
-      const optionCount = category === "visit" ? 0 : getCategoryOptions(category).length;
-      const estimatedPopoverHeight = category === "visit" ? 230 : Math.min(320, (optionCount * 40) + 58);
+      const isWorshipCell = ["samil", "sunday"].includes(category);
+      const popoverWidth = category === "visit"
+        ? 240
+        : isWorshipCell
+          ? Math.min(560, window.innerWidth - 16)
+          : Math.min(260, Math.max(rect.width, 190));
+      const optionCount = category === "visit" || isWorshipCell ? 0 : getCategoryOptions(category).length;
+      const estimatedPopoverHeight = category === "visit" ? 230 : isWorshipCell ? 430 : Math.min(320, (optionCount * 40) + 58);
       const viewportPadding = 8;
       const nextX = Math.min(
         Math.max(rect.left, viewportPadding),
@@ -286,6 +416,11 @@ export default function AttendanceGrid() {
           setVisitType("전화심방");
         }
       }
+      if (isWorshipCell) {
+        const parsed = parseWorshipValue(curVal);
+        setWorshipType(worshipTypes.includes(parsed.type) ? parsed.type : "정규성전");
+        setWorshipTime(parsed.time || "9:00");
+      }
       setActiveCell({
         memberId,
         category,
@@ -300,6 +435,12 @@ export default function AttendanceGrid() {
   const selectCellValue = (value) => {
     if (!activeCell) return;
     updateAttendance(activeCell.memberId, activeCell.category, value);
+    setActiveCell(null);
+  };
+
+  const selectWorshipValue = () => {
+    if (!activeCell) return;
+    updateAttendance(activeCell.memberId, activeCell.category, buildWorshipValue(worshipType, worshipTime));
     setActiveCell(null);
   };
 
@@ -331,9 +472,10 @@ export default function AttendanceGrid() {
 
   // Get status color coding class
   const getCellStyle = (val, category) => {
+    const worshipTypeValue = ["samil", "sunday"].includes(category) ? parseWorshipValue(val).type : val;
     const greenByCategory = {
-      samil: ["정식예배"],
-      sunday: ["정식예배"],
+      samil: ["정규성전", "정식예배"],
+      sunday: ["정규성전", "정식예배"],
       zone: ["대면"],
       test: ["정규시험"],
       radio: ["O"],
@@ -341,12 +483,12 @@ export default function AttendanceGrid() {
       activity: ["O"]
     };
 
-    if (greenByCategory[category]?.includes(val)) return "cell-present";
-    if (val === "결석" || val === "X") return "cell-absent";
+    if (greenByCategory[category]?.includes(worshipTypeValue)) return "cell-present";
+    if (worshipTypeValue === "결석" || worshipTypeValue === "X") return "cell-absent";
 
     if (["samil", "sunday"].includes(category)) {
-      if (val === "비대면" || val === "온라인예배") return "cell-online";
-      if (["대체예배", "영상예배", "심방예배"].includes(val)) return "cell-substitute";
+      if (["줌/화면O", "줌/화면X", "대체줌", "비대면", "온라인예배"].includes(worshipTypeValue)) return "cell-online";
+      if (worshipTypeValue.includes("대체") || ["모임방", "야외예배", "사랑예배", "일회성"].includes(worshipTypeValue)) return "cell-substitute";
       return "cell-unreported";
     }
 
@@ -539,14 +681,16 @@ export default function AttendanceGrid() {
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "samil", false)}
                       className={`cell-click sep-col ${getCellStyle(samil, "samil")}`}
+                      title={formatWorshipValue(samil)}
                     >
-                      {samil}
+                      {renderWorshipCell(samil)}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "sunday", false)}
                       className={`cell-click ${getCellStyle(sunday, "sunday")}`}
+                      title={formatWorshipValue(sunday)}
                     >
-                      {sunday}
+                      {renderWorshipCell(sunday)}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
@@ -729,7 +873,7 @@ export default function AttendanceGrid() {
             top: `${activeCell.y}px`,
             left: `${activeCell.x}px`,
             width: `${activeCell.width}px`,
-            padding: activeCell.category === "visit" ? "12px" : "0",
+            padding: activeCell.category === "visit" || ["samil", "sunday"].includes(activeCell.category) ? "12px" : "0",
             zIndex: 9999
           }}
         >
@@ -841,6 +985,79 @@ export default function AttendanceGrid() {
                     fontWeight: "600",
                     cursor: "pointer"
                   }}
+                >
+                  닫기
+                </button>
+              </div>
+            </div>
+          ) : ["samil", "sunday"].includes(activeCell.category) ? (
+            <div className="worship-popover">
+              <div className="worship-popover-grid">
+                <div className="worship-popover-section">
+                  <div className="worship-popover-title">예배분류</div>
+                  <div className="worship-option-list">
+                    {worshipTypes.map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => setWorshipType(type)}
+                        className={`worship-option ${worshipType === type ? "active" : ""}`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="worship-popover-section">
+                  <div className="worship-popover-title">시간</div>
+                  <div className="worship-time-grid">
+                    {worshipTimes.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => setWorshipTime(time)}
+                        className={`worship-time ${worshipTime === time ? "active" : ""}`}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="worship-selection-summary">
+                <span>{worshipType}</span>
+                {worshipType !== "미보고" && <strong>{worshipTime}</strong>}
+              </div>
+
+              <div className="popover-actions worship-actions">
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={selectWorshipValue}
+                  className="worship-save-btn"
+                >
+                  등록
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => selectCellValue("미보고")}
+                  className="worship-clear-btn"
+                >
+                  지우기
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveCell(null);
+                  }}
+                  className="worship-close-btn"
                 >
                   닫기
                 </button>
@@ -1038,6 +1255,29 @@ export default function AttendanceGrid() {
         .attendance-table td.sticky-col {
           background-color: var(--bg-secondary);
           z-index: 1;
+        }
+
+        .worship-cell-value {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          min-width: 96px;
+          white-space: normal;
+          line-height: 1.25;
+        }
+
+        .worship-cell-type {
+          max-width: 140px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .worship-cell-time {
+          font-size: 11px;
+          color: var(--text-muted);
+          font-weight: 700;
         }
 
         .member-name-col div {
@@ -1339,6 +1579,167 @@ export default function AttendanceGrid() {
           margin-top: 0;
           flex-shrink: 0;
           background-color: var(--bg-tertiary);
+        }
+
+        .worship-popover {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          max-height: calc(100vh - 24px);
+        }
+
+        .worship-popover-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.35fr) minmax(160px, 0.65fr);
+          gap: 10px;
+          min-height: 0;
+        }
+
+        .worship-popover-section {
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          overflow: hidden;
+          background-color: var(--bg-primary);
+        }
+
+        .worship-popover-title {
+          padding: 8px 10px;
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--accent-cyan);
+          border-bottom: 1px solid var(--glass-border);
+          background-color: var(--bg-tertiary);
+        }
+
+        .worship-option-list,
+        .worship-time-grid {
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding: 6px;
+          max-height: min(300px, calc(100vh - 180px));
+        }
+
+        .worship-option-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .worship-time-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 4px;
+          align-content: start;
+        }
+
+        .worship-option,
+        .worship-time {
+          min-height: 30px;
+          padding: 6px 8px;
+          border: 1px solid transparent;
+          border-radius: 5px;
+          background-color: transparent;
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 650;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .worship-time {
+          text-align: center;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        }
+
+        .worship-option:hover,
+        .worship-time:hover,
+        .worship-option.active,
+        .worship-time.active {
+          border-color: var(--accent-cyan);
+          background-color: rgba(6, 182, 212, 0.14);
+          color: var(--accent-cyan);
+        }
+
+        .worship-selection-summary {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 8px 10px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+          background-color: var(--bg-primary);
+        }
+
+        .worship-selection-summary span {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .worship-selection-summary strong {
+          color: var(--accent-emerald);
+          flex-shrink: 0;
+        }
+
+        .worship-actions {
+          padding: 0;
+          border-top: 0;
+          background-color: transparent;
+        }
+
+        .worship-save-btn,
+        .worship-clear-btn,
+        .worship-close-btn {
+          min-height: 34px;
+          padding: 8px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .worship-save-btn {
+          flex: 1.3;
+          border: 0;
+          color: white;
+          background-color: var(--accent-emerald);
+        }
+
+        .worship-clear-btn {
+          flex: 1;
+          border: 0;
+          color: white;
+          background-color: var(--accent-red);
+        }
+
+        .worship-close-btn {
+          flex: 0.8;
+          border: 1px solid var(--glass-border);
+          color: var(--text-secondary);
+          background-color: transparent;
+        }
+
+        @media (max-width: 640px) {
+          .worship-popover-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .worship-option-list,
+          .worship-time-grid {
+            max-height: 170px;
+          }
+
+          .worship-time-grid {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
         }
 
         .popover-option:hover {
