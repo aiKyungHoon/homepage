@@ -37,6 +37,42 @@ export default function AttendanceGrid() {
   const [noteDraft, setNoteDraft] = useState("");
   const popoverRef = useRef(null);
 
+  // Map team and zone IDs to names
+  const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "";
+  const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "";
+
+  const getZoneSortValue = (zone) => {
+    if (!zone) return Number.MAX_SAFE_INTEGER;
+    const teamName = getTeamName(zone.teamId);
+    const searchableName = `${teamName} ${zone.name || ""}`;
+    const zoneNumberMatch = searchableName.match(/(\d+)\s*구역/);
+    const zoneNumber = zoneNumberMatch ? Number(zoneNumberMatch[1]) : Number.MAX_SAFE_INTEGER;
+    const teamOrder = [
+      { keyword: "보라", order: 0 },
+      { keyword: "해봄", order: 1 },
+      { keyword: "이음", order: 2 },
+    ].find(({ keyword }) => searchableName.includes(keyword))?.order;
+
+    if (teamOrder !== undefined && Number.isFinite(zoneNumber)) {
+      return (teamOrder * 100) + zoneNumber;
+    }
+
+    const explicitOrder = zone.sortOrder ?? zone.order ?? zone.orderNo ?? zone.displayOrder ?? zone.sequence ?? zone.sort;
+    const parsedOrder = Number(explicitOrder);
+    if (Number.isFinite(parsedOrder)) return 1000 + parsedOrder;
+
+    const nameNumber = String(zone.name || "").match(/\d+/);
+    return nameNumber ? 2000 + Number(nameNumber[0]) : Number.MAX_SAFE_INTEGER;
+  };
+
+  const compareZones = (a, b) => {
+    const orderDiff = getZoneSortValue(a) - getZoneSortValue(b);
+    if (orderDiff !== 0) return orderDiff;
+    return String(a?.name || "").localeCompare(String(b?.name || ""), "ko");
+  };
+
+  const getSortedZones = (zoneList = zones) => [...zoneList].sort(compareZones);
+
   // Set default filters based on user role
   useEffect(() => {
     if (role === "team") {
@@ -97,7 +133,17 @@ export default function AttendanceGrid() {
       }
     }
 
-    return list;
+    return [...list].sort((a, b) => {
+      const zoneA = zones.find(z => z.zoneId === a.zoneId);
+      const zoneB = zones.find(z => z.zoneId === b.zoneId);
+      const zoneDiff = compareZones(zoneA, zoneB);
+      if (zoneDiff !== 0) return zoneDiff;
+
+      const teamDiff = getTeamName(a.teamId).localeCompare(getTeamName(b.teamId), "ko");
+      if (teamDiff !== 0) return teamDiff;
+
+      return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+    });
   };
 
   const filteredMembers = getFilteredMembers();
@@ -284,10 +330,6 @@ export default function AttendanceGrid() {
     return val;
   };
 
-  // Map team and zone IDs to names
-  const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "";
-  const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "";
-
   return (
     <div className="attendance-grid-wrapper animate-fade">
       {/* Filters Panel */}
@@ -333,8 +375,10 @@ export default function AttendanceGrid() {
               className="filter-select"
             >
               <option value="">전체 구역</option>
-              {zones
+              {getSortedZones(
+                zones
                 .filter(z => !filterTeamId || z.teamId === filterTeamId)
+              )
                 .map(z => (
                   <option key={z.zoneId} value={z.zoneId}>{z.name}</option>
                 ))}
