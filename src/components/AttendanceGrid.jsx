@@ -150,6 +150,18 @@ export default function AttendanceGrid() {
     } else {
       // Open selector popover
       const rect = e.currentTarget.getBoundingClientRect();
+      const popoverWidth = category === "visit" ? 240 : Math.min(260, Math.max(rect.width, 190));
+      const optionCount = category === "visit" ? 0 : getCategoryOptions(category).length;
+      const estimatedPopoverHeight = category === "visit" ? 230 : Math.min(320, (optionCount * 40) + 58);
+      const viewportPadding = 8;
+      const nextX = Math.min(
+        Math.max(rect.left, viewportPadding),
+        window.innerWidth - popoverWidth - viewportPadding
+      );
+      const opensUpward = rect.bottom + estimatedPopoverHeight + viewportPadding > window.innerHeight;
+      const nextY = opensUpward
+        ? Math.max(viewportPadding, rect.top - estimatedPopoverHeight)
+        : Math.min(rect.bottom, window.innerHeight - estimatedPopoverHeight - viewportPadding);
       const curVal = getWeeklyValue(memberId, category) || "";
       if (category === "visit") {
         if (curVal && curVal.includes("-")) {
@@ -164,9 +176,9 @@ export default function AttendanceGrid() {
       setActiveCell({
         memberId,
         category,
-        x: rect.left + window.scrollX,
-        y: rect.bottom + window.scrollY,
-        width: rect.width
+        x: nextX,
+        y: nextY,
+        width: popoverWidth
       });
     }
   };
@@ -205,7 +217,45 @@ export default function AttendanceGrid() {
   };
 
   // Get status color coding class
-  const getCellStyle = (val) => {
+  const getCellStyle = (val, category) => {
+    const greenByCategory = {
+      samil: ["정식예배"],
+      sunday: ["정식예배"],
+      zone: ["대면"],
+      test: ["정규시험"],
+      radio: ["O"],
+      simon: ["O"],
+      activity: ["O"]
+    };
+
+    if (greenByCategory[category]?.includes(val)) return "cell-present";
+    if (val === "결석" || val === "X") return "cell-absent";
+
+    if (["samil", "sunday"].includes(category)) {
+      if (val === "비대면" || val === "온라인예배") return "cell-online";
+      if (["대체예배", "영상예배", "심방예배"].includes(val)) return "cell-substitute";
+      return "cell-unreported";
+    }
+
+    if (category === "zone") {
+      if (val === "줌" || val === "개별전달") return "cell-online";
+      if (val === "개별") return "cell-substitute";
+      if (val === "불참" || val === "미전달") return "cell-absent";
+      if (val === "들어옴") return "cell-present";
+      return "cell-unreported";
+    }
+
+    if (category === "test") {
+      if (val === "비대면") return "cell-online";
+      if (typeof val === "string" && val.startsWith("비공식(")) return "cell-substitute";
+      return "cell-unreported";
+    }
+
+    if (["radio", "simon", "activity"].includes(category)) {
+      if (!val || val === "미보고") return "cell-unreported";
+      return "cell-substitute";
+    }
+
     if (val === "대면" || val === "정규시험" || val === "O" || val === true || val === "들어옴") return "cell-present";
     if (val === "비대면" || val === "줌" || val === "온라인" || val === "개별전달") return "cell-online";
     if (typeof val === "string" && val.startsWith("비공식(")) return "cell-substitute";
@@ -367,19 +417,19 @@ export default function AttendanceGrid() {
                     {/* Weekly worship */}
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "samil", false)}
-                      className={`cell-click sep-col ${getCellStyle(samil)}`}
+                      className={`cell-click sep-col ${getCellStyle(samil, "samil")}`}
                     >
                       {samil}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "sunday", false)}
-                      className={`cell-click ${getCellStyle(sunday)}`}
+                      className={`cell-click ${getCellStyle(sunday, "sunday")}`}
                     >
                       {sunday}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
-                      className={`cell-click ${getCellStyle(zone)}`}
+                      className={`cell-click ${getCellStyle(zone, "zone")}`}
                     >
                       {zone}
                     </td>
@@ -408,19 +458,19 @@ export default function AttendanceGrid() {
                     {/* Weekly edu */}
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
-                      className={`cell-click sep-col ${getCellStyle(test)}`}
+                      className={`cell-click sep-col ${getCellStyle(test, "test")}`}
                     >
                       {test}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "radio", false)}
-                      className={`cell-click ${getCellStyle(radio)}`}
+                      className={`cell-click ${getCellStyle(radio, "radio")}`}
                     >
                       {radio}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "simon", false)}
-                      className={`cell-click ${getCellStyle(simon)}`}
+                      className={`cell-click ${getCellStyle(simon, "simon")}`}
                     >
                       {simon}
                     </td>
@@ -428,7 +478,7 @@ export default function AttendanceGrid() {
                     {/* Weekly visit */}
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "visit", false)}
-                      className={`cell-click sep-col ${getCellStyle(visit)}`}
+                      className={`cell-click sep-col ${getCellStyle(visit, "visit")}`}
                       title={visit && visit !== "X" ? visit.replace("-", " : ") : "심방 없음"}
                     >
                       {formatVisitCell(visit)}
@@ -437,7 +487,7 @@ export default function AttendanceGrid() {
                     {/* Monthly Achievements (Toggles) */}
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "evangelism", true)}
-                      className={`cell-click sep-col monthly-cell ${getCellStyle(evangelism)}`}
+                      className={`cell-click sep-col monthly-cell ${getCellStyle(evangelism, "evangelism")}`}
                     >
                       <input 
                         type="checkbox" 
@@ -449,7 +499,7 @@ export default function AttendanceGrid() {
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "tithing", true)}
-                      className={`cell-click monthly-cell ${getCellStyle(tithing)}`}
+                      className={`cell-click monthly-cell ${getCellStyle(tithing, "tithing")}`}
                     >
                       <input 
                         type="checkbox" 
@@ -461,7 +511,7 @@ export default function AttendanceGrid() {
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "fee", true)}
-                      className={`cell-click monthly-cell ${getCellStyle(fee)}`}
+                      className={`cell-click monthly-cell ${getCellStyle(fee, "fee")}`}
                     >
                       <input 
                         type="checkbox" 
@@ -475,7 +525,7 @@ export default function AttendanceGrid() {
                     {/* Weekly activity */}
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "activity", false)}
-                      className={`cell-click sep-col ${getCellStyle(activity)}`}
+                      className={`cell-click sep-col ${getCellStyle(activity, "activity")}`}
                     >
                       {activity}
                     </td>
@@ -554,10 +604,10 @@ export default function AttendanceGrid() {
           ref={popoverRef}
           className="cell-popover glass-panel animate-slide"
           style={{
-            position: "absolute",
+            position: "fixed",
             top: `${activeCell.y}px`,
             left: `${activeCell.x}px`,
-            width: activeCell.category === "visit" ? "240px" : `${Math.max(activeCell.width, 100)}px`,
+            width: `${activeCell.width}px`,
             padding: activeCell.category === "visit" ? "12px" : "0",
             zIndex: 9999
           }}
@@ -677,17 +727,19 @@ export default function AttendanceGrid() {
             </div>
           ) : (
             <>
-              {getCategoryOptions(activeCell.category).map((opt) => (
-                <button
-                  key={opt}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={() => selectCellValue(opt)}
-                  className="popover-option"
-                >
-                  {opt}
-                </button>
-              ))}
-              <div style={{ display: "flex", gap: "4px", borderTop: "1px solid var(--glass-border)", paddingTop: "4px", marginTop: "4px", padding: "4px" }}>
+              <div className="popover-options-scroll">
+                {getCategoryOptions(activeCell.category).map((opt) => (
+                  <button
+                    key={opt}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={() => selectCellValue(opt)}
+                    className="popover-option"
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              <div className="popover-actions">
                 <button
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
@@ -950,8 +1002,8 @@ export default function AttendanceGrid() {
 
         /* Color classes */
         .cell-present {
-          background-color: hsla(150, 70%, 50%, 0.15) !important;
-          color: var(--accent-emerald);
+          background-color: hsla(150, 70%, 38%, 0.32) !important;
+          color: #d9ffed;
         }
 
         .cell-online {
@@ -965,8 +1017,8 @@ export default function AttendanceGrid() {
         }
 
         .cell-absent {
-          background-color: hsla(355, 80%, 60%, 0.15) !important;
-          color: var(--accent-red);
+          background-color: hsla(355, 82%, 55%, 0.32) !important;
+          color: #ffe1e6;
         }
 
         .cell-unreported {
@@ -1117,10 +1169,19 @@ export default function AttendanceGrid() {
           flex-direction: column;
           min-width: 190px;
           max-width: min(260px, calc(100vw - 24px));
+          max-height: calc(100vh - 16px);
+          overflow: hidden;
           background-color: var(--bg-tertiary) !important;
           border-color: var(--accent-cyan) !important;
           box-shadow: 0 10px 25px 0 rgba(0,0,0,0.3);
           border-radius: var(--radius-md);
+        }
+
+        .popover-options-scroll {
+          overflow-y: auto;
+          max-height: min(240px, calc(100vh - 78px));
+          padding: 4px;
+          overscroll-behavior: contain;
         }
 
         .popover-option {
@@ -1133,6 +1194,16 @@ export default function AttendanceGrid() {
           width: 100%;
           white-space: normal;
           word-break: keep-all;
+        }
+
+        .popover-actions {
+          display: flex;
+          gap: 4px;
+          border-top: 1px solid var(--glass-border);
+          padding: 8px 4px 4px;
+          margin-top: 0;
+          flex-shrink: 0;
+          background-color: var(--bg-tertiary);
         }
 
         .popover-option:hover {
