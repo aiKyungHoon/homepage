@@ -392,7 +392,7 @@ export default function AttendanceGrid() {
       const popoverWidth = category === "visit"
         ? 240
         : isWorshipCell
-          ? Math.min(560, window.innerWidth - 16)
+          ? Math.min(700, window.innerWidth - 16)
           : Math.min(260, Math.max(rect.width, 190));
       const optionCount = category === "visit" || isWorshipCell ? 0 : getCategoryOptions(category).length;
       const estimatedPopoverHeight = category === "visit" ? 230 : isWorshipCell ? 430 : Math.min(320, (optionCount * 40) + 58);
@@ -906,10 +906,10 @@ export default function AttendanceGrid() {
               </div>
 
               <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--accent-cyan)", borderBottom: "1px solid var(--glass-border)", paddingBottom: "4px", marginTop: "4px" }}>
-                심방 구분 (어떤 것)
+                심방 형태 (어떤 것)
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
-                {["전화심방", "대면심방", "상담", "SNS소통", "기타"].map(t => (
+                {["전화심방", "대면심방"].map(t => (
                   <button
                     key={t}
                     type="button"
@@ -1590,7 +1590,7 @@ export default function AttendanceGrid() {
 
         .worship-popover-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.35fr) minmax(160px, 0.65fr);
+          grid-template-columns: minmax(320px, 1.2fr) minmax(220px, 0.8fr);
           gap: 10px;
           min-height: 0;
         }
@@ -1623,9 +1623,9 @@ export default function AttendanceGrid() {
         }
 
         .worship-option-list {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          gap: 5px;
         }
 
         .worship-time-grid {
@@ -1637,8 +1637,8 @@ export default function AttendanceGrid() {
 
         .worship-option,
         .worship-time {
-          min-height: 30px;
-          padding: 6px 8px;
+          min-height: 36px;
+          padding: 7px 9px;
           border: 1px solid transparent;
           border-radius: 5px;
           background-color: transparent;
@@ -1646,12 +1646,23 @@ export default function AttendanceGrid() {
           font-size: 12px;
           font-weight: 650;
           text-align: left;
+          line-height: 1.25;
           cursor: pointer;
+        }
+
+        .worship-option {
+          display: flex;
+          align-items: center;
+          word-break: keep-all;
+          overflow-wrap: anywhere;
         }
 
         .worship-time {
           text-align: center;
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
 
         .worship-option:hover,
@@ -1727,18 +1738,32 @@ export default function AttendanceGrid() {
           background-color: transparent;
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 760px) {
           .worship-popover-grid {
             grid-template-columns: 1fr;
           }
 
           .worship-option-list,
           .worship-time-grid {
-            max-height: 170px;
+            max-height: 180px;
+          }
+
+          .worship-option-list {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .worship-time-grid {
             grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+        }
+
+        @media (max-width: 420px) {
+          .worship-option-list {
+            grid-template-columns: 1fr;
+          }
+
+          .worship-time-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
           }
         }
 
