@@ -124,7 +124,7 @@ export default function AttendanceGrid() {
 
   // Grid Cell Config
   const cellOptions = {
-    weeklyWorship: ["대면", "온라인", "대체", "결석", "미보고"],
+    weeklyWorship: ["정식예배", "온라인예배", "대체예배", "영상예배", "심방예배", "결석", "미보고"],
     weeklyEdu: ["O", "X"],
     weeklyVisit: ["O", "X"],
     weeklyActivity: ["대면", "비대면", "미보고"]
