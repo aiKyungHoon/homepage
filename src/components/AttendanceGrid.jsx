@@ -199,12 +199,13 @@ export default function AttendanceGrid() {
   // Filter members list
   const getFilteredMembers = () => {
     let list = [...members];
+    const hasSearchQuery = searchQuery.trim().length > 0;
 
     // Status filter
     if (filterStatus) {
       list = list.filter(m => m.status === filterStatus);
-    } else {
-      // By default, exclude members excluded from attendance
+    } else if (!hasSearchQuery) {
+      // Default "전체" keeps the active attendance list, but search can find excluded members.
       list = list.filter(m => m.status !== "excluded");
     }
 
