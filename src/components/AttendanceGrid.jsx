@@ -392,10 +392,10 @@ export default function AttendanceGrid() {
       const popoverWidth = category === "visit"
         ? 240
         : isWorshipCell
-          ? Math.min(700, window.innerWidth - 16)
+          ? Math.min(880, window.innerWidth - 16)
           : Math.min(260, Math.max(rect.width, 190));
       const optionCount = category === "visit" || isWorshipCell ? 0 : getCategoryOptions(category).length;
-      const estimatedPopoverHeight = category === "visit" ? 230 : isWorshipCell ? 430 : Math.min(320, (optionCount * 40) + 58);
+      const estimatedPopoverHeight = category === "visit" ? 230 : isWorshipCell ? Math.min(620, window.innerHeight - 16) : Math.min(320, (optionCount * 40) + 58);
       const viewportPadding = 8;
       const nextX = Math.min(
         Math.max(rect.left, viewportPadding),
@@ -873,6 +873,7 @@ export default function AttendanceGrid() {
             top: `${activeCell.y}px`,
             left: `${activeCell.x}px`,
             width: `${activeCell.width}px`,
+            maxWidth: ["samil", "sunday"].includes(activeCell.category) ? "calc(100vw - 16px)" : undefined,
             padding: activeCell.category === "visit" || ["samil", "sunday"].includes(activeCell.category) ? "12px" : "0",
             zIndex: 9999
           }}
@@ -1590,7 +1591,7 @@ export default function AttendanceGrid() {
 
         .worship-popover-grid {
           display: grid;
-          grid-template-columns: minmax(320px, 1.2fr) minmax(220px, 0.8fr);
+          grid-template-columns: minmax(340px, 1.15fr) minmax(240px, 0.85fr);
           gap: 10px;
           min-height: 0;
         }
@@ -1619,7 +1620,7 @@ export default function AttendanceGrid() {
           overflow-y: auto;
           overscroll-behavior: contain;
           padding: 6px;
-          max-height: min(300px, calc(100vh - 180px));
+          max-height: min(440px, calc(100vh - 180px));
         }
 
         .worship-option-list {
@@ -1738,7 +1739,7 @@ export default function AttendanceGrid() {
           background-color: transparent;
         }
 
-        @media (max-width: 760px) {
+        @media (max-width: 620px) {
           .worship-popover-grid {
             grid-template-columns: 1fr;
           }
