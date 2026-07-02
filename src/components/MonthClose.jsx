@@ -5,6 +5,18 @@ import { Lock, Unlock, Calendar, CheckCircle2, AlertCircle, FileText, X } from "
 import { db, isMockEnabled } from "../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
+const WORSHIP_PRESENT_VALUES = ["대면", "비대면", "줌", "개별", "대체", "O", "들어옴", "개별전달"];
+const WORSHIP_NOT_PRESENT_VALUES = ["미보고", "미확인", "결석", "X", "불참", "미전달", "출결제외자"];
+
+const getWorshipTypeValue = (value) => String(value || "미보고").split("|")[0].trim();
+
+const isWorshipPresentValue = (value) => {
+  const type = getWorshipTypeValue(value);
+  if (WORSHIP_PRESENT_VALUES.includes(type)) return true;
+  if (WORSHIP_NOT_PRESENT_VALUES.includes(type)) return false;
+  return Boolean(type);
+};
+
 export default function MonthClose() {
   const { currentUser, isMockMode } = useAuth();
   const { months, closeMonth, seedFirebaseDatabase, teams, zones, members } = useData();
@@ -30,7 +42,7 @@ export default function MonthClose() {
       const memberIds = zMembers.map(m => m.memberId);
       
       attRecs.forEach(r => {
-        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "줌", "개별", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
+        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && isWorshipPresentValue(r.value)) {
           totalPresent++;
         }
       });
@@ -58,7 +70,7 @@ export default function MonthClose() {
       const memberIds = tMembers.map(m => m.memberId);
       
       attRecs.forEach(r => {
-        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "줌", "개별", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
+        if (memberIds.includes(r.memberId) && ["samil", "sunday", "zone"].includes(r.category) && isWorshipPresentValue(r.value)) {
           totalPresent++;
         }
       });
@@ -106,7 +118,7 @@ export default function MonthClose() {
       let totalPossible = activeMembers.length * 3 * totalWeeks;
       let totalPresent = 0;
       targetAtt.forEach(r => {
-        if (["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "줌", "개별", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
+        if (["samil", "sunday", "zone"].includes(r.category) && isWorshipPresentValue(r.value)) {
           totalPresent++;
         }
       });
@@ -125,7 +137,7 @@ export default function MonthClose() {
             r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
           );
           const val = rec ? rec.value : "미보고";
-          if (!["대면", "비대면", "대체", "O"].includes(val)) {
+          if (!isWorshipPresentValue(val)) {
             return false;
           }
         }
@@ -139,7 +151,7 @@ export default function MonthClose() {
             r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
           );
           const val = rec ? rec.value : "미보고";
-          if (["대면", "비대면", "대체", "O"].includes(val)) {
+          if (isWorshipPresentValue(val)) {
             attendCount++;
           }
         }
@@ -153,7 +165,7 @@ export default function MonthClose() {
         let weekPossible = activeMembers.length * 3;
         let weekPresent = 0;
         targetAtt.forEach(r => {
-          if (r.weekNo === w && ["samil", "sunday", "zone"].includes(r.category) && ["대면", "비대면", "줌", "개별", "대체", "O", "들어옴", "개별전달"].includes(r.value)) {
+          if (r.weekNo === w && ["samil", "sunday", "zone"].includes(r.category) && isWorshipPresentValue(r.value)) {
             weekPresent++;
           }
         });
