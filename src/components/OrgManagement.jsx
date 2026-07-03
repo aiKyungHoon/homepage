@@ -89,12 +89,14 @@ export default function OrgManagement() {
     return zones;
   };
 
+  const normalizeLeaderName = (name) => String(name || "").replace(/\s*\([^)]*\)\s*/g, "").trim();
+
   const isTeamLeaderMember = (member) => {
     if (!member) return false;
     const team = teams.find(t => t.teamId === member.teamId);
     if (!team?.leaderId) return false;
     const leaderUserName = users.find(u => u.userId === team.leaderId)?.name;
-    return team.leaderId === member.memberId || team.leaderId === member.name || leaderUserName === member.name;
+    return team.leaderId === member.memberId || normalizeLeaderName(team.leaderId) === member.name || normalizeLeaderName(leaderUserName) === member.name;
   };
 
   const getZoneSortValue = (zone) => {

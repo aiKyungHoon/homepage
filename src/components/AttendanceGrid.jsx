@@ -150,6 +150,7 @@ export default function AttendanceGrid() {
   // Map team and zone IDs to names
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "";
+  const normalizeLeaderName = (name) => String(name || "").replace(/\s*\([^)]*\)\s*/g, "").trim();
 
   const getTeamSortValue = (teamId) => {
     const teamName = getTeamName(teamId);
@@ -171,7 +172,7 @@ export default function AttendanceGrid() {
     const team = teams.find(t => t.teamId === member.teamId);
     if (!team?.leaderId) return false;
     const leaderUserName = users.find(u => u.userId === team.leaderId)?.name;
-    return team.leaderId === member.memberId || team.leaderId === member.name || leaderUserName === member.name;
+    return team.leaderId === member.memberId || normalizeLeaderName(team.leaderId) === member.name || normalizeLeaderName(leaderUserName) === member.name;
   };
 
   const isLeadershipMember = (member) => {
@@ -185,10 +186,11 @@ export default function AttendanceGrid() {
     const leadershipUserNames = new Set(
       [...teams, ...zones]
         .map(item => users.find(u => u.userId === item.leaderId)?.name)
+        .map(normalizeLeaderName)
         .filter(Boolean)
     );
 
-    return leadershipUserIds.has(member.memberId) || leadershipUserNames.has(member.name) || leadershipRawNames.has(member.name);
+    return leadershipUserIds.has(member.memberId) || leadershipUserNames.has(member.name) || [...leadershipRawNames].map(normalizeLeaderName).includes(member.name);
   };
 
   const getZoneSortValue = (zone) => {
@@ -1400,11 +1402,12 @@ export default function AttendanceGrid() {
           display: inline-flex;
           align-items: center;
           min-height: 22px;
-          padding: 2px 7px;
-          border-radius: 999px;
-          background-color: #fef08a;
-          color: #713f12;
+          padding: 3px 8px;
+          border-radius: 6px;
+          background-color: #ffd400;
+          color: #3f2f00;
           font-weight: 800;
+          box-shadow: inset 0 0 0 1px rgba(120, 90, 0, 0.18);
         }
 
         .status-dot {
