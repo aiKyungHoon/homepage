@@ -7,9 +7,44 @@ import {
   Lock, 
   History, 
   LogOut,
-  Sparkles,
   HeartHandshake
 } from "lucide-react";
+
+function WhiteHorseIcon({ size = 28 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      aria-hidden="true"
+      className="white-horse-logo"
+    >
+      <path
+        d="M8.5 24.5v-6.7c0-4.1 2.7-7.7 6.7-8.7l4.9-1.3c1.6-.4 3.1.8 3.1 2.4v2.5l2.3 2.1c.5.5.7 1.2.4 1.8l-.8 1.7c-.3.6-.9 1-1.6 1h-3.1l-1.6 5.2"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M14 10.1c-.8 2.3-.7 4.5.4 6.5m-2.9 7.9 1.2-4.4h6.1m4.2-9.6 2.2-1.4"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.9 9.3c-.5 2.5-2.2 4.1-5 4.7"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="22.7" cy="14.5" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
 
 export default function Sidebar({ activePage, setActivePage }) {
   const { currentUser, logout, isMockMode } = useAuth();
@@ -35,8 +70,8 @@ export default function Sidebar({ activePage, setActivePage }) {
       {/* Desktop Sidebar */}
       <aside className="desktop-sidebar glass-panel">
         <div className="sidebar-logo">
-          <Sparkles size={24} className="logo-icon" />
-          <h2>교구 관리 시스템</h2>
+          <WhiteHorseIcon />
+          <h2>백마 상암 관리 시스템</h2>
         </div>
         
         <nav className="sidebar-nav">
@@ -126,13 +161,16 @@ export default function Sidebar({ activePage, setActivePage }) {
           padding: 8px 4px;
         }
 
-        .logo-icon {
+        .white-horse-logo {
+          flex: 0 0 auto;
           color: var(--accent-cyan);
           filter: drop-shadow(0 0 8px hsla(185, 90%, 48%, 0.4));
         }
 
         .sidebar-logo h2 {
-          font-size: 18px;
+          font-size: 16px;
+          line-height: 1.25;
+          letter-spacing: 0;
           background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
