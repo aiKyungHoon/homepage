@@ -5,6 +5,9 @@ import {
   HeartHandshake, 
   Plus, 
   Trash2, 
+  Edit2,
+  Save,
+  X,
   Search, 
   Calendar, 
   User, 
@@ -21,9 +24,11 @@ export default function VisitManagement() {
     teams, 
     zones, 
     activeMonthId,
+    activeWeekNo,
     visitationRecords, 
     addVisitationRecord, 
     deleteVisitationRecord,
+    updateVisitationRecord,
     updateVisitationFeedback
   } = useData();
 
@@ -41,6 +46,15 @@ export default function VisitManagement() {
   // Feedback Edit State
   const [editingFeedbackId, setEditingFeedbackId] = useState("");
   const [tempFeedbackText, setTempFeedbackText] = useState("");
+  const [editingRecordId, setEditingRecordId] = useState("");
+  const [editForm, setEditForm] = useState({
+    memberId: "",
+    date: "",
+    visitor: "구역장",
+    type: "전화심방",
+    notes: "",
+    leaderFeedback: ""
+  });
 
   // UI state
   const [activeTab, setActiveTab] = useState("timeline"); // "timeline" | "reflection"
@@ -48,6 +62,7 @@ export default function VisitManagement() {
   const [filterMemberId, setFilterMemberId] = useState("");
   const [filterZoneId, setFilterZoneId] = useState("");
   const [filterTeamId, setFilterTeamId] = useState("");
+  const [periodFilter, setPeriodFilter] = useState("week"); // "week" | "month" | "all"
   const [selectedRecordId, setSelectedRecordId] = useState("");
 
   // Default filters based on role
@@ -77,6 +92,17 @@ export default function VisitManagement() {
   const getMemberName = (id) => members.find(m => m.memberId === id)?.name || "알수없음";
   const getTeamName = (id) => teams.find(t => t.teamId === id)?.name || "";
   const getZoneName = (id) => zones.find(z => z.zoneId === id)?.name || "";
+  const getRecordWeekNo = (date) => {
+    const day = Number(String(date || "").split("-")[2]);
+    if (!Number.isFinite(day) || day <= 0) return 1;
+    return Math.min(5, Math.max(1, Math.ceil(day / 7)));
+  };
+  const getRecordMonthId = (date) => String(date || "").slice(0, 7);
+  const getWeekGroupLabel = (record) => {
+    const monthId = getRecordMonthId(record.date);
+    const [year, month] = monthId.split("-");
+    return `${year}년 ${Number(month)}월 ${getRecordWeekNo(record.date)}주차`;
+  };
 
   // Handle Form Submission
   const handleSubmit = async (e) => {
@@ -143,6 +169,54 @@ export default function VisitManagement() {
     }
   };
 
+  const startEditRecord = (record) => {
+    setEditingRecordId(record.id);
+    setEditForm({
+      memberId: record.memberId || "",
+      date: record.date || new Date().toISOString().split("T")[0],
+      visitor: record.visitor || "구역장",
+      type: record.type || "전화심방",
+      notes: record.notes || "",
+      leaderFeedback: record.leaderFeedback || record.feedback || ""
+    });
+  };
+
+  const cancelEditRecord = () => {
+    setEditingRecordId("");
+  };
+
+  const handleSaveRecordEdit = async (recordId) => {
+    if (!editForm.memberId) {
+      alert("심방 대상 성도를 선택해 주세요.");
+      return;
+    }
+    if (!editForm.notes.trim()) {
+      alert("심방 상세 내용을 입력해 주세요.");
+      return;
+    }
+
+    const memberObj = members.find(m => m.memberId === editForm.memberId);
+    const updatedFields = {
+      memberId: editForm.memberId,
+      memberName: memberObj?.name || "",
+      teamId: memberObj?.teamId || "",
+      zoneId: memberObj?.zoneId || "",
+      date: editForm.date,
+      visitor: editForm.visitor,
+      type: editForm.type,
+      notes: editForm.notes.trim(),
+      leaderFeedback: editForm.leaderFeedback.trim()
+    };
+
+    try {
+      await updateVisitationRecord(recordId, updatedFields);
+      setEditingRecordId("");
+      alert("심방 상세내역이 수정되었습니다.");
+    } catch (err) {
+      alert("심방 상세내역 수정에 실패했습니다.");
+    }
+  };
+
   // Filtered Visitation Records
   const getFilteredRecords = () => {
     let list = [...visitationRecords];
@@ -152,6 +226,15 @@ export default function VisitManagement() {
       list = list.filter(r => r.teamId === currentUser.teamId);
     } else if (role === "leader") {
       list = list.filter(r => r.teamId === currentUser.teamId && r.zoneId === currentUser.zoneId);
+    }
+
+    // Keep records accumulated, but default the view to the active week.
+    if (periodFilter !== "all") {
+      const currentMonthStr = activeMonthId || new Date().toISOString().slice(0, 7);
+      list = list.filter(r => getRecordMonthId(r.date) === currentMonthStr);
+      if (periodFilter === "week") {
+        list = list.filter(r => getRecordWeekNo(r.date) === (activeWeekNo || 1));
+      }
     }
 
     // Apply active filters
@@ -182,6 +265,20 @@ export default function VisitManagement() {
   const hasAdminFeedback = (record) => Boolean((record?.adminFeedback || "").trim());
   const visibleRecords = activeTab === "reflection" ? filteredRecords.filter(hasLeaderFeedback) : filteredRecords;
   const selectedRecord = visibleRecords.find(r => r.id === selectedRecordId) || visibleRecords[0] || null;
+  const groupedVisibleRecords = visibleRecords.reduce((groups, record) => {
+    const key = `${getRecordMonthId(record.date)}-${getRecordWeekNo(record.date)}`;
+    const existing = groups.find(group => group.key === key);
+    if (existing) {
+      existing.records.push(record);
+    } else {
+      groups.push({
+        key,
+        label: getWeekGroupLabel(record),
+        records: [record]
+      });
+    }
+    return groups;
+  }, []);
   const getSummaryPreview = (record) => {
     const source = activeTab === "reflection"
       ? (record.leaderFeedback || record.feedback || "")
@@ -429,6 +526,23 @@ export default function VisitManagement() {
               />
             </div>
 
+            <div className="visit-period-switch">
+              {[
+                { id: "week", label: "이번 주" },
+                { id: "month", label: "이번 달" },
+                { id: "all", label: "전체" }
+              ].map(option => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`period-switch-btn ${periodFilter === option.id ? "active" : ""}`}
+                  onClick={() => setPeriodFilter(option.id)}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
             <div className="filters-selectors">
               {canManageAllVisits && (
                 <select 
@@ -489,53 +603,62 @@ export default function VisitManagement() {
                   <p>{activeTab === "reflection" ? "일치하는 구역장 성찰 일기가 없습니다." : "일치하는 심방 기록이 없습니다."}</p>
                 </div>
               ) : (
-                visibleRecords.map((r) => {
-                  const isSelected = selectedRecord?.id === r.id;
-                  const feedbackCount = [hasLeaderFeedback(r), hasTeamFeedback(r), hasAdminFeedback(r)].filter(Boolean).length;
-                  const notePreview = getSummaryPreview(r);
-                  const sourceText = activeTab === "reflection" ? (r.leaderFeedback || r.feedback || "") : (r.notes || "");
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      className={`timeline-summary-card glass-panel ${isSelected ? "active" : ""}`}
-                      onClick={() => setSelectedRecordId(r.id)}
-                    >
-                      <div className="timeline-date-block">
-                        <strong>{String(r.date || "").slice(5).replace("-", ".")}</strong>
-                        <span>{new Date(r.date).toLocaleDateString("ko-KR", { weekday: "short" })}</span>
-                      </div>
+                groupedVisibleRecords.map((group) => (
+                  <div key={group.key} className="timeline-week-group">
+                    <div className="timeline-week-heading">
+                      <span>{group.label}</span>
+                      <strong>{group.records.length}건</strong>
+                    </div>
 
-                      <div className="timeline-summary-main">
-                        <div className="summary-title-row">
-                          <span className="summary-member">{r.memberName} 성도</span>
-                          <span
-                            className="type-badge"
-                            style={{
-                              backgroundColor: getVisitTypeColor(r.type),
-                              color: getVisitTypeTextColor(r.type)
-                            }}
-                          >
-                            {r.type}
-                          </span>
-                        </div>
-                        <div className="summary-meta-row">
-                          <span>{r.visitor}</span>
-                          <span>{getZoneName(r.zoneId)}</span>
-                        </div>
-                        <p className="summary-preview">{notePreview}{sourceText.length > 86 ? "..." : ""}</p>
-                        <div className="summary-chip-row">
-                          {hasLeaderFeedback(r) && <span>자가성찰</span>}
-                          {activeTab !== "reflection" && hasTeamFeedback(r) && <span>팀장피드백</span>}
-                          {activeTab !== "reflection" && hasAdminFeedback(r) && <span>임원피드백</span>}
-                          {activeTab !== "reflection" && <span>피드백 {feedbackCount}건</span>}
-                        </div>
-                      </div>
+                    {group.records.map((r) => {
+                      const isSelected = selectedRecord?.id === r.id;
+                      const feedbackCount = [hasLeaderFeedback(r), hasTeamFeedback(r), hasAdminFeedback(r)].filter(Boolean).length;
+                      const notePreview = getSummaryPreview(r);
+                      const sourceText = activeTab === "reflection" ? (r.leaderFeedback || r.feedback || "") : (r.notes || "");
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          className={`timeline-summary-card glass-panel ${isSelected ? "active" : ""}`}
+                          onClick={() => setSelectedRecordId(r.id)}
+                        >
+                          <div className="timeline-date-block">
+                            <strong>{String(r.date || "").slice(5).replace("-", ".")}</strong>
+                            <span>{new Date(r.date).toLocaleDateString("ko-KR", { weekday: "short" })}</span>
+                          </div>
 
-                      <span className="summary-detail-link">상세보기</span>
-                    </button>
-                  );
-                })
+                          <div className="timeline-summary-main">
+                            <div className="summary-title-row">
+                              <span className="summary-member">{r.memberName} 성도</span>
+                              <span
+                                className="type-badge"
+                                style={{
+                                  backgroundColor: getVisitTypeColor(r.type),
+                                  color: getVisitTypeTextColor(r.type)
+                                }}
+                              >
+                                {r.type}
+                              </span>
+                            </div>
+                            <div className="summary-meta-row">
+                              <span>{r.visitor}</span>
+                              <span>{getZoneName(r.zoneId)}</span>
+                            </div>
+                            <p className="summary-preview">{notePreview}{sourceText.length > 86 ? "..." : ""}</p>
+                            <div className="summary-chip-row">
+                              {hasLeaderFeedback(r) && <span>자가성찰</span>}
+                              {activeTab !== "reflection" && hasTeamFeedback(r) && <span>팀장피드백</span>}
+                              {activeTab !== "reflection" && hasAdminFeedback(r) && <span>임원피드백</span>}
+                              {activeTab !== "reflection" && <span>피드백 {feedbackCount}건</span>}
+                            </div>
+                          </div>
+
+                          <span className="summary-detail-link">상세보기</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))
               )}
             </div>
 
@@ -558,37 +681,166 @@ export default function VisitManagement() {
                       </div>
                       <p className="detail-subtitle">{getTeamName(selectedRecord.teamId)} · {getZoneName(selectedRecord.zoneId)}</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(selectedRecord.id)}
-                      className="delete-icon-btn detail-delete-btn"
-                      title="삭제"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-
-                  <div className="detail-info-grid">
-                    <span>심방일</span>
-                    <strong>{selectedRecord.date}</strong>
-                    <span>심방자</span>
-                    <strong>{selectedRecord.visitor}</strong>
-                    <span>심방형태</span>
-                    <strong>{selectedRecord.type}</strong>
-                    <span>작성자</span>
-                    <strong>{selectedRecord.createdBy || "System"}</strong>
-                  </div>
-
-                  <div className="notes-box visit-detail-scroll-box">
-                    <p className="box-title">심방 상세 내용</p>
-                    <p className="box-content">{selectedRecord.notes}</p>
-                  </div>
-
-                  {hasLeaderFeedback(selectedRecord) && (
-                    <div className="feedback-box visit-detail-scroll-box" style={{ borderLeft: "3px solid var(--accent-amber)" }}>
-                      <p className="box-title" style={{ color: "var(--accent-amber)" }}>구역장 자가성찰 및 기도제목</p>
-                      <p className="box-content" style={{ fontStyle: "italic" }}>{selectedRecord.leaderFeedback || selectedRecord.feedback}</p>
+                    <div className="detail-header-actions">
+                      {editingRecordId === selectedRecord.id ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveRecordEdit(selectedRecord.id)}
+                            className="detail-action-icon-btn save"
+                            title="저장"
+                          >
+                            <Save size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditRecord}
+                            className="detail-action-icon-btn"
+                            title="취소"
+                          >
+                            <X size={14} />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => startEditRecord(selectedRecord)}
+                            className="detail-action-icon-btn"
+                            title="수정"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(selectedRecord.id)}
+                            className="detail-action-icon-btn delete"
+                            title="삭제"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </>
+                      )}
                     </div>
+                  </div>
+
+                  {editingRecordId === selectedRecord.id ? (
+                    <div className="detail-edit-form">
+                      <div className="form-group">
+                        <label>심방 대상 성도</label>
+                        <select
+                          value={editForm.memberId}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, memberId: e.target.value }))}
+                        >
+                          {scopedMembers.map(m => (
+                            <option key={m.memberId} value={m.memberId}>
+                              {m.name} ({m.rank} / {getZoneName(m.zoneId)})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group">
+                        <label>심방 날짜</label>
+                        <input
+                          type="date"
+                          value={editForm.date}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, date: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>심방자</label>
+                        <div className="btn-selector-group">
+                          {["구역장", "팀장", "임원"].map(v => (
+                            <button
+                              key={v}
+                              type="button"
+                              className={`selector-btn ${editForm.visitor === v ? "active" : ""}`}
+                              onClick={() => setEditForm(prev => ({ ...prev, visitor: v }))}
+                            >
+                              {v}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label>심방 형태</label>
+                        <div className="btn-selector-grid">
+                          {["전화심방", "대면심방"].map(t => (
+                            <button
+                              key={t}
+                              type="button"
+                              className={`selector-btn ${editForm.type === t ? "active" : ""}`}
+                              onClick={() => setEditForm(prev => ({ ...prev, type: t }))}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label>심방 상세 내용</label>
+                        <textarea
+                          value={editForm.notes}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                          rows={5}
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>구역장 성찰 일기</label>
+                        <textarea
+                          value={editForm.leaderFeedback}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, leaderFeedback: e.target.value }))}
+                          rows={4}
+                        />
+                      </div>
+
+                      <div className="detail-edit-actions">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveRecordEdit(selectedRecord.id)}
+                          className="save-feedback-btn"
+                        >
+                          수정 저장
+                        </button>
+                        <button
+                          type="button"
+                          onClick={cancelEditRecord}
+                          className="cancel-feedback-btn"
+                        >
+                          취소
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="detail-info-grid">
+                        <span>심방일</span>
+                        <strong>{selectedRecord.date}</strong>
+                        <span>심방자</span>
+                        <strong>{selectedRecord.visitor}</strong>
+                        <span>심방형태</span>
+                        <strong>{selectedRecord.type}</strong>
+                        <span>작성자</span>
+                        <strong>{selectedRecord.createdBy || "System"}</strong>
+                      </div>
+
+                      <div className="notes-box visit-detail-scroll-box">
+                        <p className="box-title">심방 상세 내용</p>
+                        <p className="box-content">{selectedRecord.notes}</p>
+                      </div>
+
+                      {hasLeaderFeedback(selectedRecord) && (
+                        <div className="feedback-box visit-detail-scroll-box" style={{ borderLeft: "3px solid var(--accent-amber)" }}>
+                          <p className="box-title" style={{ color: "var(--accent-amber)" }}>구역장 자가성찰 및 기도제목</p>
+                          <p className="box-content" style={{ fontStyle: "italic" }}>{selectedRecord.leaderFeedback || selectedRecord.feedback}</p>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {hasTeamFeedback(selectedRecord) && (
@@ -734,6 +986,7 @@ export default function VisitManagement() {
           display: flex;
           flex-direction: column;
           gap: 16px;
+          min-height: 0;
         }
 
         .panel-header {
@@ -938,6 +1191,34 @@ export default function VisitManagement() {
           color: var(--text-muted);
         }
 
+        .visit-period-switch {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px;
+          padding: 4px;
+          background-color: var(--bg-tertiary);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-md);
+        }
+
+        .period-switch-btn {
+          min-height: 30px;
+          border-radius: var(--radius-sm);
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .period-switch-btn:hover {
+          color: var(--text-primary);
+        }
+
+        .period-switch-btn.active {
+          background-color: var(--bg-primary);
+          color: var(--accent-cyan);
+          box-shadow: var(--shadow-sm);
+        }
+
         .filters-selectors {
           display: flex;
           gap: 8px;
@@ -962,6 +1243,7 @@ export default function VisitManagement() {
           grid-template-columns: minmax(360px, 1fr) minmax(320px, 0.78fr);
           gap: 14px;
           min-height: 0;
+          overflow: hidden;
         }
 
         .timeline-container {
@@ -969,8 +1251,51 @@ export default function VisitManagement() {
           flex-direction: column;
           gap: 12px;
           overflow-y: auto;
+          overscroll-behavior: contain;
           max-height: calc(100vh - 360px);
+          min-height: 260px;
           padding-right: 4px;
+        }
+
+        .timeline-container::-webkit-scrollbar {
+          width: 7px;
+        }
+
+        .timeline-container::-webkit-scrollbar-thumb {
+          background-color: var(--glass-border);
+          border-radius: 999px;
+        }
+
+        .timeline-week-group {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .timeline-week-heading {
+          position: sticky;
+          top: 0;
+          z-index: 2;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          padding: 8px 10px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          background-color: var(--bg-primary);
+          color: var(--text-secondary);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .timeline-week-heading span {
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .timeline-week-heading strong {
+          font-size: 11px;
+          color: var(--accent-cyan);
         }
 
         .timeline-summary-card {
@@ -1095,10 +1420,38 @@ export default function VisitManagement() {
           font-size: 11px;
         }
 
-        .detail-delete-btn {
+        .detail-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .detail-action-icon-btn {
           border: 1px solid var(--glass-border);
           border-radius: 6px;
           padding: 6px;
+          color: var(--text-muted);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .detail-action-icon-btn:hover {
+          color: var(--accent-cyan);
+          border-color: var(--accent-cyan);
+          background-color: rgba(6, 182, 212, 0.08);
+        }
+
+        .detail-action-icon-btn.save {
+          color: var(--accent-emerald);
+          border-color: rgba(16, 185, 129, 0.35);
+        }
+
+        .detail-action-icon-btn.delete:hover {
+          color: var(--accent-red);
+          border-color: var(--accent-red);
+          background-color: rgba(239, 68, 68, 0.08);
         }
 
         .detail-info-grid {
@@ -1137,6 +1490,31 @@ export default function VisitManagement() {
           overflow-y: auto;
           overscroll-behavior: contain;
           padding-right: 12px;
+        }
+
+        .detail-edit-form {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 12px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-md);
+          background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .detail-edit-form textarea,
+        .detail-edit-form input,
+        .detail-edit-form select {
+          width: 100%;
+          background-color: var(--bg-tertiary);
+          border: 1px solid var(--glass-border);
+          color: var(--text-primary);
+        }
+
+        .detail-edit-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
         }
 
         .detail-feedback-title-row {
@@ -1372,15 +1750,23 @@ export default function VisitManagement() {
         @media (max-width: 980px) {
           .visit-history-layout {
             grid-template-columns: 1fr;
+            overflow: visible;
           }
 
-          .timeline-container,
+          .timeline-container {
+            max-height: min(62vh, 560px);
+          }
+
           .visit-detail-panel {
             max-height: none;
           }
         }
 
         @media (max-width: 640px) {
+          .timeline-container {
+            max-height: min(58vh, 460px);
+          }
+
           .timeline-summary-card {
             grid-template-columns: 48px minmax(0, 1fr);
           }

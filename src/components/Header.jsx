@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Sun, Moon, Calendar, ChevronRight, Lock, CheckCircle2 } from "lucide-react";
+import { Sun, Moon, Monitor, Calendar, ChevronRight, Lock, CheckCircle2 } from "lucide-react";
+
+const getSystemTheme = () => {
+  if (typeof window === "undefined" || !window.matchMedia) return "dark";
+  return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+};
 
 export default function Header() {
   const { currentUser } = useAuth();
@@ -13,27 +18,51 @@ export default function Header() {
     setActiveWeekNo 
   } = useData();
 
-  const [theme, setTheme] = useState(() => {
+  const [themePreference, setThemePreference] = useState(() => {
     try {
-      return localStorage.getItem("theme") || "dark";
+      return localStorage.getItem("themePreference") || "system";
     } catch (e) {
       console.warn("localStorage is disabled or not available:", e);
-      return "dark";
+      return "system";
     }
   });
+  const [systemTheme, setSystemTheme] = useState(getSystemTheme);
+  const resolvedTheme = themePreference === "system" ? systemTheme : themePreference;
 
-  // Apply theme to document body
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: light)");
+    const handleSystemThemeChange = () => {
+      setSystemTheme(mediaQuery.matches ? "light" : "dark");
+    };
+
+    handleSystemThemeChange();
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener("change", handleSystemThemeChange);
+  }, []);
+
+  // Apply resolved theme to document.
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", resolvedTheme);
+    document.documentElement.style.colorScheme = resolvedTheme;
     try {
-      localStorage.setItem("theme", theme);
+      localStorage.setItem("themePreference", themePreference);
     } catch (e) {
       console.warn("localStorage write failed:", e);
     }
-  }, [theme]);
+  }, [themePreference, resolvedTheme]);
 
   const toggleTheme = () => {
-    setTheme(prev => (prev === "dark" ? "light" : "dark"));
+    setThemePreference(prev => {
+      if (prev === "system") return "light";
+      if (prev === "light") return "dark";
+      return "system";
+    });
+  };
+
+  const getThemeToggleTitle = () => {
+    if (themePreference === "system") return `시스템 설정 적용 중 (${resolvedTheme === "dark" ? "다크" : "라이트"})`;
+    return themePreference === "dark" ? "다크 모드 적용 중" : "라이트 모드 적용 중";
   };
 
   const activeMonth = months.find(m => m.monthId === activeMonthId);
@@ -114,9 +143,15 @@ export default function Header() {
         <button 
           onClick={toggleTheme} 
           className="theme-toggle-btn" 
-          title={theme === "dark" ? "라이트 모드로 변경" : "다크 모드로 변경"}
+          title={getThemeToggleTitle()}
         >
-          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          {themePreference === "system" ? (
+            <Monitor size={18} />
+          ) : resolvedTheme === "dark" ? (
+            <Sun size={18} />
+          ) : (
+            <Moon size={18} />
+          )}
         </button>
       </div>
 

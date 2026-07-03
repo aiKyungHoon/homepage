@@ -1026,6 +1026,37 @@ export function DataProvider({ children }) {
     }
   };
 
+  const updateVisitationRecord = async (recordId, fields) => {
+    const record = visitationRecords.find(r => r.id === recordId);
+    if (!record) return;
+
+    const updatedFields = {
+      ...fields,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser?.name || "System"
+    };
+
+    if (isMockEnabled) {
+      const allVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
+      const index = allVisits.findIndex(r => r.id === recordId);
+      if (index >= 0) {
+        allVisits[index] = { ...allVisits[index], ...updatedFields };
+        localStorage.setItem("mock_visitation_records", JSON.stringify(allVisits));
+        setVisitationRecords(allVisits);
+        logChange(record.memberId, record.memberName, `심방 기록 수정: ${updatedFields.visitor || record.visitor} (${updatedFields.type || record.type})`);
+      }
+    } else {
+      try {
+        await updateDoc(doc(db, "visitationRecords", recordId), updatedFields);
+        setVisitationRecords(prev => prev.map(r => r.id === recordId ? { ...r, ...updatedFields } : r));
+        logChange(record.memberId, record.memberName, `심방 기록 수정: ${updatedFields.visitor || record.visitor} (${updatedFields.type || record.type})`);
+      } catch (error) {
+        console.error("Firestore updateDoc failed for visitationRecord:", error);
+        throw error;
+      }
+    }
+  };
+
   const updateVisitationFeedback = async (recordId, feedbackType, text) => {
     const record = visitationRecords.find(r => r.id === recordId);
     if (!record) return;
@@ -1096,6 +1127,7 @@ export function DataProvider({ children }) {
     logChange,
     addVisitationRecord,
     deleteVisitationRecord,
+    updateVisitationRecord,
     updateVisitationFeedback
   };
 
