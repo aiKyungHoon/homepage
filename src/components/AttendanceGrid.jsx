@@ -91,6 +91,13 @@ export default function AttendanceGrid() {
     "형제교회(해외)",
     "형제교회(그외-특이사항에 기재)"
   ];
+  const worshipTypesWithoutTime = [
+    "일회성",
+    "미확인",
+    "출결제외자",
+    "장기관리불가능",
+    "장기관리가능"
+  ];
 
   const worshipTimes = [
     "9:00",
@@ -270,11 +277,13 @@ export default function AttendanceGrid() {
     if (!value || value === "미보고") return { type: "미보고", time: "" };
     if (typeof value !== "string") return { type: String(value), time: "" };
     const [type, time = ""] = value.split("|").map(part => part.trim());
-    return { type: type || "미보고", time };
+    const normalizedType = type || "미보고";
+    return { type: normalizedType, time: worshipTypesWithoutTime.includes(normalizedType) ? "" : time };
   };
 
   const buildWorshipValue = (type, time) => {
     if (!type || type === "미보고") return "미보고";
+    if (worshipTypesWithoutTime.includes(type)) return type;
     return time ? `${type} | ${time}` : type;
   };
 
@@ -1032,7 +1041,7 @@ export default function AttendanceGrid() {
 
               <div className="worship-selection-summary">
                 <span>{worshipType}</span>
-                {worshipType !== "미보고" && <strong>{worshipTime}</strong>}
+                {worshipType !== "미보고" && !worshipTypesWithoutTime.includes(worshipType) && <strong>{worshipTime}</strong>}
               </div>
 
               <div className="popover-actions worship-actions">
