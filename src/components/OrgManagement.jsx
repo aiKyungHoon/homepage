@@ -271,6 +271,13 @@ export default function OrgManagement() {
     }
   };
 
+  const getRoleLabel = (userRole) => {
+    if (userRole === "admin") return "임원";
+    if (userRole === "visit") return "심방팀장";
+    if (userRole === "team") return "팀장";
+    return "구역장";
+  };
+
   // Download Users CSV
   const handleDownloadCSV = () => {
     const headers = ["이름", "로그인 아이디", "비밀번호", "권한"];
@@ -278,7 +285,7 @@ export default function OrgManagement() {
       u.name,
       u.username,
       u.password || "********",
-      u.role === "admin" ? "임원" : u.role === "team" ? "팀장" : "구역장"
+      getRoleLabel(u.role)
     ]);
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -601,9 +608,7 @@ export default function OrgManagement() {
                     <td style={{fontFamily: "monospace"}}>{u.password || "********"}</td>
                     <td>
                       <span className={`badge badge-${u.role}`}>
-                        {u.role === "admin" && "임원"}
-                        {u.role === "team" && "팀장"}
-                        {u.role === "leader" && "구역장"}
+                        {getRoleLabel(u.role)}
                       </span>
                     </td>
                     <td>
@@ -892,6 +897,7 @@ export default function OrgManagement() {
                 >
                   <option value="leader">구역장</option>
                   <option value="team">팀장</option>
+                  <option value="visit">심방팀장</option>
                   <option value="admin">임원</option>
                 </select>
               </div>

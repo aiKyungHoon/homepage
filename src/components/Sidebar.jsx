@@ -22,7 +22,7 @@ export default function Sidebar({ activePage, setActivePage }) {
   const menuItems = [
     { id: "dashboard", label: "대시보드", icon: LayoutDashboard, roles: ["admin", "team"] },
     { id: "attendance", label: "출결 관리", icon: CalendarCheck, roles: ["admin", "team", "leader"] },
-    { id: "visit_manage", label: "심방 관리", icon: HeartHandshake, roles: ["admin", "team", "leader"] },
+    { id: "visit_manage", label: "심방 관리", icon: HeartHandshake, roles: ["admin", "visit", "team", "leader"] },
     { id: "org", label: "조직/성도 관리", icon: Users, roles: ["admin", "team"] },
     { id: "month", label: "월 마감 설정", icon: Lock, roles: ["admin"] },
     { id: "history", label: "수정 이력", icon: History, roles: ["admin"] }
@@ -61,6 +61,7 @@ export default function Sidebar({ activePage, setActivePage }) {
             <p className="profile-name">{currentUser.name}</p>
             <p className="profile-role">
               {role === "admin" && "임원"}
+              {role === "visit" && "심방팀장"}
               {role === "team" && "팀장"}
               {role === "leader" && "구역장"}
             </p>

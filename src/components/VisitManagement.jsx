@@ -28,6 +28,7 @@ export default function VisitManagement() {
   } = useData();
 
   const role = currentUser?.role;
+  const canManageAllVisits = role === "admin" || role === "visit";
 
   // Form State
   const [selectedMemberId, setSelectedMemberId] = useState("");
@@ -42,7 +43,7 @@ export default function VisitManagement() {
   const [tempFeedbackText, setTempFeedbackText] = useState("");
 
   // UI state
-  const [activeTab, setActiveTab] = useState("timeline"); // "timeline" | "feedback"
+  const [activeTab, setActiveTab] = useState("timeline"); // "timeline" | "reflection"
   const [searchQuery, setSearchQuery] = useState("");
   const [filterMemberId, setFilterMemberId] = useState("");
   const [filterZoneId, setFilterZoneId] = useState("");
@@ -179,9 +180,14 @@ export default function VisitManagement() {
   const hasLeaderFeedback = (record) => Boolean((record?.leaderFeedback || record?.feedback || "").trim());
   const hasTeamFeedback = (record) => Boolean((record?.teamFeedback || "").trim());
   const hasAdminFeedback = (record) => Boolean((record?.adminFeedback || "").trim());
-  const hasAnyFeedback = (record) => hasLeaderFeedback(record) || hasTeamFeedback(record) || hasAdminFeedback(record);
-  const visibleRecords = activeTab === "feedback" ? filteredRecords.filter(hasAnyFeedback) : filteredRecords;
+  const visibleRecords = activeTab === "reflection" ? filteredRecords.filter(hasLeaderFeedback) : filteredRecords;
   const selectedRecord = visibleRecords.find(r => r.id === selectedRecordId) || visibleRecords[0] || null;
+  const getSummaryPreview = (record) => {
+    const source = activeTab === "reflection"
+      ? (record.leaderFeedback || record.feedback || "")
+      : (record.notes || "");
+    return source.replace(/\s+/g, " ").slice(0, 86);
+  };
 
   // Stats Calculations
   const getStats = () => {
@@ -250,7 +256,7 @@ export default function VisitManagement() {
       <div className="visit-header-row">
         <div>
           <h3 className="section-title">심방기록 및 피드백 관리</h3>
-          <p className="section-subtitle">구역장 자가 피드백과 구역 성도와의 심방 내역을 체계적으로 누적 관리합니다.</p>
+          <p className="section-subtitle">구역장 성찰 일기와 구역 성도와의 심방 내역을 체계적으로 누적 관리합니다.</p>
         </div>
       </div>
 
@@ -295,6 +301,10 @@ export default function VisitManagement() {
           <div className="panel-header">
             <Plus size={16} style={{ color: "var(--accent-cyan)" }} />
             <h4>신규 심방기록 등록</h4>
+          </div>
+          <div className="form-mode-guide">
+            <span>구역장성찰 일기</span>
+            <p>아래 성찰 일기를 작성해 등록하면 오른쪽 구역장 성찰 일기 탭에 자동으로 모입니다.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="visit-form">
@@ -370,11 +380,11 @@ export default function VisitManagement() {
             </div>
 
             <div className="form-group">
-              <label>자가 피드백 및 기도제목 (구역장의 성찰)</label>
+              <label>구역장 성찰 일기</label>
               <textarea
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
-                placeholder="심방을 진행하며 스스로 느낀 점이나 구역장으로서의 다짐, 또는 구역원님을 향한 구체적인 기도제목을 적어보세요..."
+                placeholder="심방을 진행하며 느낀 점, 구역장으로서의 다짐, 구역원님을 향한 기도제목을 적어주세요..."
                 rows={3}
               />
             </div>
@@ -398,11 +408,11 @@ export default function VisitManagement() {
                 <span>심방 이력 타임라인</span>
               </button>
               <button 
-                className={`tab-btn ${activeTab === "feedback" ? "active" : ""}`}
-                onClick={() => setActiveTab("feedback")}
+                className={`tab-btn ${activeTab === "reflection" ? "active" : ""}`}
+                onClick={() => setActiveTab("reflection")}
               >
                 <BookOpen size={14} />
-                <span>구역장 성찰 일기장</span>
+                <span>구역장 성찰 일기</span>
               </button>
             </div>
           </div>
@@ -420,7 +430,7 @@ export default function VisitManagement() {
             </div>
 
             <div className="filters-selectors">
-              {role === "admin" && (
+              {canManageAllVisits && (
                 <select 
                   value={filterTeamId} 
                   onChange={(e) => {
@@ -476,13 +486,14 @@ export default function VisitManagement() {
               {visibleRecords.length === 0 ? (
                 <div className="empty-state">
                   <MessageSquare size={36} className="empty-icon" />
-                  <p>일치하는 심방 기록이 없습니다.</p>
+                  <p>{activeTab === "reflection" ? "일치하는 구역장 성찰 일기가 없습니다." : "일치하는 심방 기록이 없습니다."}</p>
                 </div>
               ) : (
                 visibleRecords.map((r) => {
                   const isSelected = selectedRecord?.id === r.id;
                   const feedbackCount = [hasLeaderFeedback(r), hasTeamFeedback(r), hasAdminFeedback(r)].filter(Boolean).length;
-                  const notePreview = (r.notes || "").replace(/\s+/g, " ").slice(0, 86);
+                  const notePreview = getSummaryPreview(r);
+                  const sourceText = activeTab === "reflection" ? (r.leaderFeedback || r.feedback || "") : (r.notes || "");
                   return (
                     <button
                       key={r.id}
@@ -512,12 +523,12 @@ export default function VisitManagement() {
                           <span>{r.visitor}</span>
                           <span>{getZoneName(r.zoneId)}</span>
                         </div>
-                        <p className="summary-preview">{notePreview}{(r.notes || "").length > 86 ? "..." : ""}</p>
+                        <p className="summary-preview">{notePreview}{sourceText.length > 86 ? "..." : ""}</p>
                         <div className="summary-chip-row">
                           {hasLeaderFeedback(r) && <span>자가성찰</span>}
-                          {hasTeamFeedback(r) && <span>팀장피드백</span>}
-                          {hasAdminFeedback(r) && <span>임원피드백</span>}
-                          <span>피드백 {feedbackCount}건</span>
+                          {activeTab !== "reflection" && hasTeamFeedback(r) && <span>팀장피드백</span>}
+                          {activeTab !== "reflection" && hasAdminFeedback(r) && <span>임원피드백</span>}
+                          {activeTab !== "reflection" && <span>피드백 {feedbackCount}건</span>}
                         </div>
                       </div>
 
@@ -600,7 +611,7 @@ export default function VisitManagement() {
                     </div>
                   )}
 
-                  {(role === "team" || role === "admin") && (
+                  {(role === "team" || canManageAllVisits) && (
                     <div className="timeline-feedback-action">
                       <p className="feedback-action-title">타임라인 피드백</p>
                       {editingFeedbackId === selectedRecord.id ? (
@@ -737,6 +748,29 @@ export default function VisitManagement() {
         .panel-header h4 {
           font-size: 14px;
           font-weight: 700;
+        }
+
+        .form-mode-guide {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          padding: 10px 12px;
+          border: 1px solid rgba(245, 158, 11, 0.25);
+          border-radius: var(--radius-sm);
+          background-color: rgba(245, 158, 11, 0.08);
+        }
+
+        .form-mode-guide span {
+          font-size: 12px;
+          font-weight: 800;
+          color: var(--accent-amber);
+        }
+
+        .form-mode-guide p {
+          margin: 0;
+          font-size: 11px;
+          line-height: 1.45;
+          color: var(--text-secondary);
         }
 
         .visit-form {
