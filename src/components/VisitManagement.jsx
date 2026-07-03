@@ -37,6 +37,7 @@ export default function VisitManagement() {
 
   // Form State
   const [selectedMemberId, setSelectedMemberId] = useState("");
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [visitDate, setVisitDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [visitor, setVisitor] = useState("구역장");
   const [visitType, setVisitType] = useState("전화심방");
@@ -92,6 +93,20 @@ export default function VisitManagement() {
   const getMemberName = (id) => members.find(m => m.memberId === id)?.name || "알수없음";
   const getTeamName = (id) => teams.find(t => t.teamId === id)?.name || "";
   const getZoneName = (id) => zones.find(z => z.zoneId === id)?.name || "";
+  const selectedMember = scopedMembers.find(m => m.memberId === selectedMemberId);
+  const visibleFormMembers = scopedMembers
+    .filter(member => {
+      const query = memberSearchQuery.trim().toLowerCase();
+      if (!query) return true;
+      return [
+        member.name,
+        member.rank,
+        getTeamName(member.teamId),
+        getZoneName(member.zoneId)
+      ].some(value => String(value || "").toLowerCase().includes(query));
+    })
+    .slice(0, 30);
+
   const getRecordWeekNo = (date) => {
     const day = Number(String(date || "").split("-")[2]);
     if (!Number.isFinite(day) || day <= 0) return 1;
@@ -137,6 +152,7 @@ export default function VisitManagement() {
       await addVisitationRecord(newRecord);
       // Reset form fields except date
       setSelectedMemberId("");
+      setMemberSearchQuery("");
       setNotes("");
       setFeedback("");
       alert("심방 기록이 성공적으로 등록되었습니다.");
@@ -407,18 +423,44 @@ export default function VisitManagement() {
           <form onSubmit={handleSubmit} className="visit-form">
             <div className="form-group">
               <label>심방 대상 성도</label>
-              <select 
-                value={selectedMemberId} 
-                onChange={(e) => setSelectedMemberId(e.target.value)}
-                required
-              >
-                <option value="">성도를 선택하세요...</option>
-                {scopedMembers.map(m => (
-                  <option key={m.memberId} value={m.memberId}>
-                    {m.name} ({m.rank} / {getZoneName(m.zoneId)})
-                  </option>
-                ))}
-              </select>
+              <div className="member-search-select">
+                <div className="member-search-box">
+                  <Search size={15} />
+                  <input
+                    type="text"
+                    value={memberSearchQuery}
+                    onChange={(e) => setMemberSearchQuery(e.target.value)}
+                    placeholder="이름, 팀, 구역으로 검색..."
+                    aria-label="심방 대상 성도 검색"
+                  />
+                </div>
+                <div className="member-select-list" role="listbox" aria-label="심방 대상 성도 목록">
+                  {visibleFormMembers.length > 0 ? visibleFormMembers.map(m => (
+                    <button
+                      key={m.memberId}
+                      type="button"
+                      className={`member-select-option ${selectedMemberId === m.memberId ? "selected" : ""}`}
+                      onClick={() => {
+                        setSelectedMemberId(m.memberId);
+                        setMemberSearchQuery(m.name);
+                      }}
+                    >
+                      <span className="member-select-name">{m.name}</span>
+                      <span className="member-select-meta">
+                        {[m.rank, getTeamName(m.teamId), getZoneName(m.zoneId)].filter(Boolean).join(" · ")}
+                      </span>
+                    </button>
+                  )) : (
+                    <div className="member-select-empty">검색 결과가 없습니다.</div>
+                  )}
+                </div>
+                {selectedMember && (
+                  <div className="member-selected-chip">
+                    선택됨: <strong>{selectedMember.name}</strong>
+                    <span>{getZoneName(selectedMember.zoneId)}</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="form-row">
@@ -1060,6 +1102,123 @@ export default function VisitManagement() {
         .form-group input[type="date"]:focus, 
         .form-group textarea:focus {
           border-color: var(--accent-cyan);
+        }
+
+        .member-search-select {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .member-search-box {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background-color: var(--bg-tertiary);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          padding: 8px 12px;
+          color: var(--text-muted);
+        }
+
+        .member-search-box:focus-within {
+          border-color: var(--accent-cyan);
+        }
+
+        .member-search-box input {
+          width: 100%;
+          border: 0;
+          outline: none;
+          background: transparent;
+          color: var(--text-primary);
+          font-size: 13px;
+        }
+
+        .member-search-box input::placeholder {
+          color: var(--text-muted);
+        }
+
+        .member-select-list {
+          display: flex;
+          flex-direction: column;
+          max-height: 188px;
+          overflow-y: auto;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          background-color: var(--bg-primary);
+        }
+
+        .member-select-option {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          width: 100%;
+          padding: 9px 11px;
+          border: 0;
+          border-bottom: 1px solid var(--glass-border);
+          background: transparent;
+          color: var(--text-primary);
+          cursor: pointer;
+          text-align: left;
+        }
+
+        .member-select-option:last-child {
+          border-bottom: 0;
+        }
+
+        .member-select-option:hover,
+        .member-select-option.selected {
+          background-color: rgba(6, 182, 212, 0.12);
+        }
+
+        .member-select-option.selected {
+          outline: 1px solid var(--accent-cyan);
+          outline-offset: -1px;
+        }
+
+        .member-select-name {
+          font-size: 13px;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .member-select-meta {
+          min-width: 0;
+          color: var(--text-secondary);
+          font-size: 11px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .member-select-empty {
+          padding: 14px 12px;
+          color: var(--text-muted);
+          font-size: 12px;
+          text-align: center;
+        }
+
+        .member-selected-chip {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          width: fit-content;
+          max-width: 100%;
+          padding: 6px 9px;
+          border-radius: 999px;
+          background-color: rgba(16, 185, 129, 0.12);
+          color: var(--accent-emerald);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .member-selected-chip span {
+          min-width: 0;
+          color: var(--text-secondary);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .form-row {
