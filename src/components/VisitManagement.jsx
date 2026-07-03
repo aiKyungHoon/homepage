@@ -517,7 +517,7 @@ export default function VisitManagement() {
 
                     {/* Show Notes */}
                     {!isFeedbackTab && (
-                      <div className="notes-box">
+                      <div className="notes-box visit-text-scroll-box">
                         <p className="box-title">심방 상세 내용</p>
                         <p className="box-content">{r.notes}</p>
                       </div>
@@ -525,7 +525,7 @@ export default function VisitManagement() {
 
                     {/* Show Leader Feedback */}
                     {(hasLeaderFeedback) && (
-                      <div className="feedback-box" style={{ borderLeft: "3px solid var(--accent-amber)", marginTop: "8px" }}>
+                      <div className="feedback-box visit-text-scroll-box" style={{ borderLeft: "3px solid var(--accent-amber)", marginTop: "8px" }}>
                         <p className="box-title" style={{ color: "var(--accent-amber)" }}>구역장 자가성찰 및 기도제목</p>
                         <p className="box-content" style={{ fontStyle: "italic" }}>
                           {r.leaderFeedback || r.feedback}
@@ -535,7 +535,7 @@ export default function VisitManagement() {
 
                     {/* Show Team Feedback */}
                     {(hasTeamFeedback) && (
-                      <div className="feedback-box" style={{ borderLeft: "3px solid var(--accent-cyan)", marginTop: "8px" }}>
+                      <div className="feedback-box visit-text-scroll-box" style={{ borderLeft: "3px solid var(--accent-cyan)", marginTop: "8px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                           <p className="box-title" style={{ color: "var(--accent-cyan)", margin: 0 }}>팀장 격려 피드백</p>
                           <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600" }}>작성: {r.teamFeedbackBy}</span>
@@ -548,7 +548,7 @@ export default function VisitManagement() {
 
                     {/* Show Admin Feedback */}
                     {(hasAdminFeedback) && (
-                      <div className="feedback-box" style={{ borderLeft: "3px solid #c084fc", marginTop: "8px" }}>
+                      <div className="feedback-box visit-text-scroll-box" style={{ borderLeft: "3px solid #c084fc", marginTop: "8px" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                           <p className="box-title" style={{ color: "#c084fc", margin: 0 }}>임원 사역 피드백</p>
                           <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600" }}>작성: {r.adminFeedbackBy}</span>
@@ -561,7 +561,8 @@ export default function VisitManagement() {
 
                     {/* Team Leader edit buttons */}
                     {role === "team" && (
-                      <div style={{ marginTop: "8px" }}>
+                      <div className="timeline-feedback-action">
+                        <p className="feedback-action-title">타임라인 피드백</p>
                         {editingFeedbackId === r.id ? (
                           <div className="feedback-edit-form">
                             <textarea
@@ -604,7 +605,8 @@ export default function VisitManagement() {
 
                     {/* Admin edit buttons */}
                     {role === "admin" && (
-                      <div style={{ marginTop: "8px" }}>
+                      <div className="timeline-feedback-action">
+                        <p className="feedback-action-title">타임라인 피드백</p>
                         {editingFeedbackId === r.id ? (
                           <div className="feedback-edit-form">
                             <textarea
@@ -1015,6 +1017,22 @@ export default function VisitManagement() {
           padding: 10px;
         }
 
+        .visit-text-scroll-box {
+          max-height: 220px;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding-right: 12px;
+        }
+
+        .visit-text-scroll-box::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .visit-text-scroll-box::-webkit-scrollbar-thumb {
+          background-color: var(--glass-border);
+          border-radius: 999px;
+        }
+
         .box-title {
           font-size: 10px;
           font-weight: 700;
@@ -1033,6 +1051,19 @@ export default function VisitManagement() {
           font-size: 10px;
           color: var(--text-muted);
           text-align: right;
+        }
+
+        .timeline-feedback-action {
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px solid var(--glass-border);
+        }
+
+        .feedback-action-title {
+          margin: 0 0 6px;
+          font-size: 10px;
+          font-weight: 800;
+          color: var(--text-muted);
         }
 
         .empty-state {
