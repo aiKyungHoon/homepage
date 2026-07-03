@@ -10,38 +10,60 @@ import {
   HeartHandshake
 } from "lucide-react";
 
-function WhiteHorseIcon({ size = 28 }) {
+function WhiteHorseIcon({ size = 32 }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 32 32"
+      viewBox="0 0 48 48"
       fill="none"
       aria-hidden="true"
       className="white-horse-logo"
     >
       <path
-        d="M8.5 24.5v-6.7c0-4.1 2.7-7.7 6.7-8.7l4.9-1.3c1.6-.4 3.1.8 3.1 2.4v2.5l2.3 2.1c.5.5.7 1.2.4 1.8l-.8 1.7c-.3.6-.9 1-1.6 1h-3.1l-1.6 5.2"
+        d="M22.5 20.3c5.7-6.2 12.7-9.2 20.1-10.1-4.8 3.2-8.6 6.8-11.3 10.7 4.2-1.8 8.2-2.7 12-2.9-4.8 2.6-8.9 5.6-12.1 9.1"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22.9 21.5c4.6-2.9 9.9-5 15.8-6.2M24.6 24.9c3.7-1.5 7.7-2.2 12-2.1"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.75"
+      />
+      <path
+        d="M10.3 35.4c.3-5.5 2.3-10.1 6-13.6 2.1-2 4.9-3.1 7.8-3.1h3.4c2.1 0 3.8 1.7 3.8 3.8v2.6l3.8 2.8c1 .8.8 2.4-.4 2.9l-3.1 1.4c-1.2.5-2.6.3-3.6-.5l-1.3-1-2.5 8"
+        stroke="currentColor"
+        strokeWidth="2.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5 19.6c-1.2-3.5.3-7 3.9-9.8-.2 3.9.9 6.8 3.2 8.9"
         stroke="currentColor"
         strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M14 10.1c-.8 2.3-.7 4.5.4 6.5m-2.9 7.9 1.2-4.4h6.1m4.2-9.6 2.2-1.4"
+        d="M15.9 25.3 8.4 20.9M15.2 27.4l-8.5.8M14.2 31.6l-5.8 6.1M20.5 37.9l-1.3 5.3M24.2 38.7l3 4.5M12.1 36.4l-2.8 5.2"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="2.4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M18.9 9.3c-.5 2.5-2.2 4.1-5 4.7"
+        d="M13.9 23.9c-2.1 2.2-4.6 3.2-7.6 3.1 2.2 1.9 4.5 2.5 7 1.8"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="1.9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx="22.7" cy="14.5" r="0.9" fill="currentColor" />
+      <circle cx="28.8" cy="24.2" r="0.9" fill="currentColor" />
     </svg>
   );
 }

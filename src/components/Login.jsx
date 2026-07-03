@@ -1,8 +1,66 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
-import { Sparkles, User, Lock, Shield, ArrowRight } from "lucide-react";
+import { User, Lock, Shield, ArrowRight } from "lucide-react";
 import { demoUsers } from "../utils/mockData";
+
+function WhiteHorseIcon({ size = 46 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 48 48"
+      fill="none"
+      aria-hidden="true"
+      className="login-horse-logo"
+    >
+      <path
+        d="M22.5 20.3c5.7-6.2 12.7-9.2 20.1-10.1-4.8 3.2-8.6 6.8-11.3 10.7 4.2-1.8 8.2-2.7 12-2.9-4.8 2.6-8.9 5.6-12.1 9.1"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22.9 21.5c4.6-2.9 9.9-5 15.8-6.2M24.6 24.9c3.7-1.5 7.7-2.2 12-2.1"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.75"
+      />
+      <path
+        d="M10.3 35.4c.3-5.5 2.3-10.1 6-13.6 2.1-2 4.9-3.1 7.8-3.1h3.4c2.1 0 3.8 1.7 3.8 3.8v2.6l3.8 2.8c1 .8.8 2.4-.4 2.9l-3.1 1.4c-1.2.5-2.6.3-3.6-.5l-1.3-1-2.5 8"
+        stroke="currentColor"
+        strokeWidth="2.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.5 19.6c-1.2-3.5.3-7 3.9-9.8-.2 3.9.9 6.8 3.2 8.9"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15.9 25.3 8.4 20.9M15.2 27.4l-8.5.8M14.2 31.6l-5.8 6.1M20.5 37.9l-1.3 5.3M24.2 38.7l3 4.5M12.1 36.4l-2.8 5.2"
+        stroke="currentColor"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M13.9 23.9c-2.1 2.2-4.6 3.2-7.6 3.1 2.2 1.9 4.5 2.5 7 1.8"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="28.8" cy="24.2" r="0.9" fill="currentColor" />
+    </svg>
+  );
+}
 
 export default function Login() {
   const { login, loginAsDemoUser, isMockMode } = useAuth();
@@ -63,9 +121,9 @@ export default function Login() {
       <div className="login-card glass-panel animate-slide">
         <div className="login-header">
           <div className="login-logo">
-            <Sparkles size={36} />
+            <WhiteHorseIcon />
           </div>
-          <h1>교구 출결 및 활동 관리</h1>
+          <h1>백마 상암 출결 관리 시스템</h1>
           <p className="login-subtitle">스프레드시트에서 혁신적인 웹 대시보드로</p>
         </div>
 
@@ -221,9 +279,14 @@ export default function Login() {
           filter: drop-shadow(0 0 15px hsla(185, 90%, 48%, 0.2));
         }
 
+        .login-horse-logo {
+          filter: drop-shadow(0 0 10px hsla(185, 90%, 48%, 0.35));
+        }
+
         .login-header h1 {
           font-size: 24px;
           font-weight: 700;
+          letter-spacing: 0;
           color: var(--text-primary);
           margin-bottom: 8px;
         }
