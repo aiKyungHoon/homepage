@@ -20,6 +20,7 @@ export default function VisitManagement() {
     members, 
     teams, 
     zones, 
+    activeMonthId,
     visitationRecords, 
     addVisitationRecord, 
     deleteVisitationRecord,
@@ -46,6 +47,7 @@ export default function VisitManagement() {
   const [filterMemberId, setFilterMemberId] = useState("");
   const [filterZoneId, setFilterZoneId] = useState("");
   const [filterTeamId, setFilterTeamId] = useState("");
+  const [selectedRecordId, setSelectedRecordId] = useState("");
 
   // Default filters based on role
   useEffect(() => {
@@ -174,6 +176,12 @@ export default function VisitManagement() {
   };
 
   const filteredRecords = getFilteredRecords();
+  const hasLeaderFeedback = (record) => Boolean((record?.leaderFeedback || record?.feedback || "").trim());
+  const hasTeamFeedback = (record) => Boolean((record?.teamFeedback || "").trim());
+  const hasAdminFeedback = (record) => Boolean((record?.adminFeedback || "").trim());
+  const hasAnyFeedback = (record) => hasLeaderFeedback(record) || hasTeamFeedback(record) || hasAdminFeedback(record);
+  const visibleRecords = activeTab === "feedback" ? filteredRecords.filter(hasAnyFeedback) : filteredRecords;
+  const selectedRecord = visibleRecords.find(r => r.id === selectedRecordId) || visibleRecords[0] || null;
 
   // Stats Calculations
   const getStats = () => {
@@ -185,12 +193,10 @@ export default function VisitManagement() {
       scopeList = scopeList.filter(r => r.teamId === currentUser.teamId && r.zoneId === currentUser.zoneId);
     }
 
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonthNum = String(now.getMonth() + 1).padStart(2, "0");
-    const currentMonthStr = `${currentYear}-${currentMonthNum}`; // YYYY-MM
+    const todayMonth = new Date().toISOString().slice(0, 7);
+    const currentMonthStr = activeMonthId || todayMonth; // YYYY-MM
 
-    // Month filter
+    // Month filter follows the selected active month in the app.
     const monthVisits = scopeList.filter(r => r.date.startsWith(currentMonthStr));
     
     // Type breakdown
@@ -209,17 +215,15 @@ export default function VisitManagement() {
     });
 
     // Feedback counts
-    const withFeedback = monthVisits.filter(r => 
+    const withLeaderFeedback = monthVisits.filter(r => 
       (r.leaderFeedback && r.leaderFeedback.trim() !== "") ||
-      (r.feedback && r.feedback.trim() !== "") ||
-      (r.teamFeedback && r.teamFeedback.trim() !== "") ||
-      (r.adminFeedback && r.adminFeedback.trim() !== "")
+      (r.feedback && r.feedback.trim() !== "")
     );
 
     return {
       monthTotal: monthVisits.length,
       topType: topType + (maxCount > 0 ? ` (${maxCount}회)` : ""),
-      feedbackTotal: withFeedback.length
+      feedbackTotal: withLeaderFeedback.length
     };
   };
 
@@ -467,193 +471,187 @@ export default function VisitManagement() {
           </div>
 
           {/* Timeline Feed */}
-          <div className="timeline-container">
-            {filteredRecords.length === 0 ? (
-              <div className="empty-state">
-                <MessageSquare size={36} className="empty-icon" />
-                <p>일치하는 심방 기록이 없습니다.</p>
-              </div>
-            ) : (
-              filteredRecords.map((r) => {
-                const isFeedbackTab = activeTab === "feedback";
-                const hasLeaderFeedback = (r.leaderFeedback && r.leaderFeedback.trim() !== "") || (r.feedback && r.feedback.trim() !== "");
-                const hasTeamFeedback = r.teamFeedback && r.teamFeedback.trim() !== "";
-                const hasAdminFeedback = r.adminFeedback && r.adminFeedback.trim() !== "";
+          <div className="visit-history-layout">
+            <div className="timeline-container">
+              {visibleRecords.length === 0 ? (
+                <div className="empty-state">
+                  <MessageSquare size={36} className="empty-icon" />
+                  <p>일치하는 심방 기록이 없습니다.</p>
+                </div>
+              ) : (
+                visibleRecords.map((r) => {
+                  const isSelected = selectedRecord?.id === r.id;
+                  const feedbackCount = [hasLeaderFeedback(r), hasTeamFeedback(r), hasAdminFeedback(r)].filter(Boolean).length;
+                  const notePreview = (r.notes || "").replace(/\s+/g, " ").slice(0, 86);
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      className={`timeline-summary-card glass-panel ${isSelected ? "active" : ""}`}
+                      onClick={() => setSelectedRecordId(r.id)}
+                    >
+                      <div className="timeline-date-block">
+                        <strong>{String(r.date || "").slice(5).replace("-", ".")}</strong>
+                        <span>{new Date(r.date).toLocaleDateString("ko-KR", { weekday: "short" })}</span>
+                      </div>
 
-                // If it is feedback tab, check if there is ANY feedback. If not, don't show it.
-                if (isFeedbackTab && !hasLeaderFeedback && !hasTeamFeedback && !hasAdminFeedback) return null;
+                      <div className="timeline-summary-main">
+                        <div className="summary-title-row">
+                          <span className="summary-member">{r.memberName} 성도</span>
+                          <span
+                            className="type-badge"
+                            style={{
+                              backgroundColor: getVisitTypeColor(r.type),
+                              color: getVisitTypeTextColor(r.type)
+                            }}
+                          >
+                            {r.type}
+                          </span>
+                        </div>
+                        <div className="summary-meta-row">
+                          <span>{r.visitor}</span>
+                          <span>{getZoneName(r.zoneId)}</span>
+                        </div>
+                        <p className="summary-preview">{notePreview}{(r.notes || "").length > 86 ? "..." : ""}</p>
+                        <div className="summary-chip-row">
+                          {hasLeaderFeedback(r) && <span>자가성찰</span>}
+                          {hasTeamFeedback(r) && <span>팀장피드백</span>}
+                          {hasAdminFeedback(r) && <span>임원피드백</span>}
+                          <span>피드백 {feedbackCount}건</span>
+                        </div>
+                      </div>
 
-                return (
-                  <div key={r.id} className="timeline-card glass-panel">
-                    <div className="card-header">
+                      <span className="summary-detail-link">상세보기</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+
+            <aside className="visit-detail-panel glass-panel">
+              {selectedRecord ? (
+                <>
+                  <div className="visit-detail-header">
+                    <div>
                       <div className="member-meta">
-                        <span className="member-badge">{r.memberName} {members.find(m=>m.memberId === r.memberId)?.rank || ""}</span>
-                        <span className="zone-tag">{getZoneName(r.zoneId)}</span>
-                      </div>
-                      <div className="date-meta">
-                        <span className="date-text">{r.date}</span>
-                        <button 
-                          onClick={() => handleDelete(r.id)} 
-                          className="delete-icon-btn" 
-                          title="삭제"
+                        <span className="member-badge">{selectedRecord.memberName} 성도</span>
+                        <span
+                          className="type-badge"
+                          style={{
+                            backgroundColor: getVisitTypeColor(selectedRecord.type),
+                            color: getVisitTypeTextColor(selectedRecord.type)
+                          }}
                         >
-                          <Trash2 size={14} />
-                        </button>
+                          {selectedRecord.type}
+                        </span>
                       </div>
+                      <p className="detail-subtitle">{getTeamName(selectedRecord.teamId)} · {getZoneName(selectedRecord.zoneId)}</p>
                     </div>
-
-                    <div className="card-sub-header">
-                      <span className="visitor-badge">심방자: {r.visitor}</span>
-                      <span 
-                        className="type-badge" 
-                        style={{ 
-                          backgroundColor: getVisitTypeColor(r.type),
-                          color: getVisitTypeTextColor(r.type)
-                        }}
-                      >
-                        {r.type}
-                      </span>
-                    </div>
-
-                    {/* Show Notes */}
-                    {!isFeedbackTab && (
-                      <div className="notes-box visit-text-scroll-box">
-                        <p className="box-title">심방 상세 내용</p>
-                        <p className="box-content">{r.notes}</p>
-                      </div>
-                    )}
-
-                    {/* Show Leader Feedback */}
-                    {(hasLeaderFeedback) && (
-                      <div className="feedback-box visit-text-scroll-box" style={{ borderLeft: "3px solid var(--accent-amber)", marginTop: "8px" }}>
-                        <p className="box-title" style={{ color: "var(--accent-amber)" }}>구역장 자가성찰 및 기도제목</p>
-                        <p className="box-content" style={{ fontStyle: "italic" }}>
-                          {r.leaderFeedback || r.feedback}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Show Team Feedback */}
-                    {(hasTeamFeedback) && (
-                      <div className="feedback-box visit-text-scroll-box" style={{ borderLeft: "3px solid var(--accent-cyan)", marginTop: "8px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                          <p className="box-title" style={{ color: "var(--accent-cyan)", margin: 0 }}>팀장 격려 피드백</p>
-                          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600" }}>작성: {r.teamFeedbackBy}</span>
-                        </div>
-                        <p className="box-content">
-                          {r.teamFeedback}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Show Admin Feedback */}
-                    {(hasAdminFeedback) && (
-                      <div className="feedback-box visit-text-scroll-box" style={{ borderLeft: "3px solid #c084fc", marginTop: "8px" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                          <p className="box-title" style={{ color: "#c084fc", margin: 0 }}>임원 사역 피드백</p>
-                          <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: "600" }}>작성: {r.adminFeedbackBy}</span>
-                        </div>
-                        <p className="box-content">
-                          {r.adminFeedback}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Team Leader edit buttons */}
-                    {role === "team" && (
-                      <div className="timeline-feedback-action">
-                        <p className="feedback-action-title">타임라인 피드백</p>
-                        {editingFeedbackId === r.id ? (
-                          <div className="feedback-edit-form">
-                            <textarea
-                              value={tempFeedbackText}
-                              onChange={(e) => setTempFeedbackText(e.target.value)}
-                              placeholder="구역장님을 격려하고 피드백을 남겨주세요..."
-                              rows={3}
-                            />
-                            <div style={{ display: "flex", gap: "6px" }}>
-                              <button 
-                                type="button" 
-                                onClick={() => handleSaveFeedback(r.id, "team")}
-                                className="save-feedback-btn"
-                              >
-                                저장
-                              </button>
-                              <button 
-                                type="button" 
-                                onClick={() => setEditingFeedbackId("")}
-                                className="cancel-feedback-btn"
-                              >
-                                취소
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingFeedbackId(r.id);
-                              setTempFeedbackText(r.teamFeedback || "");
-                            }}
-                            className="write-feedback-trigger-btn"
-                          >
-                            {hasTeamFeedback ? "팀장 피드백 수정" : "💬 팀장 피드백 남기기"}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Admin edit buttons */}
-                    {role === "admin" && (
-                      <div className="timeline-feedback-action">
-                        <p className="feedback-action-title">타임라인 피드백</p>
-                        {editingFeedbackId === r.id ? (
-                          <div className="feedback-edit-form">
-                            <textarea
-                              value={tempFeedbackText}
-                              onChange={(e) => setTempFeedbackText(e.target.value)}
-                              placeholder="사역 피드백 및 코멘트를 남겨주세요..."
-                              rows={3}
-                            />
-                            <div style={{ display: "flex", gap: "6px" }}>
-                              <button 
-                                type="button" 
-                                onClick={() => handleSaveFeedback(r.id, "admin")}
-                                className="save-feedback-btn"
-                              >
-                                저장
-                              </button>
-                              <button 
-                                type="button" 
-                                onClick={() => setEditingFeedbackId("")}
-                                className="cancel-feedback-btn"
-                              >
-                                취소
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingFeedbackId(r.id);
-                              setTempFeedbackText(r.adminFeedback || "");
-                            }}
-                            className="write-feedback-trigger-btn"
-                          >
-                            {hasAdminFeedback ? "임원 피드백 수정" : "💬 임원 피드백 남기기"}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    
-                    <div className="card-footer-meta" style={{ marginTop: "8px" }}>
-                      <span>작성자: {r.createdBy || "System"}</span>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(selectedRecord.id)}
+                      className="delete-icon-btn detail-delete-btn"
+                      title="삭제"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                );
-              })
-            )}
+
+                  <div className="detail-info-grid">
+                    <span>심방일</span>
+                    <strong>{selectedRecord.date}</strong>
+                    <span>심방자</span>
+                    <strong>{selectedRecord.visitor}</strong>
+                    <span>심방형태</span>
+                    <strong>{selectedRecord.type}</strong>
+                    <span>작성자</span>
+                    <strong>{selectedRecord.createdBy || "System"}</strong>
+                  </div>
+
+                  <div className="notes-box visit-detail-scroll-box">
+                    <p className="box-title">심방 상세 내용</p>
+                    <p className="box-content">{selectedRecord.notes}</p>
+                  </div>
+
+                  {hasLeaderFeedback(selectedRecord) && (
+                    <div className="feedback-box visit-detail-scroll-box" style={{ borderLeft: "3px solid var(--accent-amber)" }}>
+                      <p className="box-title" style={{ color: "var(--accent-amber)" }}>구역장 자가성찰 및 기도제목</p>
+                      <p className="box-content" style={{ fontStyle: "italic" }}>{selectedRecord.leaderFeedback || selectedRecord.feedback}</p>
+                    </div>
+                  )}
+
+                  {hasTeamFeedback(selectedRecord) && (
+                    <div className="feedback-box visit-detail-scroll-box" style={{ borderLeft: "3px solid var(--accent-cyan)" }}>
+                      <div className="detail-feedback-title-row">
+                        <p className="box-title" style={{ color: "var(--accent-cyan)", margin: 0 }}>팀장 격려 피드백</p>
+                        <span>작성: {selectedRecord.teamFeedbackBy}</span>
+                      </div>
+                      <p className="box-content">{selectedRecord.teamFeedback}</p>
+                    </div>
+                  )}
+
+                  {hasAdminFeedback(selectedRecord) && (
+                    <div className="feedback-box visit-detail-scroll-box" style={{ borderLeft: "3px solid #c084fc" }}>
+                      <div className="detail-feedback-title-row">
+                        <p className="box-title" style={{ color: "#c084fc", margin: 0 }}>임원 사역 피드백</p>
+                        <span>작성: {selectedRecord.adminFeedbackBy}</span>
+                      </div>
+                      <p className="box-content">{selectedRecord.adminFeedback}</p>
+                    </div>
+                  )}
+
+                  {(role === "team" || role === "admin") && (
+                    <div className="timeline-feedback-action">
+                      <p className="feedback-action-title">타임라인 피드백</p>
+                      {editingFeedbackId === selectedRecord.id ? (
+                        <div className="feedback-edit-form">
+                          <textarea
+                            value={tempFeedbackText}
+                            onChange={(e) => setTempFeedbackText(e.target.value)}
+                            placeholder={role === "team" ? "구역장님을 격려하고 피드백을 남겨주세요..." : "사역 피드백 및 코멘트를 남겨주세요..."}
+                            rows={4}
+                          />
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveFeedback(selectedRecord.id, role === "team" ? "team" : "admin")}
+                              className="save-feedback-btn"
+                            >
+                              저장
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingFeedbackId("")}
+                              className="cancel-feedback-btn"
+                            >
+                              취소
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingFeedbackId(selectedRecord.id);
+                            setTempFeedbackText(role === "team" ? (selectedRecord.teamFeedback || "") : (selectedRecord.adminFeedback || ""));
+                          }}
+                          className="write-feedback-trigger-btn"
+                        >
+                          {role === "team"
+                            ? (hasTeamFeedback(selectedRecord) ? "팀장 피드백 수정" : "팀장 피드백 남기기")
+                            : (hasAdminFeedback(selectedRecord) ? "임원 피드백 수정" : "임원 피드백 남기기")}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="empty-state detail-empty-state">
+                  <MessageSquare size={36} className="empty-icon" />
+                  <p>상세보기 할 심방 이력을 선택해 주세요.</p>
+                </div>
+              )}
+            </aside>
           </div>
         </div>
       </div>
@@ -709,11 +707,11 @@ export default function VisitManagement() {
 
         .visit-main-grid {
           display: grid;
-          grid-template-columns: 1fr 1.3fr;
+          grid-template-columns: minmax(300px, 0.7fr) minmax(680px, 1.6fr);
           gap: 20px;
         }
 
-        @media (max-width: 1024px) {
+        @media (max-width: 1180px) {
           .visit-main-grid {
             grid-template-columns: 1fr;
           }
@@ -925,13 +923,204 @@ export default function VisitManagement() {
         }
 
         /* Timeline Card styling */
+        .visit-history-layout {
+          display: grid;
+          grid-template-columns: minmax(360px, 1fr) minmax(320px, 0.78fr);
+          gap: 14px;
+          min-height: 0;
+        }
+
         .timeline-container {
           display: flex;
           flex-direction: column;
           gap: 12px;
           overflow-y: auto;
-          max-height: calc(100vh - 350px);
+          max-height: calc(100vh - 360px);
           padding-right: 4px;
+        }
+
+        .timeline-summary-card {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 56px minmax(0, 1fr) auto;
+          gap: 14px;
+          align-items: start;
+          padding: 14px;
+          border-radius: var(--radius-md);
+          border: 1px solid var(--glass-border);
+          background-color: rgba(255, 255, 255, 0.02);
+          color: var(--text-primary);
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .timeline-summary-card:hover,
+        .timeline-summary-card.active {
+          border-color: var(--accent-cyan);
+          background-color: rgba(6, 182, 212, 0.06);
+        }
+
+        .timeline-date-block {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          color: var(--text-secondary);
+          border-right: 1px solid var(--glass-border);
+          padding-right: 10px;
+          min-height: 78px;
+        }
+
+        .timeline-date-block strong {
+          font-size: 13px;
+          color: var(--text-primary);
+        }
+
+        .timeline-date-block span {
+          font-size: 10px;
+          color: var(--text-muted);
+        }
+
+        .timeline-summary-main {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .summary-title-row,
+        .summary-meta-row,
+        .summary-chip-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .summary-member {
+          font-size: 14px;
+          font-weight: 800;
+          color: var(--text-primary);
+        }
+
+        .summary-meta-row {
+          font-size: 11px;
+          color: var(--text-secondary);
+        }
+
+        .summary-preview {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.5;
+          overflow: hidden;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+
+        .summary-chip-row span {
+          font-size: 10px;
+          color: var(--text-muted);
+          background-color: var(--bg-primary);
+          border: 1px solid var(--glass-border);
+          border-radius: 999px;
+          padding: 2px 7px;
+        }
+
+        .summary-detail-link {
+          color: var(--accent-cyan);
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+          align-self: center;
+        }
+
+        .visit-detail-panel {
+          border-radius: var(--radius-md);
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          max-height: calc(100vh - 360px);
+          overflow-y: auto;
+        }
+
+        .visit-detail-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          padding-bottom: 10px;
+          border-bottom: 1px solid var(--glass-border);
+        }
+
+        .detail-subtitle {
+          margin: 6px 0 0;
+          color: var(--text-muted);
+          font-size: 11px;
+        }
+
+        .detail-delete-btn {
+          border: 1px solid var(--glass-border);
+          border-radius: 6px;
+          padding: 6px;
+        }
+
+        .detail-info-grid {
+          display: grid;
+          grid-template-columns: 88px minmax(0, 1fr);
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          overflow: hidden;
+          font-size: 12px;
+        }
+
+        .detail-info-grid span,
+        .detail-info-grid strong {
+          padding: 9px 10px;
+          border-bottom: 1px solid var(--glass-border);
+        }
+
+        .detail-info-grid span {
+          color: var(--text-muted);
+          background-color: var(--bg-primary);
+          font-weight: 700;
+        }
+
+        .detail-info-grid strong {
+          color: var(--text-primary);
+          font-weight: 700;
+        }
+
+        .detail-info-grid span:nth-last-child(-n + 2),
+        .detail-info-grid strong:nth-last-child(-n + 2) {
+          border-bottom: 0;
+        }
+
+        .visit-detail-scroll-box {
+          max-height: 240px;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding-right: 12px;
+        }
+
+        .detail-feedback-title-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 4px;
+        }
+
+        .detail-feedback-title-row span {
+          font-size: 10px;
+          color: var(--text-muted);
+          font-weight: 700;
+        }
+
+        .detail-empty-state {
+          min-height: 240px;
         }
 
         .timeline-card {
@@ -1144,6 +1333,28 @@ export default function VisitManagement() {
         .write-feedback-trigger-btn:hover {
           background-color: var(--accent-cyan);
           color: black;
+        }
+
+        @media (max-width: 980px) {
+          .visit-history-layout {
+            grid-template-columns: 1fr;
+          }
+
+          .timeline-container,
+          .visit-detail-panel {
+            max-height: none;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .timeline-summary-card {
+            grid-template-columns: 48px minmax(0, 1fr);
+          }
+
+          .summary-detail-link {
+            grid-column: 2;
+            justify-self: flex-start;
+          }
         }
       `}</style>
     </div>
