@@ -290,13 +290,16 @@ export default function AttendanceGrid() {
       const teamOrderDiff = getTeamSortValue(a.teamId) - getTeamSortValue(b.teamId);
       if (teamOrderDiff !== 0) return teamOrderDiff;
 
-      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
-      if (teamLeaderDiff !== 0) return teamLeaderDiff;
-
       const zoneA = zones.find(z => z.zoneId === a.zoneId);
       const zoneB = zones.find(z => z.zoneId === b.zoneId);
       const zoneDiff = compareZones(zoneA, zoneB);
       if (zoneDiff !== 0) return zoneDiff;
+
+      const leadershipDiff = Number(isLeadershipMember(b)) - Number(isLeadershipMember(a));
+      if (leadershipDiff !== 0) return leadershipDiff;
+
+      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
+      if (teamLeaderDiff !== 0) return teamLeaderDiff;
 
       const teamDiff = getTeamName(a.teamId).localeCompare(getTeamName(b.teamId), "ko");
       if (teamDiff !== 0) return teamDiff;

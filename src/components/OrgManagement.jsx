@@ -99,6 +99,24 @@ export default function OrgManagement() {
     return team.leaderId === member.memberId || normalizeLeaderName(team.leaderId) === member.name || normalizeLeaderName(leaderUserName) === member.name;
   };
 
+  const isLeadershipMember = (member) => {
+    if (!member) return false;
+    const leadershipRefs = [
+      ...teams.map(t => t.leaderId).filter(Boolean),
+      ...zones.map(z => z.leaderId).filter(Boolean)
+    ];
+    const leadershipUserIds = new Set(leadershipRefs);
+    const leadershipUserNames = new Set(
+      [...teams, ...zones]
+        .map(item => users.find(u => u.userId === item.leaderId)?.name)
+        .map(normalizeLeaderName)
+        .filter(Boolean)
+    );
+    const leadershipRawNames = leadershipRefs.map(normalizeLeaderName);
+
+    return leadershipUserIds.has(member.memberId) || leadershipUserNames.has(member.name) || leadershipRawNames.includes(member.name);
+  };
+
   const getZoneSortValue = (zone) => {
     if (!zone) return Number.MAX_SAFE_INTEGER;
     const teamName = getTeamName(zone.teamId);
@@ -171,13 +189,17 @@ export default function OrgManagement() {
       const teamOrderDiff = getTeamSortValue(a.teamId) - getTeamSortValue(b.teamId);
       if (teamOrderDiff !== 0) return teamOrderDiff;
 
-      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
-      if (teamLeaderDiff !== 0) return teamLeaderDiff;
-
       const zoneA = zones.find(z => z.zoneId === a.zoneId);
       const zoneB = zones.find(z => z.zoneId === b.zoneId);
       const zoneDiff = compareZones(zoneA, zoneB);
       if (zoneDiff !== 0) return zoneDiff;
+
+      const leadershipDiff = Number(isLeadershipMember(b)) - Number(isLeadershipMember(a));
+      if (leadershipDiff !== 0) return leadershipDiff;
+
+      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
+      if (teamLeaderDiff !== 0) return teamLeaderDiff;
+
       const teamDiff = getTeamName(a.teamId).localeCompare(getTeamName(b.teamId), "ko");
       if (teamDiff !== 0) return teamDiff;
       return String(a.name || "").localeCompare(String(b.name || ""), "ko");
