@@ -89,6 +89,61 @@ export default function OrgManagement() {
     return zones;
   };
 
+  const isTeamLeaderMember = (member) => {
+    if (!member) return false;
+    const team = teams.find(t => t.teamId === member.teamId);
+    if (!team?.leaderId) return false;
+    const leaderUserName = users.find(u => u.userId === team.leaderId)?.name;
+    return team.leaderId === member.memberId || team.leaderId === member.name || leaderUserName === member.name;
+  };
+
+  const getZoneSortValue = (zone) => {
+    if (!zone) return Number.MAX_SAFE_INTEGER;
+    const teamName = getTeamName(zone.teamId);
+    const searchableName = `${teamName} ${zone.name || ""}`;
+    const zoneNumberMatch = searchableName.match(/(\d+)\s*구역/);
+    const zoneNumber = zoneNumberMatch ? Number(zoneNumberMatch[1]) : Number.MAX_SAFE_INTEGER;
+    const teamOrder = [
+      { keyword: "보라", order: 0 },
+      { keyword: "해봄", order: 1 },
+      { keyword: "이음", order: 2 },
+    ].find(({ keyword }) => searchableName.includes(keyword))?.order;
+
+    if (teamOrder !== undefined && Number.isFinite(zoneNumber)) {
+      return (teamOrder * 100) + zoneNumber;
+    }
+
+    const explicitOrder = zone.sortOrder ?? zone.order ?? zone.orderNo ?? zone.displayOrder ?? zone.sequence ?? zone.sort;
+    const parsedOrder = Number(explicitOrder);
+    if (Number.isFinite(parsedOrder)) return 1000 + parsedOrder;
+
+    const nameNumber = String(zone.name || "").match(/\d+/);
+    return nameNumber ? 2000 + Number(nameNumber[0]) : Number.MAX_SAFE_INTEGER;
+  };
+
+  const compareZones = (a, b) => {
+    const orderDiff = getZoneSortValue(a) - getZoneSortValue(b);
+    if (orderDiff !== 0) return orderDiff;
+    return String(a?.name || "").localeCompare(String(b?.name || ""), "ko");
+  };
+
+  const getSortedZones = (zoneList = getScopedZones()) => [...zoneList].sort(compareZones);
+
+  const getTeamSortValue = (teamId) => {
+    const teamName = getTeamName(teamId);
+    const teamOrder = [
+      { keyword: "보라", order: 0 },
+      { keyword: "해봄", order: 1 },
+      { keyword: "이음", order: 2 },
+    ].find(({ keyword }) => teamName.includes(keyword))?.order;
+    if (teamOrder !== undefined) return teamOrder;
+
+    const teamZones = zones.filter(z => z.teamId === teamId);
+    if (teamZones.length > 0) return Math.min(...teamZones.map(getZoneSortValue)) / 100;
+
+    return Number.MAX_SAFE_INTEGER;
+  };
+
   const getFilteredMembers = () => {
     let list = getScopedMembers();
     const query = memberSearchQuery.trim().toLowerCase();
@@ -111,10 +166,18 @@ export default function OrgManagement() {
     }
 
     return [...list].sort((a, b) => {
+      const teamOrderDiff = getTeamSortValue(a.teamId) - getTeamSortValue(b.teamId);
+      if (teamOrderDiff !== 0) return teamOrderDiff;
+
+      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
+      if (teamLeaderDiff !== 0) return teamLeaderDiff;
+
+      const zoneA = zones.find(z => z.zoneId === a.zoneId);
+      const zoneB = zones.find(z => z.zoneId === b.zoneId);
+      const zoneDiff = compareZones(zoneA, zoneB);
+      if (zoneDiff !== 0) return zoneDiff;
       const teamDiff = getTeamName(a.teamId).localeCompare(getTeamName(b.teamId), "ko");
       if (teamDiff !== 0) return teamDiff;
-      const zoneDiff = getZoneName(a.zoneId).localeCompare(getZoneName(b.zoneId), "ko");
-      if (zoneDiff !== 0) return zoneDiff;
       return String(a.name || "").localeCompare(String(b.name || ""), "ko");
     });
   };
@@ -301,11 +364,11 @@ export default function OrgManagement() {
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "없음";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "구역 없음";
   const filteredMembers = getFilteredMembers();
-  const memberFilterZones = getScopedZones().filter(z => {
+  const memberFilterZones = getSortedZones(getScopedZones().filter(z => {
     if (role === "team") return true;
     if (!memberTeamFilter) return true;
     return z.teamId === memberTeamFilter;
-  });
+  }));
 
   return (
     <div className="org-wrapper animate-fade">
@@ -489,7 +552,7 @@ export default function OrgManagement() {
                 </tr>
               </thead>
               <tbody>
-                {getScopedZones().map(z => {
+                {getSortedZones().map(z => {
                   const zMembersCount = members.filter(m => m.zoneId === z.zoneId && ["normal", "new"].includes(m.status)).length;
                   const leaderUser = users.find(u => u.userId === z.leaderId);
                   const leaderName = leaderUser ? leaderUser.name : (z.leaderId || "리더 미정");
@@ -694,8 +757,7 @@ export default function OrgManagement() {
                   required
                 >
                   <option value="">구역 선택 필수</option>
-                  {zones
-                    .filter(z => z.teamId === memberForm.teamId)
+                  {getSortedZones(zones.filter(z => z.teamId === memberForm.teamId))
                     .map(z => (
                       <option key={z.zoneId} value={z.zoneId}>{z.name}</option>
                     ))}

@@ -310,7 +310,13 @@ export function DataProvider({ children }) {
 
     // Log the change
     const categoryNames = {
-      samil: "삼일예배", sunday: "주일예배", zone: "구역예배",
+      samil: "삼일예배",
+      sunday: "주일예배",
+      samil_pre: "삼일사전",
+      samil_actual: "삼일실제",
+      sunday_pre: "주일사전",
+      sunday_actual: "주일실제",
+      zone: "구역예배",
       test: "시험", radio: "심야라디오", simon: "시몬스쿨",
       visit: "심방", activity: "활동현황"
     };

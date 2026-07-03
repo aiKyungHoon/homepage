@@ -23,6 +23,7 @@ export default function VisitManagement() {
     members, 
     teams, 
     zones, 
+    users,
     activeMonthId,
     activeWeekNo,
     visitationRecords, 
@@ -76,6 +77,59 @@ export default function VisitManagement() {
     }
   }, [role, currentUser]);
 
+  // Helper to map IDs to Names
+  const getMemberName = (id) => members.find(m => m.memberId === id)?.name || "알수없음";
+  const getTeamName = (id) => teams.find(t => t.teamId === id)?.name || "";
+  const getZoneName = (id) => zones.find(z => z.zoneId === id)?.name || "";
+  const isTeamLeaderMember = (member) => {
+    if (!member) return false;
+    const team = teams.find(t => t.teamId === member.teamId);
+    if (!team?.leaderId) return false;
+    const leaderUserName = users.find(u => u.userId === team.leaderId)?.name;
+    return team.leaderId === member.memberId || team.leaderId === member.name || leaderUserName === member.name;
+  };
+  const getZoneSortValue = (zone) => {
+    if (!zone) return Number.MAX_SAFE_INTEGER;
+    const teamName = getTeamName(zone.teamId);
+    const searchableName = `${teamName} ${zone.name || ""}`;
+    const zoneNumberMatch = searchableName.match(/(\d+)\s*구역/);
+    const zoneNumber = zoneNumberMatch ? Number(zoneNumberMatch[1]) : Number.MAX_SAFE_INTEGER;
+    const teamOrder = [
+      { keyword: "보라", order: 0 },
+      { keyword: "해봄", order: 1 },
+      { keyword: "이음", order: 2 },
+    ].find(({ keyword }) => searchableName.includes(keyword))?.order;
+
+    if (teamOrder !== undefined && Number.isFinite(zoneNumber)) return (teamOrder * 100) + zoneNumber;
+
+    const explicitOrder = zone.sortOrder ?? zone.order ?? zone.orderNo ?? zone.displayOrder ?? zone.sequence ?? zone.sort;
+    const parsedOrder = Number(explicitOrder);
+    if (Number.isFinite(parsedOrder)) return 1000 + parsedOrder;
+
+    const nameNumber = String(zone.name || "").match(/\d+/);
+    return nameNumber ? 2000 + Number(nameNumber[0]) : Number.MAX_SAFE_INTEGER;
+  };
+  const compareZones = (a, b) => {
+    const orderDiff = getZoneSortValue(a) - getZoneSortValue(b);
+    if (orderDiff !== 0) return orderDiff;
+    return String(a?.name || "").localeCompare(String(b?.name || ""), "ko");
+  };
+  const getSortedZones = (zoneList = zones) => [...zoneList].sort(compareZones);
+  const getTeamSortValue = (teamId) => {
+    const teamName = getTeamName(teamId);
+    const teamOrder = [
+      { keyword: "보라", order: 0 },
+      { keyword: "해봄", order: 1 },
+      { keyword: "이음", order: 2 },
+    ].find(({ keyword }) => teamName.includes(keyword))?.order;
+    if (teamOrder !== undefined) return teamOrder;
+
+    const teamZones = zones.filter(z => z.teamId === teamId);
+    if (teamZones.length > 0) return Math.min(...teamZones.map(getZoneSortValue)) / 100;
+
+    return Number.MAX_SAFE_INTEGER;
+  };
+
   // Scoped members lists
   const getScopedMembers = () => {
     let list = [...members];
@@ -84,15 +138,22 @@ export default function VisitManagement() {
     } else if (role === "leader") {
       list = list.filter(m => m.teamId === currentUser.teamId && m.zoneId === currentUser.zoneId);
     }
-    return list.sort((a, b) => a.name.localeCompare(b.name, "ko"));
+    return list.sort((a, b) => {
+      const teamOrderDiff = getTeamSortValue(a.teamId) - getTeamSortValue(b.teamId);
+      if (teamOrderDiff !== 0) return teamOrderDiff;
+
+      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
+      if (teamLeaderDiff !== 0) return teamLeaderDiff;
+
+      const zoneA = zones.find(z => z.zoneId === a.zoneId);
+      const zoneB = zones.find(z => z.zoneId === b.zoneId);
+      const zoneDiff = compareZones(zoneA, zoneB);
+      if (zoneDiff !== 0) return zoneDiff;
+      return a.name.localeCompare(b.name, "ko");
+    });
   };
 
   const scopedMembers = getScopedMembers();
-
-  // Helper to map IDs to Names
-  const getMemberName = (id) => members.find(m => m.memberId === id)?.name || "알수없음";
-  const getTeamName = (id) => teams.find(t => t.teamId === id)?.name || "";
-  const getZoneName = (id) => zones.find(z => z.zoneId === id)?.name || "";
   const selectedMember = scopedMembers.find(m => m.memberId === selectedMemberId);
   const visibleFormMembers = scopedMembers
     .filter(member => {
@@ -613,8 +674,7 @@ export default function VisitManagement() {
                   className="sub-select"
                 >
                   <option value="">구역 전체</option>
-                  {zones
-                    .filter(z => !filterTeamId || z.teamId === filterTeamId)
+                  {getSortedZones(zones.filter(z => !filterTeamId || z.teamId === filterTeamId))
                     .map(z => (
                       <option key={z.zoneId} value={z.zoneId}>{z.name}</option>
                     ))}

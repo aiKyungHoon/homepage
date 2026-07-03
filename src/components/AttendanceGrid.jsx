@@ -9,6 +9,7 @@ export default function AttendanceGrid() {
     members,
     teams,
     zones,
+    users,
     activeMonthId,
     activeWeekNo,
     months,
@@ -140,10 +141,55 @@ export default function AttendanceGrid() {
     "6:00",
     "6:30"
   ];
+  const worshipCategories = ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual"];
+  const legacyWorshipCategoryMap = {
+    samil_pre: "samil",
+    sunday_pre: "sunday"
+  };
 
   // Map team and zone IDs to names
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "";
+
+  const getTeamSortValue = (teamId) => {
+    const teamName = getTeamName(teamId);
+    const teamOrder = [
+      { keyword: "보라", order: 0 },
+      { keyword: "해봄", order: 1 },
+      { keyword: "이음", order: 2 },
+    ].find(({ keyword }) => teamName.includes(keyword))?.order;
+    if (teamOrder !== undefined) return teamOrder;
+
+    const teamZones = zones.filter(z => z.teamId === teamId);
+    if (teamZones.length > 0) return Math.min(...teamZones.map(getZoneSortValue)) / 100;
+
+    return Number.MAX_SAFE_INTEGER;
+  };
+
+  const isTeamLeaderMember = (member) => {
+    if (!member) return false;
+    const team = teams.find(t => t.teamId === member.teamId);
+    if (!team?.leaderId) return false;
+    const leaderUserName = users.find(u => u.userId === team.leaderId)?.name;
+    return team.leaderId === member.memberId || team.leaderId === member.name || leaderUserName === member.name;
+  };
+
+  const isLeadershipMember = (member) => {
+    if (!member) return false;
+    const leadershipRefs = [
+      ...teams.map(t => t.leaderId).filter(Boolean),
+      ...zones.map(z => z.leaderId).filter(Boolean)
+    ];
+    const leadershipUserIds = new Set(leadershipRefs);
+    const leadershipRawNames = new Set(leadershipRefs);
+    const leadershipUserNames = new Set(
+      [...teams, ...zones]
+        .map(item => users.find(u => u.userId === item.leaderId)?.name)
+        .filter(Boolean)
+    );
+
+    return leadershipUserIds.has(member.memberId) || leadershipUserNames.has(member.name) || leadershipRawNames.has(member.name);
+  };
 
   const getZoneSortValue = (zone) => {
     if (!zone) return Number.MAX_SAFE_INTEGER;
@@ -239,6 +285,12 @@ export default function AttendanceGrid() {
     }
 
     return [...list].sort((a, b) => {
+      const teamOrderDiff = getTeamSortValue(a.teamId) - getTeamSortValue(b.teamId);
+      if (teamOrderDiff !== 0) return teamOrderDiff;
+
+      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
+      if (teamLeaderDiff !== 0) return teamLeaderDiff;
+
       const zoneA = zones.find(z => z.zoneId === a.zoneId);
       const zoneB = zones.find(z => z.zoneId === b.zoneId);
       const zoneDiff = compareZones(zoneA, zoneB);
@@ -258,7 +310,17 @@ export default function AttendanceGrid() {
     const record = attendanceRecords.find(
       r => r.memberId === memberId && r.weekNo === activeWeekNo && r.category === category
     );
-    return record ? record.value : "미보고";
+    if (record) return record.value;
+
+    const legacyCategory = legacyWorshipCategoryMap[category];
+    if (legacyCategory) {
+      const legacyRecord = attendanceRecords.find(
+        r => r.memberId === memberId && r.weekNo === activeWeekNo && r.category === legacyCategory
+      );
+      if (legacyRecord) return legacyRecord.value;
+    }
+
+    return "미보고";
   };
 
   // Helper: Retrieve monthly cumulative value (tithing, evangelism, fee)
@@ -317,11 +379,13 @@ export default function AttendanceGrid() {
 
     const headers = [
       ...baseHeaders,
-      "삼일",
-      "주일",
+      "삼일사전",
+      "삼일실제",
+      "주일사전",
+      "주일실제",
       "구역예배",
-      "특이사항",
       "시험",
+      "특이사항",
       "심야라디오",
       "시몬스쿨",
       "심방",
@@ -339,11 +403,13 @@ export default function AttendanceGrid() {
       const note = getMemberNote(member.memberId);
       return [
         ...baseCells,
-        formatWorshipValue(getWeeklyValue(member.memberId, "samil")),
-        formatWorshipValue(getWeeklyValue(member.memberId, "sunday")),
+        formatWorshipValue(getWeeklyValue(member.memberId, "samil_pre")),
+        formatWorshipValue(getWeeklyValue(member.memberId, "samil_actual")),
+        formatWorshipValue(getWeeklyValue(member.memberId, "sunday_pre")),
+        formatWorshipValue(getWeeklyValue(member.memberId, "sunday_actual")),
         getWeeklyValue(member.memberId, "zone"),
-        note?.text || "",
         getWeeklyValue(member.memberId, "test"),
+        note?.text || "",
         getWeeklyValue(member.memberId, "radio"),
         getWeeklyValue(member.memberId, "simon"),
         getWeeklyValue(member.memberId, "visit"),
@@ -381,7 +447,7 @@ export default function AttendanceGrid() {
 
   const getCategoryOptions = (cat) => {
     if (cat === "zone") return ["대면", "줌", "개별", "불참", "미보고"];
-    if (["sunday", "samil"].includes(cat)) return cellOptions.weeklyWorship;
+    if (worshipCategories.includes(cat)) return cellOptions.weeklyWorship;
     if (cat === "test") return cellOptions.test;
     if (["radio", "simon", "visit"].includes(cat)) return cellOptions.weeklyEdu;
     return cellOptions.weeklyActivity;
@@ -398,7 +464,7 @@ export default function AttendanceGrid() {
     } else {
       // Open selector popover
       const rect = e.currentTarget.getBoundingClientRect();
-      const isWorshipCell = ["samil", "sunday"].includes(category);
+      const isWorshipCell = worshipCategories.includes(category);
       const popoverWidth = category === "visit"
         ? 240
         : isWorshipCell
@@ -482,10 +548,12 @@ export default function AttendanceGrid() {
 
   // Get status color coding class
   const getCellStyle = (val, category) => {
-    const worshipTypeValue = ["samil", "sunday"].includes(category) ? parseWorshipValue(val).type : val;
+    const worshipTypeValue = worshipCategories.includes(category) ? parseWorshipValue(val).type : val;
     const greenByCategory = {
-      samil: ["정규성전", "정식예배"],
-      sunday: ["정규성전", "정식예배"],
+      samil_pre: ["정규성전", "정식예배"],
+      samil_actual: ["정규성전", "정식예배"],
+      sunday_pre: ["정규성전", "정식예배"],
+      sunday_actual: ["정규성전", "정식예배"],
       zone: ["대면"],
       test: ["정규시험"],
       radio: ["O"],
@@ -496,7 +564,7 @@ export default function AttendanceGrid() {
     if (greenByCategory[category]?.includes(worshipTypeValue)) return "cell-present";
     if (worshipTypeValue === "결석" || worshipTypeValue === "X") return "cell-absent";
 
-    if (["samil", "sunday"].includes(category)) {
+    if (worshipCategories.includes(category)) {
       if (["줌/화면O", "줌/화면X", "대체줌", "비대면", "온라인예배"].includes(worshipTypeValue)) return "cell-online";
       if (worshipTypeValue.includes("대체") || ["모임방", "야외예배", "사랑예배", "일회성"].includes(worshipTypeValue)) return "cell-substitute";
       return "cell-unreported";
@@ -644,11 +712,13 @@ export default function AttendanceGrid() {
                 <th>직분</th>
                 {role === "admin" && <th>소속 팀</th>}
                 {role !== "leader" && <th>소속 구역</th>}
-                <th className="sep-col">삼일</th>
-                <th>주일</th>
+                <th className="sep-col worship-report-col">삼일사전</th>
+                <th className="worship-report-col">삼일실제</th>
+                <th className="worship-report-col">주일사전</th>
+                <th className="worship-report-col">주일실제</th>
                 <th>구역예배</th>
-                <th className="sep-col note-header">특이사항</th>
                 <th className="sep-col">시험</th>
+                <th className="sep-col note-header">특이사항</th>
                 <th>심야라디오</th>
                 <th>시몬스쿨</th>
                 <th className="sep-col">심방</th>
@@ -660,8 +730,10 @@ export default function AttendanceGrid() {
             </thead>
             <tbody>
               {filteredMembers.map((member) => {
-                const samil = getWeeklyValue(member.memberId, "samil");
-                const sunday = getWeeklyValue(member.memberId, "sunday");
+                const samilPre = getWeeklyValue(member.memberId, "samil_pre");
+                const samilActual = getWeeklyValue(member.memberId, "samil_actual");
+                const sundayPre = getWeeklyValue(member.memberId, "sunday_pre");
+                const sundayActual = getWeeklyValue(member.memberId, "sunday_actual");
                 const zone = getWeeklyValue(member.memberId, "zone");
                 const test = getWeeklyValue(member.memberId, "test");
                 const radio = getWeeklyValue(member.memberId, "radio");
@@ -674,12 +746,13 @@ export default function AttendanceGrid() {
                 const evangelism = getMonthlyAchievementValue(member.memberId, "evangelism");
                 const tithing = getMonthlyAchievementValue(member.memberId, "tithing");
                 const fee = getMonthlyAchievementValue(member.memberId, "fee");
+                const leadershipMember = isLeadershipMember(member);
 
                 return (
                   <tr key={member.memberId} className="grid-row">
                     <td className="sticky-col member-name-col">
                       <div>
-                        <span className="member-name">{member.name}</span>
+                        <span className={`member-name ${leadershipMember ? "leadership-member-name" : ""}`}>{member.name}</span>
                         <span className={`status-dot status-${member.status}`}></span>
                       </div>
                     </td>
@@ -689,24 +762,46 @@ export default function AttendanceGrid() {
                     
                     {/* Weekly worship */}
                     <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "samil", false)}
-                      className={`cell-click sep-col ${getCellStyle(samil, "samil")}`}
-                      title={formatWorshipValue(samil)}
+                      onClick={(e) => handleCellClick(e, member.memberId, "samil_pre", false)}
+                      className={`cell-click sep-col worship-report-cell ${getCellStyle(samilPre, "samil_pre")}`}
+                      title={formatWorshipValue(samilPre)}
                     >
-                      {renderWorshipCell(samil)}
+                      {renderWorshipCell(samilPre)}
                     </td>
                     <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "sunday", false)}
-                      className={`cell-click ${getCellStyle(sunday, "sunday")}`}
-                      title={formatWorshipValue(sunday)}
+                      onClick={(e) => handleCellClick(e, member.memberId, "samil_actual", false)}
+                      className={`cell-click worship-report-cell ${getCellStyle(samilActual, "samil_actual")}`}
+                      title={formatWorshipValue(samilActual)}
                     >
-                      {renderWorshipCell(sunday)}
+                      {renderWorshipCell(samilActual)}
+                    </td>
+                    <td 
+                      onClick={(e) => handleCellClick(e, member.memberId, "sunday_pre", false)}
+                      className={`cell-click worship-report-cell ${getCellStyle(sundayPre, "sunday_pre")}`}
+                      title={formatWorshipValue(sundayPre)}
+                    >
+                      {renderWorshipCell(sundayPre)}
+                    </td>
+                    <td 
+                      onClick={(e) => handleCellClick(e, member.memberId, "sunday_actual", false)}
+                      className={`cell-click worship-report-cell ${getCellStyle(sundayActual, "sunday_actual")}`}
+                      title={formatWorshipValue(sundayActual)}
+                    >
+                      {renderWorshipCell(sundayActual)}
                     </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
                       className={`cell-click ${getCellStyle(zone, "zone")}`}
                     >
                       {zone}
+                    </td>
+
+                    {/* Weekly edu */}
+                    <td 
+                      onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
+                      className={`cell-click sep-col ${getCellStyle(test, "test")}`}
+                    >
+                      {test}
                     </td>
 
                     <td className="sep-col note-cell">
@@ -730,13 +825,6 @@ export default function AttendanceGrid() {
                       </button>
                     </td>
 
-                    {/* Weekly edu */}
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
-                      className={`cell-click sep-col ${getCellStyle(test, "test")}`}
-                    >
-                      {test}
-                    </td>
                     <td 
                       onClick={(e) => handleCellClick(e, member.memberId, "radio", false)}
                       className={`cell-click ${getCellStyle(radio, "radio")}`}
@@ -883,8 +971,8 @@ export default function AttendanceGrid() {
             top: `${activeCell.y}px`,
             left: `${activeCell.x}px`,
             width: `${activeCell.width}px`,
-            maxWidth: ["samil", "sunday"].includes(activeCell.category) ? "calc(100vw - 16px)" : undefined,
-            padding: activeCell.category === "visit" || ["samil", "sunday"].includes(activeCell.category) ? "12px" : "0",
+            maxWidth: worshipCategories.includes(activeCell.category) ? "calc(100vw - 16px)" : undefined,
+            padding: activeCell.category === "visit" || worshipCategories.includes(activeCell.category) ? "12px" : "0",
             zIndex: 9999
           }}
         >
@@ -1001,7 +1089,7 @@ export default function AttendanceGrid() {
                 </button>
               </div>
             </div>
-          ) : ["samil", "sunday"].includes(activeCell.category) ? (
+          ) : worshipCategories.includes(activeCell.category) ? (
             <div className="worship-popover">
               <div className="worship-popover-grid">
                 <div className="worship-popover-section">
@@ -1291,6 +1379,11 @@ export default function AttendanceGrid() {
           font-weight: 700;
         }
 
+        .worship-report-col,
+        .worship-report-cell {
+          min-width: 108px;
+        }
+
         .member-name-col div {
           display: flex;
           align-items: center;
@@ -1301,6 +1394,17 @@ export default function AttendanceGrid() {
         .member-name {
           font-weight: 600;
           color: var(--text-primary);
+        }
+
+        .leadership-member-name {
+          display: inline-flex;
+          align-items: center;
+          min-height: 22px;
+          padding: 2px 7px;
+          border-radius: 999px;
+          background-color: #fef08a;
+          color: #713f12;
+          font-weight: 800;
         }
 
         .status-dot {

@@ -117,6 +117,34 @@ export default function Dashboard() {
   ];
   const getWorshipGroupByKey = (key) => SUNDAY_WORSHIP_GROUPS.find(group => group.key === key);
   const isWorshipValueInGroup = (value, group) => group?.values.includes(getWorshipTypeValue(value));
+  const legacyWorshipCategoryMap = {
+    samil_pre: "samil",
+    sunday_pre: "sunday"
+  };
+
+  const getAttendanceValue = (memberId, category, weekNo = activeWeekNo, monthId = activeMonthId) => {
+    const findRecord = (targetCategory) => attendanceRecords.find(r =>
+      r.memberId === memberId &&
+      r.weekNo === weekNo &&
+      r.category === targetCategory &&
+      (!monthId || r.monthId === monthId)
+    ) || attendanceRecords.find(r =>
+      r.memberId === memberId &&
+      r.weekNo === weekNo &&
+      r.category === targetCategory
+    );
+
+    const record = findRecord(category);
+    if (record) return record.value;
+
+    const legacyCategory = legacyWorshipCategoryMap[category];
+    if (legacyCategory) {
+      const legacyRecord = findRecord(legacyCategory);
+      if (legacyRecord) return legacyRecord.value;
+    }
+
+    return "미보고";
+  };
 
   // Filter members based on user role
   const getScopedMembers = () => {
@@ -147,16 +175,13 @@ export default function Dashboard() {
   const excludedCount = getExcludedCount();
 
   // Helper: Count attendance status for activeWeekNo
-  const getAttendanceStats = () => {
+  const getAttendanceStats = (category = "sunday_actual") => {
     let present = 0;
     let absent = 0;
     let unreported = 0;
 
     scopedMembers.forEach(m => {
-      const rec = attendanceRecords.find(
-        r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
-      );
-      const val = rec ? rec.value : "미보고";
+      const val = getAttendanceValue(m.memberId, category);
 
       if (isWorshipPresentValue(val)) {
         present++;
@@ -170,13 +195,12 @@ export default function Dashboard() {
     return { present, absent, unreported };
   };
 
-  const attStats = getAttendanceStats();
+  const sundayPreStats = getAttendanceStats("sunday_pre");
+  const sundayActualStats = getAttendanceStats("sunday_actual");
+  const attStats = sundayActualStats;
 
-  const getSundayWorshipGroupCount = (group) => scopedMembers.filter(m => {
-    const rec = attendanceRecords.find(
-      r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
-    );
-    return isWorshipValueInGroup(rec ? rec.value : "미보고", group);
+  const getSundayWorshipGroupCount = (group, category = "sunday_actual") => scopedMembers.filter(m => {
+    return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
   }).length;
 
   const getZoneWorshipStats = () => {
@@ -279,15 +303,12 @@ export default function Dashboard() {
   const calculateAttendanceRate = (mList) => {
     if (mList.length === 0) return 0;
     
-    let totalPossible = mList.length * 3; // 3 services: samil, sunday, zone
+    let totalPossible = mList.length * 3; // 3 services: samil pre, sunday actual, zone
     let totalPresent = 0;
 
     mList.forEach(m => {
-      ["samil", "sunday", "zone"].forEach(cat => {
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
-        );
-        const val = rec ? rec.value : "미보고";
+      ["samil_pre", "sunday_actual", "zone"].forEach(cat => {
+        const val = getAttendanceValue(m.memberId, cat);
         if (isWorshipPresentValue(val)) {
           totalPresent++;
         }
@@ -333,20 +354,14 @@ export default function Dashboard() {
     let fee = 0;
     
     scopedMembers.forEach(m => {
-      ["samil", "sunday", "zone"].forEach(cat => {
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === cat
-        );
-        const val = rec ? rec.value : "미보고";
+      ["samil_pre", "sunday_actual", "zone"].forEach(cat => {
+        const val = getAttendanceValue(m.memberId, cat, prevWeekNo, prevMonthId);
         if (isWorshipPresentValue(val)) {
           totalPresent++;
         }
       });
       
-      const sunRec = attendanceRecords.find(
-        r => r.memberId === m.memberId && r.monthId === prevMonthId && r.weekNo === prevWeekNo && r.category === "sunday"
-      );
-      const sunVal = sunRec ? sunRec.value : "미보고";
+      const sunVal = getAttendanceValue(m.memberId, "sunday_actual", prevWeekNo, prevMonthId);
       if (isWorshipPresentValue(sunVal)) {
         sundayPresent++;
       } else if (isWorshipAbsentValue(sunVal)) {
@@ -420,10 +435,7 @@ export default function Dashboard() {
 
   const getWeeklyCount = (cat) => {
     return scopedMembers.filter(m => {
-      const rec = attendanceRecords.find(
-        r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === cat
-      );
-      return rec && isWorshipPresentValue(rec.value);
+      return isWorshipPresentValue(getAttendanceValue(m.memberId, cat));
     }).length;
   };
 
@@ -452,29 +464,19 @@ export default function Dashboard() {
       list = scopedMembers;
     } else if (categoryOrType === "excluded") {
       list = members.filter(m => m.status === "excluded" && (role === "admin" || (role === "team" && m.teamId === currentUser?.teamId) || (role === "leader" && m.zoneId === currentUser?.zoneId)));
-    } else if (categoryOrType === "sunday_present") {
+    } else if (String(categoryOrType).startsWith("sunday_stat:")) {
+      const [, category, status] = String(categoryOrType).split(":");
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
-        const val = rec ? rec.value : "미보고";
-        return isWorshipPresentValue(val);
-      });
-    } else if (categoryOrType === "sunday_absent") {
-      list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
-        const val = rec ? rec.value : "미보고";
-        return isWorshipAbsentValue(val);
-      });
-    } else if (categoryOrType === "sunday_unreported") {
-      list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
-        const val = rec ? rec.value : "미보고";
+        const val = getAttendanceValue(m.memberId, category);
+        if (status === "present") return isWorshipPresentValue(val);
+        if (status === "absent") return isWorshipAbsentValue(val);
         return getWorshipTypeValue(val) === "미보고";
       });
     } else if (String(categoryOrType).startsWith("worship_group:")) {
-      const group = getWorshipGroupByKey(String(categoryOrType).replace("worship_group:", ""));
+      const [, groupKey, category = "sunday_actual"] = String(categoryOrType).split(":");
+      const group = getWorshipGroupByKey(groupKey);
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday");
-        return isWorshipValueInGroup(rec ? rec.value : "미보고", group);
+        return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
       });
     } else if (categoryOrType === "zone_entered") {
       list = scopedMembers.filter(m => {
@@ -575,10 +577,7 @@ export default function Dashboard() {
   const getPerfectAttendees = () => {
     return scopedMembers.filter(m => {
       for (let w = 1; w <= activeWeekNo; w++) {
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
-        );
-        const val = rec ? rec.value : "미보고";
+        const val = getAttendanceValue(m.memberId, "sunday_actual", w);
         if (!isWorshipPresentValue(val)) {
           return false;
         }
@@ -591,10 +590,7 @@ export default function Dashboard() {
     return scopedMembers.filter(m => {
       let attendCount = 0;
       for (let w = 1; w <= activeWeekNo; w++) {
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.weekNo === w && r.category === "sunday"
-        );
-        const val = rec ? rec.value : "미보고";
+        const val = getAttendanceValue(m.memberId, "sunday_actual", w);
         if (isWorshipPresentValue(val)) {
           attendCount++;
         }
@@ -652,10 +648,7 @@ export default function Dashboard() {
   // Calculate Unreported Members List
   const getUnreportedMembers = () => {
     return scopedMembers.filter(m => {
-      const rec = attendanceRecords.find(
-        r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === activeWeekNo && r.category === "sunday"
-      );
-      const val = rec ? rec.value : "미보고";
+      const val = getAttendanceValue(m.memberId, "sunday_actual");
       return getWorshipTypeValue(val) === "미보고";
     });
   };
@@ -702,12 +695,10 @@ export default function Dashboard() {
       
       scopedMembers.forEach(m => {
         // Worship (Sunday only)
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.monthId === activeMonthId && r.weekNo === w && r.category === "sunday"
-        );
-        if (rec) {
+        const val = getAttendanceValue(m.memberId, "sunday_actual", w, activeMonthId);
+        if (val !== "미보고") {
           hasRecords = true;
-          if (isWorshipPresentValue(rec.value)) {
+          if (isWorshipPresentValue(val)) {
             worshipPresent++;
           }
         }
@@ -866,19 +857,16 @@ export default function Dashboard() {
 
     const getWeeklyCountForWeek = (cat, wNo, mId = activeMonthId) => {
       return scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(
-          r => r.memberId === m.memberId && r.monthId === mId && r.weekNo === wNo && r.category === cat
-        );
-        return rec && isWorshipPresentValue(rec.value);
+        return isWorshipPresentValue(getAttendanceValue(m.memberId, cat, wNo, mId));
       }).length;
     };
 
-    const curSunday = getWeeklyCountForWeek("sunday", activeWeekNo);
-    const prevSunday = prevWeekNo > 0 ? getWeeklyCountForWeek("sunday", prevWeekNo, prevMonthId) : 0;
+    const curSunday = getWeeklyCountForWeek("sunday_actual", activeWeekNo);
+    const prevSunday = prevWeekNo > 0 ? getWeeklyCountForWeek("sunday_actual", prevWeekNo, prevMonthId) : 0;
     const diffSunday = curSunday - prevSunday;
 
-    const curSamil = getWeeklyCountForWeek("samil", activeWeekNo);
-    const prevSamil = prevWeekNo > 0 ? getWeeklyCountForWeek("samil", prevWeekNo, prevMonthId) : 0;
+    const curSamil = getWeeklyCountForWeek("samil_pre", activeWeekNo);
+    const prevSamil = prevWeekNo > 0 ? getWeeklyCountForWeek("samil_pre", prevWeekNo, prevMonthId) : 0;
     const diffSamil = curSamil - prevSamil;
 
     const curZone = getWeeklyCountForWeek("zone", activeWeekNo);
@@ -1161,10 +1149,7 @@ export default function Dashboard() {
                   const tMembers = members.filter(m => m.teamId === t.teamId && ["normal", "new"].includes(m.status));
                   let present = 0, absent = 0, unreported = 0;
                   tMembers.forEach(m => {
-                    const rec = attendanceRecords.find(
-                      r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
-                    );
-                    const val = rec ? rec.value : "미보고";
+                    const val = getAttendanceValue(m.memberId, "sunday_actual");
                     if (isWorshipPresentValue(val)) present++;
                     else if (isWorshipAbsentValue(val)) absent++;
                     else unreported++;
@@ -1203,10 +1188,7 @@ export default function Dashboard() {
                   const zMembers = members.filter(m => m.zoneId === z.zoneId && ["normal", "new"].includes(m.status));
                   let present = 0, absent = 0, unreported = 0;
                   zMembers.forEach(m => {
-                    const rec = attendanceRecords.find(
-                      r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "sunday"
-                    );
-                    const val = rec ? rec.value : "미보고";
+                    const val = getAttendanceValue(m.memberId, "sunday_actual");
                     if (isWorshipPresentValue(val)) present++;
                     else if (isWorshipAbsentValue(val)) absent++;
                     else unreported++;
@@ -1546,7 +1528,7 @@ export default function Dashboard() {
         </h3>
         <div className="dashboard-grid">
           <div 
-            onClick={() => handleCardClick("주일 출석", "sunday_present")}
+            onClick={() => handleCardClick("주일사전 출석", "sunday_stat:sunday_pre:present")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
             title="클릭 시 출석자 명단 확인"
@@ -1555,14 +1537,14 @@ export default function Dashboard() {
               <CheckCircle size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">주일 출석</p>
-              <h2 className="stats-value">{attStats.present}명</h2>
-              <p className="stats-subtext">대면/비대면/대체 포함</p>
+              <p className="stats-label">주일사전 출석</p>
+              <h2 className="stats-value">{sundayPreStats.present}명</h2>
+              <p className="stats-subtext">사전보고 기준</p>
             </div>
           </div>
 
           <div 
-            onClick={() => handleCardClick("주일 결석", "sunday_absent")}
+            onClick={() => handleCardClick("주일사전 결석", "sunday_stat:sunday_pre:absent")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
             title="클릭 시 결석자 명단 확인"
@@ -1571,14 +1553,14 @@ export default function Dashboard() {
               <AlertCircle size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">주일 결석</p>
-              <h2 className="stats-value">{attStats.absent}명</h2>
-              <p className="stats-subtext">보고된 결석자</p>
+              <p className="stats-label">주일사전 결석</p>
+              <h2 className="stats-value">{sundayPreStats.absent}명</h2>
+              <p className="stats-subtext">사전보고 기준</p>
             </div>
           </div>
 
           <div 
-            onClick={() => handleCardClick("주일 미보고", "sunday_unreported")}
+            onClick={() => handleCardClick("주일사전 미보고", "sunday_stat:sunday_pre:unreported")}
             className="stats-card glass-panel clickable-card"
             style={{ cursor: "pointer" }}
             title="클릭 시 미보고자 명단 확인"
@@ -1587,9 +1569,57 @@ export default function Dashboard() {
               <HelpCircle size={22} />
             </div>
             <div className="stats-info">
-              <p className="stats-label">주일 미보고</p>
-              <h2 className="stats-value">{attStats.unreported}명</h2>
-              <p className="stats-subtext">출결 입력 필요</p>
+              <p className="stats-label">주일사전 미보고</p>
+              <h2 className="stats-value">{sundayPreStats.unreported}명</h2>
+              <p className="stats-subtext">사전보고 기준</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => handleCardClick("주일실제 출석", "sunday_stat:sunday_actual:present")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 출석자 명단 확인"
+          >
+            <div className="stats-icon-wrapper emerald">
+              <CheckCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">주일실제 출석</p>
+              <h2 className="stats-value">{sundayActualStats.present}명</h2>
+              <p className="stats-subtext">실제보고 기준</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => handleCardClick("주일실제 결석", "sunday_stat:sunday_actual:absent")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 결석자 명단 확인"
+          >
+            <div className="stats-icon-wrapper gold">
+              <AlertCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">주일실제 결석</p>
+              <h2 className="stats-value">{sundayActualStats.absent}명</h2>
+              <p className="stats-subtext">실제보고 기준</p>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => handleCardClick("주일실제 미보고", "sunday_stat:sunday_actual:unreported")}
+            className="stats-card glass-panel clickable-card"
+            style={{ cursor: "pointer" }}
+            title="클릭 시 미보고자 명단 확인"
+          >
+            <div className="stats-icon-wrapper muted">
+              <HelpCircle size={22} />
+            </div>
+            <div className="stats-info">
+              <p className="stats-label">주일실제 미보고</p>
+              <h2 className="stats-value">{sundayActualStats.unreported}명</h2>
+              <p className="stats-subtext">실제보고 기준</p>
             </div>
           </div>
         </div>
@@ -1600,22 +1630,23 @@ export default function Dashboard() {
         </div>
         <div className="dashboard-grid worship-breakdown-grid">
           {SUNDAY_WORSHIP_GROUPS.map((group) => {
-            const count = getSundayWorshipGroupCount(group);
+            const preCount = getSundayWorshipGroupCount(group, "sunday_pre");
+            const actualCount = getSundayWorshipGroupCount(group, "sunday_actual");
             return (
               <div
                 key={group.key}
-                onClick={() => handleCardClick(group.label, `worship_group:${group.key}`)}
+                onClick={() => handleCardClick(`${group.label} 실제보고`, `worship_group:${group.key}:sunday_actual`)}
                 className="stats-card glass-panel clickable-card worship-breakdown-card"
                 style={{ cursor: "pointer" }}
-                title={`${group.label} 명단 확인`}
+                title={`${group.label} 실제보고 명단 확인`}
               >
                 <div className={`stats-icon-wrapper ${group.icon}`}>
                   {group.key === "absent" ? <AlertCircle size={18} /> : group.key === "unreported" || group.key === "unchecked" ? <HelpCircle size={18} /> : <CheckCircle size={18} />}
                 </div>
                 <div className="stats-info">
                   <p className="stats-label">{group.label}</p>
-                  <h2 className="stats-value">{count}명</h2>
-                  <p className="stats-subtext">{group.subtext}</p>
+                  <h2 className="stats-value">{actualCount}명</h2>
+                  <p className="stats-subtext">사전 {preCount}명 · 실제 {actualCount}명</p>
                 </div>
               </div>
             );
