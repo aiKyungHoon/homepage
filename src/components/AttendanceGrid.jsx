@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, RefreshCw } from "lucide-react";
+import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, RefreshCw, Copy } from "lucide-react";
+import { isMockEnabled, db } from "../firebase";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const SIMON_SCHOOL_OPTIONS = ["월O", "목O", "둘다", "X"];
 const SIMON_SCHOOL_PRESENT_VALUES = SIMON_SCHOOL_OPTIONS.filter(option => option !== "X");
@@ -131,6 +133,16 @@ export default function AttendanceGrid() {
   const [noteModalMemberId, setNoteModalMemberId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const popoverRef = useRef(null);
+
+  // Report Modal state
+  const getTodayTabKey = () => {
+    const day = new Date().getDay(); // 0: Sun, 1: Mon, ...
+    const keys = ["일", "월", "화", "수", "목", "금", "토"];
+    return keys[day];
+  };
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [selectedReportDay, setSelectedReportDay] = useState(getTodayTabKey());
+  const [prevWeekRecords, setPrevWeekRecords] = useState([]);
 
   // Detailed worship sub-field edit states
   const [editWorshipType, setEditWorshipType] = useState("정규성전");
@@ -1190,6 +1202,321 @@ export default function AttendanceGrid() {
     return val;
   };
 
+  const reportTabs = [
+    { key: "월", label: "월대체", category: "sunday_actual", title: "월대체 출결 보고" },
+    { key: "화", label: "삼일사전", category: "samil_pre", title: "사전 출결 보고" },
+    { key: "수", label: "삼일실제", category: "samil_actual", title: "최종 출결 보고" },
+    { key: "목", label: "목대체", category: "samil_actual", title: "목대체 출결 보고" },
+    { key: "금", label: "주일사전", category: "sunday_pre", title: "사전 출결 보고" },
+    { key: "토", label: "주일사전", category: "sunday_pre", title: "사전 출결 보고" },
+    { key: "일", label: "주일실제", category: "sunday_actual", title: "최종 출결 보고" },
+  ];
+
+  const formatNamesInRows = (names, countPerRow = 5) => {
+    const rows = [];
+    for (let i = 0; i < names.length; i += countPerRow) {
+      rows.push(names.slice(i, i + countPerRow).join("   "));
+    }
+    return rows.join("\n");
+  };
+
+  const generateReportText = (dayKey) => {
+    const tab = reportTabs.find(t => t.key === dayKey);
+    if (!tab) return "";
+    
+    const isPre = tab.category.endsWith("_pre");
+    const activeMembers = [...filteredMembers];
+    
+    const getWorshipData = (member) => {
+      const val = getWeeklyValue(member.memberId, tab.category);
+      return isPre ? parsePreWorship(val) : parseActualWorship(val);
+    };
+    
+    const churgRegMembers = activeMembers.filter(m => getMemberRegistrationType(m) === "총등" || getMemberRegistrationType(m) === "교등");
+    const confessedMembers = activeMembers.filter(m => getMemberRegistrationType(m) === "입교");
+    
+    const calculateGroupStats = (group) => {
+      let presentCount = 0;
+      let daemyeonCount = 0;
+      let hwajeongCount = 0;
+      
+      const hwajeongTimes = { "7:30": 0, "9:00": 0, "12:00": 0, "15:00": 0, "20:00": 0 };
+      
+      let moimroomCount = 0;
+      const moimroomHongdaeTimes = { "12:00": 0, "17:00": 0, "20:00": 0 };
+      let moimroomJuyeopCount = 0;
+      const otherMoimrooms = {};
+      
+      let brotherChurchCount = 0;
+      let coopChurchCount = 0;
+      let centerCount = 0;
+      
+      let zoomCount = 0;
+      let zoomOnCount = 0;
+      let zoomOffCount = 0;
+      
+      let altCount = 0;
+      let altTodayCount = 0;
+      let altMonthCount = 0;
+      
+      let absentCount = 0;
+      let absentOneTime = 0;
+      let absentContinuous = 0;
+      let absentLongTerm = 0;
+      
+      const newAbsentNames = [];
+      
+      group.forEach(m => {
+        const parsed = getWorshipData(m);
+        const type = parsed.type;
+        const time = parsed.time || "";
+        
+        const isAbsentType = ["일회성", "장기관리가능", "장기관리불가능", "결석"].includes(type);
+        const isPresentType = type && type !== "미보고" && type !== "미확인" && type !== "출결제외자" && !isAbsentType;
+        
+        if (isPresentType) {
+          presentCount++;
+          
+          const isFaceToFace = [
+            "정규성전", "모임방(상수)", "모임방(홍대/좌)", "모임방(홍대/우)", "모임방(서교)", 
+            "모임방(주엽)", "모임방(을지로)", "야외예배", "사랑예배", "그 외 예배(특이사항에 기재)"
+          ].includes(type) || type.startsWith("형제교회") || type.startsWith("협력교회");
+          
+          const isZoom = ["줌/화면O", "줌/화면X"].includes(type);
+          const isAlt = [
+            "1:1대체예배(수주일)", "만남대체예배(수주일)", "마이심대체예배(특이사항에 요일기재)",
+            "대체성전", "대체줌", "대체만남예배(수주일 외)", "대체1:1예배(수주일 외)", "지파교육대체(지복사,지구사 등)"
+          ].includes(type);
+          
+          if (isFaceToFace) {
+            daemyeonCount++;
+            if (type === "정규성전") {
+              hwajeongCount++;
+              const normTime = time.replace(/\s+/g, "");
+              if (normTime.includes("7:30") || normTime.includes("7시30분")) hwajeongTimes["7:30"]++;
+              else if (normTime.includes("9:00") || normTime.includes("9시")) hwajeongTimes["9:00"]++;
+              else if (normTime.includes("12:00") || normTime.includes("12시")) hwajeongTimes["12:00"]++;
+              else if (normTime.includes("15:00") || normTime.includes("15시")) hwajeongTimes["15:00"]++;
+              else if (normTime.includes("20:00") || normTime.includes("20시")) hwajeongTimes["20:00"]++;
+            } else if (type.startsWith("모임방")) {
+              moimroomCount++;
+              const isHongdae = ["모임방(상수)", "모임방(홍대/좌)", "모임방(홍대/우)", "모임방(서교)"].includes(type);
+              const isJuyeop = type === "모임방(주엽)";
+              
+              if (isHongdae) {
+                const normTime = time.replace(/\s+/g, "");
+                if (normTime.includes("12:00") || normTime.includes("12시")) moimroomHongdaeTimes["12:00"]++;
+                else if (normTime.includes("17:00") || normTime.includes("17시")) moimroomHongdaeTimes["17:00"]++;
+                else if (normTime.includes("20:00") || normTime.includes("20시")) moimroomHongdaeTimes["20:00"]++;
+              } else if (isJuyeop) {
+                moimroomJuyeopCount++;
+              } else {
+                const cleanName = type.replace("모임방(", "").replace(")", "");
+                otherMoimrooms[cleanName] = (otherMoimrooms[cleanName] || 0) + 1;
+              }
+            } else if (type.startsWith("형제교회")) {
+              brotherChurchCount++;
+            } else if (type.startsWith("협력교회")) {
+              coopChurchCount++;
+            }
+          } else if (isZoom) {
+            zoomCount++;
+            if (type === "줌/화면O") zoomOnCount++;
+            if (type === "줌/화면X") zoomOffCount++;
+          } else if (isAlt) {
+            if (type === "지파교육대체(지복사,지구사 등)") {
+              centerCount++;
+              daemyeonCount++;
+            } else {
+              altCount++;
+              if (type === "마이심대체예배(특이사항에 요일기재)") {
+                altMonthCount++;
+              } else {
+                altTodayCount++;
+              }
+            }
+          }
+        } else if (isAbsentType) {
+          absentCount++;
+          if (type === "일회성") absentOneTime++;
+          else if (type === "장기관리가능") absentContinuous++;
+          else if (type === "장기관리불가능") absentLongTerm++;
+          
+          const prevRec = prevWeekRecords.find(pr => pr.memberId === m.memberId);
+          if (prevRec) {
+            const prevWorship = isPre ? parsePreWorship(prevRec.value) : parseActualWorship(prevRec.value);
+            const prevType = prevWorship.type;
+            const prevIsAbsent = ["일회성", "장기관리가능", "장기관리불가능", "결석"].includes(prevType);
+            const prevWasPresent = prevType && prevType !== "미보고" && prevType !== "미확인" && prevType !== "출결제외자" && !prevIsAbsent;
+            if (prevWasPresent) {
+              newAbsentNames.push(m.name);
+            }
+          }
+        }
+      });
+      
+      return {
+        totalCount: group.length,
+        presentCount,
+        daemyeonCount,
+        hwajeongCount,
+        hwajeongTimes,
+        moimroomCount,
+        moimroomHongdaeTimes,
+        moimroomJuyeopCount,
+        otherMoimrooms,
+        brotherChurchCount,
+        coopChurchCount,
+        centerCount,
+        zoomCount,
+        zoomOnCount,
+        zoomOffCount,
+        altCount,
+        altTodayCount,
+        altMonthCount,
+        absentCount,
+        absentOneTime,
+        absentContinuous,
+        absentLongTerm,
+        newAbsentNames
+      };
+    };
+    
+    const regStats = calculateGroupStats(churgRegMembers);
+    const confStats = calculateGroupStats(confessedMembers);
+    
+    const unreportedNames = activeMembers
+      .filter(m => {
+        const parsed = getWorshipData(m);
+        return parsed.type === "미보고" || parsed.type === "";
+      })
+      .map(m => m.name);
+      
+    const today = new Date();
+    const yy = String(today.getFullYear()).slice(-2);
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    const weekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const dayOfWeek = weekdays[today.getDay()];
+    const todayStr = `${yy}${mm}${dd}(${dayOfWeek})`;
+    
+    const buildSectionText = (title, stats) => {
+      let t = `▪️${title} ${stats.totalCount}명/출석 ${stats.presentCount}명\n`;
+      t += `1. 대면 ${stats.daemyeonCount}명\n`;
+      t += `- 화정성전 ${stats.hwajeongCount}명\n`;
+      t += `*7시30분 ${stats.hwajeongTimes["7:30"]}\n`;
+      t += `*9시 ${stats.hwajeongTimes["9:00"]}\n`;
+      t += `*12시 ${stats.hwajeongTimes["12:00"]}\n`;
+      t += `*15시 ${stats.hwajeongTimes["15:00"]}\n`;
+      t += `*20시 ${stats.hwajeongTimes["20:00"]}\n\n`;
+      
+      t += `- 모임방 ${stats.moimroomCount}명\n`;
+      t += `*홍대/상수\n`;
+      t += `- 12시 ${stats.moimroomHongdaeTimes["12:00"]}\n`;
+      t += `- 17시 ${stats.moimroomHongdaeTimes["17:00"]}\n`;
+      t += `- 20시 ${stats.moimroomHongdaeTimes["20:00"]}\n\n`;
+      
+      t += `*주엽\n`;
+      t += `- 12시 ${stats.moimroomJuyeopCount}\n\n`;
+      
+      t += `*그외 모임방\n`;
+      if (Object.keys(stats.otherMoimrooms).length > 0) {
+        Object.entries(stats.otherMoimrooms).forEach(([room, count]) => {
+          t += `- ${room} ${count}\n`;
+        });
+      } else {
+        t += `- 장소 0\n`;
+      }
+      t += `\n`;
+      
+      t += `- 기타\n`;
+      t += `*형제교회 ${stats.brotherChurchCount}명\n`;
+      t += `*협력교회 ${stats.coopChurchCount}명\n`;
+      t += `*센터수강 ${stats.centerCount}명\n\n`;
+      
+      t += `2. 줌 ${stats.zoomCount}명\n`;
+      t += `- 화면 on : ${stats.zoomOnCount}\n`;
+      t += `- 화면 off : ${stats.zoomOffCount}\n\n`;
+      
+      t += `3. 대체 ${stats.altCount}명\n`;
+      t += `- 당일 ${stats.altTodayCount}\n`;
+      t += `- 월대체 ${stats.altMonthCount}\n\n`;
+      
+      t += `4. 결석 ${stats.absentCount}명\n`;
+      t += `- 일회성 ${stats.absentOneTime}\n`;
+      t += `- 연속 ${stats.absentContinuous}\n`;
+      t += `- 장기 ${stats.absentLongTerm}\n\n`;
+      
+      t += `‼️전주 대비 신규 결석 ${stats.newAbsentNames.length}명\n`;
+      t += stats.newAbsentNames.length > 0 
+        ? formatNamesInRows(stats.newAbsentNames) 
+        : "(없음)";
+      return t;
+    };
+    
+    let report = `[ ${todayStr} ${tab.title} ]\n\n`;
+    report += `상암지역\n\n`;
+    report += `▪️출결재적(총교입) 190명\n`;
+    report += `- 목표 000명\n`;
+    report += `- 출석 ${regStats.presentCount + confStats.presentCount}명\n\n`;
+    
+    report += buildSectionText("총교등자", regStats);
+    report += `\n\n`;
+    report += `➖➖➖➖➖➖\n\n`;
+    report += buildSectionText("입교자", confStats);
+    report += `\n\n`;
+    report += `➖➖➖➖➖➖\n\n`;
+    report += `5. 미보고 ${unreportedNames.length}명\n`;
+    report += unreportedNames.length > 0 
+      ? formatNamesInRows(unreportedNames) 
+      : "(없음)";
+      
+    return report;
+  };
+
+  useEffect(() => {
+    if (isReportModalOpen) {
+      if (activeWeekNo > 1) {
+        const prev = attendanceRecords.filter(r => r.weekNo === activeWeekNo - 1);
+        setPrevWeekRecords(prev);
+      } else {
+        const [year, month] = activeMonthId.split("-").map(Number);
+        let prevYear = year;
+        let prevMonth = month - 1;
+        if (prevMonth === 0) {
+          prevMonth = 12;
+          prevYear -= 1;
+        }
+        const prevMonthId = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+        
+        if (isMockEnabled) {
+          const allAtt = JSON.parse(localStorage.getItem("mock_attendance")) || [];
+          const prev = allAtt.filter(r => r.monthId === prevMonthId);
+          if (prev.length > 0) {
+            const maxWeek = Math.max(...prev.map(d => d.weekNo));
+            setPrevWeekRecords(prev.filter(d => d.weekNo === maxWeek));
+          } else {
+            setPrevWeekRecords([]);
+          }
+        } else {
+          const q = query(collection(db, "attendanceRecords"), where("monthId", "==", prevMonthId));
+          getDocs(q).then(snap => {
+            const docs = snap.docs.map(d => ({ recordId: d.id, ...d.data() }));
+            if (docs.length > 0) {
+              const maxWeek = Math.max(...docs.map(d => d.weekNo));
+              setPrevWeekRecords(docs.filter(d => d.weekNo === maxWeek));
+            } else {
+              setPrevWeekRecords([]);
+            }
+          }).catch(err => {
+            console.error("Failed to load prev month records:", err);
+            setPrevWeekRecords([]);
+          });
+        }
+      }
+    }
+  }, [isReportModalOpen, activeWeekNo, activeMonthId, attendanceRecords]);
+
   return (
     <div className="attendance-grid-wrapper animate-fade">
       {/* Filters Panel */}
@@ -1239,6 +1566,28 @@ export default function AttendanceGrid() {
             >
               <Download size={13} />
               <span>엑셀 다운로드</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsReportModalOpen(true)}
+              style={{
+                height: "30px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0 12px",
+                fontSize: "12px",
+                backgroundColor: "rgba(6, 182, 212, 0.15)",
+                color: "var(--accent-cyan)",
+                border: "1px solid var(--accent-cyan)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer"
+              }}
+            >
+              <Copy size={13} />
+              <span>결과텍스트 복사</span>
             </button>
           </div>
         </div>
@@ -1750,6 +2099,115 @@ export default function AttendanceGrid() {
               >
                 <Save size={14} />
                 {getMemberNote(noteModalMemberId) ? "수정 저장" : "저장"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isReportModalOpen && (
+        <div className="note-modal-backdrop" onMouseDown={() => setIsReportModalOpen(false)}>
+          <div className="note-modal glass-panel" onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(680px, 90vw)", maxWidth: "100%" }}>
+            <div className="note-modal-header" style={{ marginBottom: "16px" }}>
+              <div>
+                <p className="note-modal-eyebrow">출결관리 보고서</p>
+                <h3 style={{ fontSize: "16px", fontWeight: "700" }}>결과 텍스트 자동 생성</h3>
+              </div>
+              <button type="button" className="icon-button" onClick={() => setIsReportModalOpen(false)} aria-label="닫기">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Day of Week Selector Tabs */}
+            <div style={{ display: "flex", gap: "4px", marginBottom: "16px", overflowX: "auto", paddingBottom: "4px", borderBottom: "1px solid var(--glass-border)" }}>
+              {reportTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setSelectedReportDay(tab.key)}
+                  style={{
+                    flex: "0 0 auto",
+                    padding: "8px 12px",
+                    borderRadius: "6px",
+                    border: "none",
+                    background: selectedReportDay === tab.key ? "var(--accent-cyan)" : "transparent",
+                    color: selectedReportDay === tab.key ? "#000" : "var(--text-muted)",
+                    fontWeight: "700",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "2px",
+                    transition: "all 0.2s"
+                  }}
+                >
+                  <span>{tab.key}요일</span>
+                  <span style={{ fontSize: "10px", opacity: selectedReportDay === tab.key ? 0.9 : 0.6 }}>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Textarea Preview */}
+            <textarea
+              readOnly
+              value={generateReportText(selectedReportDay)}
+              className="note-textarea"
+              style={{
+                fontFamily: "monospace",
+                fontSize: "12px",
+                lineHeight: "1.5",
+                backgroundColor: "rgba(0, 0, 0, 0.2)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-sm)",
+                padding: "12px",
+                width: "100%",
+                height: "360px",
+                resize: "none"
+              }}
+            />
+
+            <div className="note-modal-actions" style={{ marginTop: "16px", display: "flex", justifyContent: "flex-end", gap: "8px" }}>
+              <button
+                type="button"
+                className="note-action ghost"
+                onClick={() => setIsReportModalOpen(false)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "1px solid var(--glass-border)",
+                  backgroundColor: "transparent",
+                  color: "var(--text-muted)",
+                  fontWeight: "700",
+                  cursor: "pointer"
+                }}
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                className="note-action primary"
+                onClick={() => {
+                  const text = generateReportText(selectedReportDay);
+                  navigator.clipboard.writeText(text);
+                  alert(`${selectedReportDay}요일 출결 보고서 텍스트가 클립보드에 복사되었습니다.`);
+                }}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "var(--radius-sm)",
+                  border: "none",
+                  backgroundColor: "var(--accent-cyan)",
+                  color: "#000",
+                  fontWeight: "700",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px"
+                }}
+              >
+                <Copy size={14} />
+                <span>클립보드 복사</span>
               </button>
             </div>
           </div>
