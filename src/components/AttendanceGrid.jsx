@@ -581,7 +581,10 @@ export default function AttendanceGrid() {
     const configuredDownloadNames = Array.isArray(appSettings?.attendanceDownloadNames)
       ? appSettings.attendanceDownloadNames.map(name => String(name || "").trim()).filter(Boolean)
       : [];
-    const configuredIdSet = new Set(configuredDownloadTargets.map(item => String(item?.memberId || "").trim()).filter(Boolean));
+    const configuredIdSet = new Set(configuredDownloadTargets
+      .filter(item => !String(item?.name || "").trim())
+      .map(item => String(item?.memberId || "").trim())
+      .filter(Boolean));
     const configuredNameSet = new Set([
       ...configuredDownloadTargets.map(item => String(item?.name || "").trim()).filter(Boolean),
       ...configuredDownloadNames

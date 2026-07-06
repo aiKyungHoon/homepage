@@ -48,8 +48,8 @@ export default function MonthClose() {
     const rawTargets = savedTargets.length > 0 ? savedTargets : legacyNames;
     const resolvedTargets = rawTargets.map(target => {
       const matchedMember = members.find(member => (
-        (target.memberId && member.memberId === target.memberId) ||
-        (target.name && member.name === target.name)
+        (target.name && member.name === target.name) ||
+        (!target.name && target.memberId && member.memberId === target.memberId)
       ));
       return {
         memberId: matchedMember?.memberId || target.memberId || "",
