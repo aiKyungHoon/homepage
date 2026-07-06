@@ -957,21 +957,21 @@ export default function AttendanceGrid() {
                 ? 320
                 : Math.min(260, Math.max(rect.width, 190));
 
-      const optionCount = category === "visit" || isAnyWorshipCell ? 0 : getCategoryOptions(category).length;
-
-      const estimatedPopoverHeight = category === "visit"
-        ? 230
-        : isWorshipTypeCell
-          ? 360
-          : isWorshipConfirmCell
-            ? 310
-            : isWorshipReasonCell
-              ? 170
-              : isWorshipAuthCell
-                ? 210
-                : Math.min(320, (optionCount * 40) + 58);
-
       const viewportPadding = 8;
+      const optionCount = category === "visit" || isAnyWorshipCell ? 0 : getCategoryOptions(category).length;
+      const maxVisiblePopoverHeight = window.innerHeight - (viewportPadding * 2);
+      const estimatedContentHeight = category === "visit"
+        ? 260
+        : isWorshipTypeCell
+          ? 640
+          : isWorshipConfirmCell
+            ? 320
+            : isWorshipReasonCell
+              ? 190
+              : isWorshipAuthCell
+                ? 360
+                : (optionCount * 40) + 62;
+      const estimatedPopoverHeight = Math.min(maxVisiblePopoverHeight, estimatedContentHeight);
       const nextX = Math.min(
         Math.max(rect.left, viewportPadding),
         window.innerWidth - popoverWidth - viewportPadding
