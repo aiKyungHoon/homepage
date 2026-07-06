@@ -137,8 +137,13 @@ export default function OrgManagement() {
     if (!zone) return Number.MAX_SAFE_INTEGER;
     const teamName = getTeamName(zone.teamId);
     const searchableName = `${teamName} ${zone.name || ""}`;
-    const zoneNumberMatch = searchableName.match(/(\d+)\s*구역/);
-    const zoneNumber = zoneNumberMatch ? Number(zoneNumberMatch[1]) : Number.MAX_SAFE_INTEGER;
+    const zoneNumberMatch = searchableName.match(/(\d+)(?:-(\d+))?\s*구역/);
+    let zoneNumber = Number.MAX_SAFE_INTEGER;
+    if (zoneNumberMatch) {
+      const major = Number(zoneNumberMatch[1]);
+      const minor = zoneNumberMatch[2] ? Number(zoneNumberMatch[2]) : 0;
+      zoneNumber = major + (minor / 100);
+    }
     const teamOrder = [
       { keyword: "보라", order: 0 },
       { keyword: "해봄", order: 1 },
