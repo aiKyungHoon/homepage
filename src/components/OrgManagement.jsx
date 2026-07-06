@@ -3,6 +3,39 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search, RefreshCw } from "lucide-react";
 
+const REGISTRATION_TYPE_OPTIONS = ["총등", "교등", "입교"];
+const DEFAULT_REGISTRATION_TYPES = {
+  박어진: "교등",
+  김혜주: "교등",
+  허성태: "교등",
+  윤명근: "교등",
+  정운선: "교등",
+  박진우98: "교등",
+  김은주: "교등",
+  김성주: "교등",
+  신주영: "교등",
+  최현석: "교등",
+  김태건: "교등",
+  이혜연: "교등",
+  권보회: "교등",
+  오영심: "교등",
+  진성은: "교등",
+  김가희: "교등",
+  김소영: "교등",
+  김정은: "교등",
+  박상민: "교등",
+  송하신: "교등",
+  이미지: "교등",
+  이주영: "교등",
+  하헌영: "교등",
+  박재은: "교등",
+  조인겸: "입교",
+  윤준수: "입교",
+  문성현: "입교",
+  윤두진: "입교",
+  임상호: "입교"
+};
+
 export default function OrgManagement() {
   const { currentUser } = useAuth();
   const {
@@ -46,6 +79,7 @@ export default function OrgManagement() {
   const [memberTeamFilter, setMemberTeamFilter] = useState("");
   const [memberZoneFilter, setMemberZoneFilter] = useState("");
   const [memberStatusFilter, setMemberStatusFilter] = useState("");
+  const [memberRegistrationFilter, setMemberRegistrationFilter] = useState("");
 
   // Modals / Form toggles
   const [showMemberModal, setShowMemberModal] = useState(false);
@@ -63,7 +97,8 @@ export default function OrgManagement() {
     rank: "청년",
     teamId: "",
     zoneId: "",
-    status: "normal"
+    status: "normal",
+    registrationType: "총등"
   });
 
   // --- Zone Form State ---
@@ -191,7 +226,10 @@ export default function OrgManagement() {
 
     if (query) {
       const tokens = query.split(/[\s,]+/).filter(Boolean);
-      list = list.filter(m => tokens.some(token => String(m.name || "").toLowerCase().includes(token)));
+      list = list.filter(m => tokens.some(token => (
+        String(m.name || "").toLowerCase().includes(token) ||
+        getMemberRegistrationType(m).toLowerCase().includes(token)
+      )));
     }
 
     if (role !== "team" && memberTeamFilter) {
@@ -204,6 +242,10 @@ export default function OrgManagement() {
 
     if (memberStatusFilter) {
       list = list.filter(m => m.status === memberStatusFilter);
+    }
+
+    if (memberRegistrationFilter) {
+      list = list.filter(m => getMemberRegistrationType(m) === memberRegistrationFilter);
     }
 
     return [...list].sort((a, b) => {
@@ -235,7 +277,8 @@ export default function OrgManagement() {
       rank: "청년",
       teamId: role === "team" ? currentUser.teamId : (teams[0]?.teamId || ""),
       zoneId: getScopedZones()[0]?.zoneId || "",
-      status: "normal"
+      status: "normal",
+      registrationType: "총등"
     });
     setShowMemberModal(true);
   };
@@ -248,7 +291,8 @@ export default function OrgManagement() {
       rank: m.rank,
       teamId: m.teamId,
       zoneId: m.zoneId,
-      status: m.status
+      status: m.status,
+      registrationType: getMemberRegistrationType(m)
     });
     setShowMemberModal(true);
   };
@@ -408,6 +452,11 @@ export default function OrgManagement() {
 
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "없음";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "구역 없음";
+  const getMemberRegistrationType = (member) => {
+    const savedValue = String(member?.registrationType || "").trim();
+    if (REGISTRATION_TYPE_OPTIONS.includes(savedValue)) return savedValue;
+    return DEFAULT_REGISTRATION_TYPES[member?.name] || "총등";
+  };
   const filteredMembers = getFilteredMembers();
   const memberFilterZones = getSortedZones(getScopedZones().filter(z => {
     if (role === "team") return true;
@@ -533,7 +582,17 @@ export default function OrgManagement() {
               <option value="excluded">출결제외자</option>
             </select>
 
-            {(memberSearchQuery || memberTeamFilter || memberZoneFilter || memberStatusFilter) && (
+            <select
+              value={memberRegistrationFilter}
+              onChange={(e) => setMemberRegistrationFilter(e.target.value)}
+            >
+              <option value="">등록구분 전체</option>
+              {REGISTRATION_TYPE_OPTIONS.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+
+            {(memberSearchQuery || memberTeamFilter || memberZoneFilter || memberStatusFilter || memberRegistrationFilter) && (
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -542,6 +601,7 @@ export default function OrgManagement() {
                   setMemberTeamFilter("");
                   setMemberZoneFilter("");
                   setMemberStatusFilter("");
+                  setMemberRegistrationFilter("");
                 }}
               >
                 초기화
@@ -553,6 +613,7 @@ export default function OrgManagement() {
             <table className="org-table">
               <thead>
                 <tr>
+                  <th>등록구분</th>
                   <th>이름</th>
                   <th>직분</th>
                   <th>소속 팀</th>
@@ -564,6 +625,9 @@ export default function OrgManagement() {
               <tbody>
                 {filteredMembers.map(m => (
                   <tr key={m.memberId}>
+                    <td>
+                      <span className="badge status-normal">{getMemberRegistrationType(m)}</span>
+                    </td>
                     <td style={{fontWeight: 600}}>{m.name}</td>
                     <td>{m.rank}</td>
                     <td>{getTeamName(m.teamId)}</td>
@@ -589,7 +653,7 @@ export default function OrgManagement() {
                 ))}
                 {filteredMembers.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="empty-table-cell">검색/필터 조건에 맞는 성도가 없습니다.</td>
+                    <td colSpan="7" className="empty-table-cell">검색/필터 조건에 맞는 성도가 없습니다.</td>
                   </tr>
                 )}
               </tbody>
@@ -797,6 +861,18 @@ export default function OrgManagement() {
                   <option value="집사">집사</option>
                   <option value="권사">권사</option>
                   <option value="장로">장로</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>등록구분</label>
+                <select
+                  value={memberForm.registrationType}
+                  onChange={(e) => setMemberForm(prev => ({ ...prev, registrationType: e.target.value }))}
+                >
+                  {REGISTRATION_TYPE_OPTIONS.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
               </div>
 
