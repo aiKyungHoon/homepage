@@ -140,6 +140,16 @@ export default function Dashboard() {
     { key: "unreported", label: "미보고", values: ["미보고"], icon: "muted", subtext: "출결 입력 필요" },
     { key: "unchecked", label: "미확인", values: ["미확인"], icon: "muted", subtext: "확인 필요" }
   ];
+  const AUTH_CLASSES = [
+    { key: "qr", label: "큐알인증", icon: "emerald" },
+    { key: "no_auth", label: "인증안함", icon: "muted" },
+    { key: "auth_error", label: "인증오류", icon: "red" },
+    { key: "online", label: "온라인예배", icon: "cyan" },
+    { key: "video", label: "영상예배", icon: "blue" },
+    { key: "substitute", label: "대체예배", icon: "purple" },
+    { key: "excused", label: "사유결석", icon: "gold" },
+    { key: "excluded", label: "출결제외", icon: "purple" }
+  ];
   const getWorshipGroupByKey = (key) => SUNDAY_WORSHIP_GROUPS.find(group => group.key === key);
   const isWorshipValueInGroup = (value, group) => group?.values.includes(getWorshipTypeValue(value));
   const legacyWorshipCategoryMap = {
@@ -227,6 +237,16 @@ export default function Dashboard() {
   const getSundayWorshipGroupCount = (group, category = "sunday_actual") => scopedMembers.filter(m => {
     return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
   }).length;
+
+  const getSundayActualAuthCount = (label) => {
+    return scopedMembers.filter(m => {
+      const val = getAttendanceValue(m.memberId, "sunday_actual");
+      if (!val || val === "미보고") return false;
+      const parts = val.split("|").map(s => s.trim());
+      const authClass = parts[4] || "";
+      return authClass === label;
+    }).length;
+  };
 
   const getZoneWorshipStats = () => {
     let entered = 0;      // 대면
@@ -502,6 +522,15 @@ export default function Dashboard() {
       const group = getWorshipGroupByKey(groupKey);
       list = scopedMembers.filter(m => {
         return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
+      });
+    } else if (String(categoryOrType).startsWith("auth_class:")) {
+      const [, label] = String(categoryOrType).split(":");
+      list = scopedMembers.filter(m => {
+        const val = getAttendanceValue(m.memberId, "sunday_actual");
+        if (!val || val === "미보고") return false;
+        const parts = val.split("|").map(s => s.trim());
+        const authClass = parts[4] || "";
+        return authClass === label;
       });
     } else if (categoryOrType === "zone_entered") {
       list = scopedMembers.filter(m => {
@@ -1689,6 +1718,34 @@ export default function Dashboard() {
                   <p className="stats-label">{group.label}</p>
                   <h2 className="stats-value">{actualCount}명</h2>
                   <p className="stats-subtext">사전 {preCount}명 · 실제 {actualCount}명</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="worship-breakdown-header" style={{ marginTop: "32px" }}>
+          <span>주일실제 인증분류</span>
+          <small>카드를 클릭하면 해당 인증분류 명단을 확인할 수 있습니다.</small>
+        </div>
+        <div className="dashboard-grid worship-breakdown-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          {AUTH_CLASSES.map((group) => {
+            const count = getSundayActualAuthCount(group.label);
+            return (
+              <div
+                key={group.key}
+                onClick={() => handleCardClick(`${group.label} (주일실제)`, `auth_class:${group.label}`)}
+                className="stats-card glass-panel clickable-card worship-breakdown-card"
+                style={{ cursor: "pointer" }}
+                title={`${group.label} 명단 확인`}
+              >
+                <div className={`stats-icon-wrapper ${group.icon}`}>
+                  <CheckCircle size={18} />
+                </div>
+                <div className="stats-info">
+                  <p className="stats-label">{group.label}</p>
+                  <h2 className="stats-value">{count}명</h2>
+                  <p className="stats-subtext">주일실제 기준</p>
                 </div>
               </div>
             );
