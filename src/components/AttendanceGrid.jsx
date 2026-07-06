@@ -41,7 +41,7 @@ export default function AttendanceGrid() {
 
   const role = currentUser?.role;
 
-  const getStickyStyle = (colName) => {
+  const getStickyStyle = (colName, isHeader = false) => {
     let left = 0;
     let width = 0;
     
@@ -63,13 +63,21 @@ export default function AttendanceGrid() {
       return {};
     }
     
-    return {
+    const style = {
       position: "sticky",
       left: `${left}px`,
       width: `${width}px`,
       minWidth: `${width}px`,
       maxWidth: `${width}px`,
+      zIndex: isHeader ? 15 : 5,
+      backgroundColor: "var(--bg-secondary)",
     };
+
+    if (isHeader) {
+      style.top = 0;
+    }
+
+    return style;
   };
 
   // Local Filter states
@@ -1290,10 +1298,10 @@ export default function AttendanceGrid() {
           <table className="attendance-table">
             <thead>
               <tr>
-                <th className="sticky-col" style={getStickyStyle("name")}>이름</th>
-                <th className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={getStickyStyle("rank")}>직분</th>
-                {role === "admin" && <th className="sticky-col" style={getStickyStyle("team")}>소속 팀</th>}
-                {role !== "leader" && <th className="sticky-col sticky-col-last" style={getStickyStyle("zone")}>소속 구역</th>}
+                <th className="sticky-col" style={getStickyStyle("name", true)}>이름</th>
+                <th className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={getStickyStyle("rank", true)}>직분</th>
+                {role === "admin" && <th className="sticky-col" style={getStickyStyle("team", true)}>소속 팀</th>}
+                {role !== "leader" && <th className="sticky-col sticky-col-last" style={getStickyStyle("zone", true)}>소속 구역</th>}
                 {shouldShowColumn("samil_pre") && <th className="sep-col worship-report-col" style={{ whiteSpace: "nowrap" }}>삼일사전<br/>(분류/시간)</th>}
                 {shouldShowColumn("samil_pre_confirm") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>예배확인<br/>방법</th>}
                 {shouldShowColumn("samil_pre_reason") && <th className="worship-report-col" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>미확인/미보고 사유<br/>(미인증 사유)</th>}
@@ -1347,7 +1355,7 @@ export default function AttendanceGrid() {
 
                 return (
                   <tr key={member.memberId} className="grid-row">
-                    <td className="sticky-col member-name-col" style={getStickyStyle("name")}>
+                    <td className="sticky-col member-name-col" style={getStickyStyle("name", false)}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span className={`member-name ${leadershipMember ? "leadership-member-name" : ""}`}>{member.name}</span>
                         <span className={`status-dot status-${member.status}`}></span>
@@ -1370,9 +1378,9 @@ export default function AttendanceGrid() {
                         </button>
                       </div>
                     </td>
-                    <td className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={{ ...getStickyStyle("rank"), fontSize: "12px", color: "var(--text-secondary)" }}>{member.rank}</td>
-                    {role === "admin" && <td className="sticky-col" style={{ ...getStickyStyle("team"), fontSize: "12px", color: "var(--text-secondary)" }}>{getTeamName(member.teamId)}</td>}
-                    {role !== "leader" && <td className="sticky-col sticky-col-last" style={{ ...getStickyStyle("zone"), fontSize: "12px", color: "var(--text-secondary)", textAlign: "left" }}>{getZoneName(member.zoneId)}</td>}
+                    <td className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={{ ...getStickyStyle("rank", false), fontSize: "12px", color: "var(--text-secondary)" }}>{member.rank}</td>
+                    {role === "admin" && <td className="sticky-col" style={{ ...getStickyStyle("team", false), fontSize: "12px", color: "var(--text-secondary)" }}>{getTeamName(member.teamId)}</td>}
+                    {role !== "leader" && <td className="sticky-col sticky-col-last" style={{ ...getStickyStyle("zone", false), fontSize: "12px", color: "var(--text-secondary)", textAlign: "left" }}>{getZoneName(member.zoneId)}</td>}
                     
                     {/* Weekly worship */}
                     {shouldShowColumn("samil_pre") && (
