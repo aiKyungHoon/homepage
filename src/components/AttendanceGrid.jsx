@@ -2780,6 +2780,39 @@ export default function AttendanceGrid() {
             overflow-y: hidden !important;
             -webkit-overflow-scrolling: touch !important;
           }
+
+          /* Disable sticky for secondary columns on mobile */
+          .attendance-table th.sticky-col,
+          .attendance-table td.sticky-col {
+            position: static !important;
+            width: auto !important;
+            min-width: unset !important;
+            max-width: unset !important;
+            box-shadow: none !important;
+            border-right: 1px solid var(--glass-border) !important;
+          }
+
+          /* Keep only the Name column sticky on mobile */
+          .attendance-table th.sticky-col:first-child,
+          .attendance-table td.sticky-col.member-name-col {
+            position: sticky !important;
+            left: 0 !important;
+            width: 84px !important;
+            min-width: 84px !important;
+            max-width: 84px !important;
+            background-color: var(--bg-secondary) !important;
+            box-shadow: 3px 0 6px -3px rgba(0,0,0,0.3) !important;
+            border-right: 2px solid var(--glass-border) !important;
+          }
+
+          .attendance-table th.sticky-col:first-child {
+            z-index: 15 !important;
+            top: 0 !important;
+          }
+          
+          .attendance-table td.sticky-col.member-name-col {
+            z-index: 12 !important;
+          }
         }
 
         .attendance-table {
