@@ -29,7 +29,8 @@ export function DataProvider({ children }) {
   const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
   const [appSettings, setAppSettings] = useState({
-    attendanceDownloadNames: []
+    attendanceDownloadNames: [],
+    attendanceDownloadTargets: []
   });
   
   const [activeMonthId, setActiveMonthId] = useState("");
@@ -71,7 +72,7 @@ export function DataProvider({ children }) {
         localStorage.setItem("mock_member_notes", JSON.stringify([]));
       }
       if (!localStorage.getItem("mock_app_settings")) {
-        localStorage.setItem("mock_app_settings", JSON.stringify({ attendanceDownloadNames: [] }));
+        localStorage.setItem("mock_app_settings", JSON.stringify({ attendanceDownloadNames: [], attendanceDownloadTargets: [] }));
       }
 
       setTeams(JSON.parse(localStorage.getItem("mock_teams")));
@@ -113,7 +114,11 @@ export function DataProvider({ children }) {
       
       const mockVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
       setVisitationRecords(mockVisits);
-      setAppSettings(JSON.parse(localStorage.getItem("mock_app_settings")) || { attendanceDownloadNames: [] });
+      const mockSettings = JSON.parse(localStorage.getItem("mock_app_settings")) || {};
+      setAppSettings({
+        attendanceDownloadNames: mockSettings.attendanceDownloadNames || [],
+        attendanceDownloadTargets: mockSettings.attendanceDownloadTargets || []
+      });
       
       setLoading(false);
     } else {
@@ -142,10 +147,10 @@ export function DataProvider({ children }) {
         setUsers(usersSnap.docs.map(d => ({ userId: d.id, ...d.data() })));
 
         const settingsSnap = await getDoc(doc(db, "appSettings", "attendanceDownload"));
+        const settingsData = settingsSnap.exists() ? settingsSnap.data() : {};
         setAppSettings({
-          attendanceDownloadNames: settingsSnap.exists() && Array.isArray(settingsSnap.data().names)
-            ? settingsSnap.data().names
-            : []
+          attendanceDownloadNames: Array.isArray(settingsData.names) ? settingsData.names : [],
+          attendanceDownloadTargets: Array.isArray(settingsData.targets) ? settingsData.targets : []
         });
 
         const visitsSnap = await getDocs(collection(db, "visitationRecords"));
@@ -181,15 +186,38 @@ export function DataProvider({ children }) {
     }
   };
 
-  const updateAttendanceDownloadNames = async (names) => {
-    const normalizedNames = [...new Set(
-      names
-        .map(name => String(name || "").trim())
-        .filter(Boolean)
-    )];
+  const normalizeAttendanceDownloadTargets = (items) => {
+    const seen = new Set();
+    return items
+      .map(item => {
+        if (typeof item === "string") {
+          const name = item.trim();
+          return name ? { memberId: "", name } : null;
+        }
+        const memberId = String(item?.memberId || "").trim();
+        const name = String(item?.name || "").trim();
+        if (!memberId && !name) return null;
+        return { memberId, name };
+      })
+      .filter(Boolean)
+      .filter(item => {
+        const key = item.memberId || item.name;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  };
+
+  const updateAttendanceDownloadNames = async (targets) => {
+    const normalizedTargets = normalizeAttendanceDownloadTargets(targets);
+    const normalizedNames = normalizedTargets.map(item => item.name).filter(Boolean);
 
     if (isMockEnabled) {
-      const nextSettings = { ...appSettings, attendanceDownloadNames: normalizedNames };
+      const nextSettings = {
+        ...appSettings,
+        attendanceDownloadNames: normalizedNames,
+        attendanceDownloadTargets: normalizedTargets
+      };
       localStorage.setItem("mock_app_settings", JSON.stringify(nextSettings));
       setAppSettings(nextSettings);
       logChange("settings", "system", "출결관리 엑셀 다운로드 이름 설정 수정");
@@ -198,10 +226,15 @@ export function DataProvider({ children }) {
 
     await setDoc(doc(db, "appSettings", "attendanceDownload"), {
       names: normalizedNames,
+      targets: normalizedTargets,
       updatedAt: new Date().toISOString(),
       updatedBy: currentUser?.uid || currentUser?.username || "unknown"
     }, { merge: true });
-    setAppSettings(prev => ({ ...prev, attendanceDownloadNames: normalizedNames }));
+    setAppSettings(prev => ({
+      ...prev,
+      attendanceDownloadNames: normalizedNames,
+      attendanceDownloadTargets: normalizedTargets
+    }));
     logChange("settings", "system", "출결관리 엑셀 다운로드 이름 설정 수정");
   };
 

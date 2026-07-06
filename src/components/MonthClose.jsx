@@ -33,13 +33,32 @@ export default function MonthClose() {
   const [reportMonthId, setReportMonthId] = useState(null);
   const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
-  const [downloadNameDrafts, setDownloadNameDrafts] = useState([]);
+  const [downloadTargetDrafts, setDownloadTargetDrafts] = useState([]);
   const [downloadNameInput, setDownloadNameInput] = useState("");
   const [downloadNameSaving, setDownloadNameSaving] = useState(false);
 
   useEffect(() => {
-    setDownloadNameDrafts(appSettings?.attendanceDownloadNames || []);
-  }, [appSettings?.attendanceDownloadNames]);
+    const savedTargets = Array.isArray(appSettings?.attendanceDownloadTargets)
+      ? appSettings.attendanceDownloadTargets
+      : [];
+    const legacyNames = Array.isArray(appSettings?.attendanceDownloadNames)
+      ? appSettings.attendanceDownloadNames.map(name => ({ memberId: "", name }))
+      : [];
+    const rawTargets = savedTargets.length > 0 ? savedTargets : legacyNames;
+    const resolvedTargets = rawTargets.map(target => {
+      const matchedMember = members.find(member => (
+        (target.memberId && member.memberId === target.memberId) ||
+        (target.name && member.name === target.name)
+      ));
+      return {
+        memberId: matchedMember?.memberId || target.memberId || "",
+        name: matchedMember?.name || target.name || "",
+        teamId: matchedMember?.teamId || "",
+        zoneId: matchedMember?.zoneId || ""
+      };
+    });
+    setDownloadTargetDrafts(resolvedTargets);
+  }, [appSettings?.attendanceDownloadNames, appSettings?.attendanceDownloadTargets, members]);
 
   const handleCloseMonth = (monthId) => {
     const formattedMonth = `${monthId.split("-")[0]}년 ${parseInt(monthId.split("-")[1])}월`;
@@ -48,28 +67,85 @@ export default function MonthClose() {
     }
   };
 
+  const getTeamName = (teamId) => teams.find(team => team.teamId === teamId)?.name || "";
+  const getZoneName = (zoneId) => zones.find(zone => zone.zoneId === zoneId)?.name || "";
+
+  const toDownloadTarget = (member) => ({
+    memberId: member.memberId,
+    name: member.name,
+    teamId: member.teamId,
+    zoneId: member.zoneId
+  });
+
+  const getMatchingDownloadMembers = (queryText = downloadNameInput) => {
+    const query = queryText.trim().toLowerCase();
+    if (!query) return [];
+    const selectedIds = new Set(downloadTargetDrafts.map(target => target.memberId).filter(Boolean));
+    return members
+      .filter(member => !selectedIds.has(member.memberId))
+      .filter(member => [
+        member.name,
+        member.memberId,
+        getTeamName(member.teamId),
+        getZoneName(member.zoneId)
+      ].some(value => String(value || "").toLowerCase().includes(query)))
+      .slice(0, 8);
+  };
+
+  const addDownloadTarget = (member) => {
+    setDownloadTargetDrafts(prev => {
+      if (prev.some(target => target.memberId === member.memberId)) return prev;
+      return [...prev, toDownloadTarget(member)];
+    });
+    setDownloadNameInput("");
+  };
+
   const handleAddDownloadNames = () => {
-    const names = downloadNameInput
+    const tokens = downloadNameInput
       .split(/[\n,]+/)
       .map(name => name.trim())
       .filter(Boolean);
-    if (names.length === 0) return;
-    setDownloadNameDrafts(prev => [...new Set([...prev, ...names])]);
+    if (tokens.length === 0) return;
+    const matchedMembers = tokens
+      .map(token => members.find(member => member.name === token || member.memberId === token))
+      .filter(Boolean);
+    if (matchedMembers.length === 0) {
+      alert("일치하는 성도를 찾지 못했습니다. 아래 검색 결과에서 성도를 선택해주세요.");
+      return;
+    }
+    setDownloadTargetDrafts(prev => {
+      const existingIds = new Set(prev.map(target => target.memberId).filter(Boolean));
+      const nextTargets = [...prev];
+      matchedMembers.forEach(member => {
+        if (!existingIds.has(member.memberId)) {
+          nextTargets.push(toDownloadTarget(member));
+          existingIds.add(member.memberId);
+        }
+      });
+      return nextTargets;
+    });
     setDownloadNameInput("");
   };
 
   const handleUpdateDownloadName = (index, value) => {
-    setDownloadNameDrafts(prev => prev.map((name, i) => i === index ? value : name));
+    const matchedMember = members.find(member => member.name === value.trim() || member.memberId === value.trim());
+    setDownloadTargetDrafts(prev => prev.map((target, i) => (
+      i === index
+        ? matchedMember
+          ? toDownloadTarget(matchedMember)
+          : { ...target, memberId: "", name: value }
+        : target
+    )));
   };
 
   const handleRemoveDownloadName = (index) => {
-    setDownloadNameDrafts(prev => prev.filter((_, i) => i !== index));
+    setDownloadTargetDrafts(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveDownloadNames = async () => {
     setDownloadNameSaving(true);
     try {
-      await updateAttendanceDownloadNames(downloadNameDrafts);
+      await updateAttendanceDownloadNames(downloadTargetDrafts);
       alert("엑셀 다운로드 이름 설정을 저장했습니다.");
     } catch (error) {
       console.error("엑셀 다운로드 이름 설정 저장 실패:", error);
@@ -734,7 +810,7 @@ export default function MonthClose() {
           <textarea
             value={downloadNameInput}
             onChange={(e) => setDownloadNameInput(e.target.value)}
-            placeholder="이름을 입력하세요. 여러 명은 줄바꿈 또는 쉼표로 구분"
+            placeholder="성도 이름 또는 ID를 입력하세요. 검색 결과에서 선택하거나, 정확한 이름/ID는 추가 버튼으로 등록"
             rows={2}
           />
           <button
@@ -746,18 +822,45 @@ export default function MonthClose() {
           </button>
         </div>
 
+        {downloadNameInput.trim() && (
+          <div className="download-search-results">
+            {getMatchingDownloadMembers().length === 0 ? (
+              <div className="download-search-empty">검색 결과가 없습니다.</div>
+            ) : (
+              getMatchingDownloadMembers().map(member => (
+                <button
+                  key={member.memberId}
+                  type="button"
+                  className="download-search-result"
+                  onClick={() => addDownloadTarget(member)}
+                >
+                  <strong>{member.name}</strong>
+                  <span>ID {member.memberId}</span>
+                  <small>{getTeamName(member.teamId)} · {getZoneName(member.zoneId)}</small>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+
         <div className="download-name-list">
-          {downloadNameDrafts.length === 0 ? (
+          {downloadTargetDrafts.length === 0 ? (
             <div className="download-name-empty">등록된 이름이 없습니다. 전체 필터 결과가 다운로드됩니다.</div>
           ) : (
-            downloadNameDrafts.map((name, index) => (
-              <div key={`${name}-${index}`} className="download-name-row">
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => handleUpdateDownloadName(index, e.target.value)}
-                  placeholder="이름"
-                />
+            downloadTargetDrafts.map((target, index) => (
+              <div key={`${target.memberId || target.name}-${index}`} className="download-name-row">
+                <div className="download-selected-member">
+                  <input
+                    type="text"
+                    value={target.name}
+                    onChange={(e) => handleUpdateDownloadName(index, e.target.value)}
+                    placeholder="이름 또는 ID"
+                  />
+                  <div className="download-selected-meta">
+                    <span>ID {target.memberId || "미매칭"}</span>
+                    <span>{target.zoneId ? getZoneName(target.zoneId) : "성도 선택 필요"}</span>
+                  </div>
+                </div>
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
@@ -771,7 +874,7 @@ export default function MonthClose() {
         </div>
 
         <div className="download-settings-actions">
-          <span>{downloadNameDrafts.filter(name => name.trim()).length}명 설정됨</span>
+          <span>{downloadTargetDrafts.filter(target => target.name?.trim()).length}명 설정됨</span>
           <button
             type="button"
             className="btn btn-primary btn-sm"
@@ -995,11 +1098,63 @@ export default function MonthClose() {
           padding-right: 4px;
         }
 
+        .download-search-results {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 8px;
+          margin: 0 0 14px;
+          padding: 10px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          background: var(--bg-secondary);
+        }
+
+        .download-search-result {
+          display: grid;
+          gap: 3px;
+          text-align: left;
+          padding: 10px 12px;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          cursor: pointer;
+        }
+
+        .download-search-result:hover {
+          border-color: var(--accent-cyan);
+          background: rgba(6, 182, 212, 0.08);
+        }
+
+        .download-search-result strong {
+          font-size: 13px;
+        }
+
+        .download-search-result span,
+        .download-search-result small,
+        .download-search-empty {
+          color: var(--text-secondary);
+          font-size: 12px;
+        }
+
         .download-name-row {
           display: grid;
           grid-template-columns: minmax(0, 1fr) auto;
           gap: 8px;
           align-items: center;
+        }
+
+        .download-selected-member {
+          display: grid;
+          gap: 5px;
+        }
+
+        .download-selected-meta {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          color: var(--text-secondary);
+          font-size: 12px;
         }
 
         .download-name-empty {

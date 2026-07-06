@@ -575,10 +575,17 @@ export default function AttendanceGrid() {
   const handleDownloadExcel = () => {
     let downloadMembers = [...members];
     const hasSearchQuery = searchQuery.trim().length > 0;
+    const configuredDownloadTargets = Array.isArray(appSettings?.attendanceDownloadTargets)
+      ? appSettings.attendanceDownloadTargets
+      : [];
     const configuredDownloadNames = Array.isArray(appSettings?.attendanceDownloadNames)
       ? appSettings.attendanceDownloadNames.map(name => String(name || "").trim()).filter(Boolean)
       : [];
-    const configuredNameSet = new Set(configuredDownloadNames);
+    const configuredIdSet = new Set(configuredDownloadTargets.map(item => String(item?.memberId || "").trim()).filter(Boolean));
+    const configuredNameSet = new Set([
+      ...configuredDownloadTargets.map(item => String(item?.name || "").trim()).filter(Boolean),
+      ...configuredDownloadNames
+    ]);
 
     if (filterStatus) {
       downloadMembers = downloadMembers.filter(m => m.status === filterStatus);
@@ -603,12 +610,15 @@ export default function AttendanceGrid() {
       }
     }
 
-    if (configuredNameSet.size > 0) {
-      downloadMembers = downloadMembers.filter(m => configuredNameSet.has(String(m.name || "").trim()));
+    if (configuredIdSet.size > 0 || configuredNameSet.size > 0) {
+      downloadMembers = downloadMembers.filter(m => (
+        configuredIdSet.has(String(m.memberId || "").trim()) ||
+        configuredNameSet.has(String(m.name || "").trim())
+      ));
     }
 
     if (downloadMembers.length === 0) {
-      alert(configuredNameSet.size > 0
+      alert(configuredIdSet.size > 0 || configuredNameSet.size > 0
         ? "엑셀 다운로드 이름 설정과 현재 필터 조건에 맞는 성도가 없습니다."
         : "현재 필터 조건에 맞는 성도가 없습니다.");
       return;
