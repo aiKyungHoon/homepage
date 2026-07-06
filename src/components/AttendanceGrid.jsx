@@ -395,6 +395,53 @@ export default function AttendanceGrid() {
   const formatCheckboxValue = (value) => value ? "O" : "";
 
   const handleDownloadExcel = () => {
+    let downloadMembers = [...members];
+    const hasSearchQuery = searchQuery.trim().length > 0;
+
+    if (filterStatus) {
+      downloadMembers = downloadMembers.filter(m => m.status === filterStatus);
+    }
+
+    if (role === "team") {
+      downloadMembers = downloadMembers.filter(m => m.teamId === currentUser.teamId);
+    } else if (filterTeamId) {
+      downloadMembers = downloadMembers.filter(m => m.teamId === filterTeamId);
+    }
+
+    if (role === "leader") {
+      downloadMembers = downloadMembers.filter(m => m.zoneId === currentUser.zoneId);
+    } else if (filterZoneId) {
+      downloadMembers = downloadMembers.filter(m => m.zoneId === filterZoneId);
+    }
+
+    if (searchQuery) {
+      const tokens = searchQuery.split(/[\s,]+/).map(t => t.trim().toLowerCase()).filter(t => t);
+      if (tokens.length > 0) {
+        downloadMembers = downloadMembers.filter(m => tokens.some(token => m.name.toLowerCase().includes(token)));
+      }
+    }
+
+    downloadMembers.sort((a, b) => {
+      const teamOrderDiff = getTeamSortValue(a.teamId) - getTeamSortValue(b.teamId);
+      if (teamOrderDiff !== 0) return teamOrderDiff;
+
+      const zoneA = zones.find(z => z.zoneId === a.zoneId);
+      const zoneB = zones.find(z => z.zoneId === b.zoneId);
+      const zoneDiff = compareZones(zoneA, zoneB);
+      if (zoneDiff !== 0) return zoneDiff;
+
+      const leadershipDiff = Number(isLeadershipMember(b)) - Number(isLeadershipMember(a));
+      if (leadershipDiff !== 0) return leadershipDiff;
+
+      const teamLeaderDiff = Number(isTeamLeaderMember(b)) - Number(isTeamLeaderMember(a));
+      if (teamLeaderDiff !== 0) return teamLeaderDiff;
+
+      const teamDiff = getTeamName(a.teamId).localeCompare(getTeamName(b.teamId), "ko");
+      if (teamDiff !== 0) return teamDiff;
+
+      return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+    });
+
     const baseHeaders = ["이름", "직분"];
     if (role === "admin") baseHeaders.push("소속 팀");
     if (role !== "leader") baseHeaders.push("소속 구역");
@@ -503,7 +550,7 @@ export default function AttendanceGrid() {
 
     const headers = [...baseHeaders, ...worshipHeaders];
 
-    const rows = filteredMembers.map((member) => {
+    const rows = downloadMembers.map((member) => {
       const baseCells = [member.name, member.rank];
       if (role === "admin") baseCells.push(getTeamName(member.teamId));
       if (role !== "leader") baseCells.push(getZoneName(member.zoneId));
