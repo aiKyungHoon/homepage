@@ -19,6 +19,7 @@ export default function AttendanceGrid() {
     attendanceRecords,
     monthlyAchievements,
     memberNotes,
+    appSettings,
     updateAttendance,
     updateMonthlyAchievement,
     saveMemberNote,
@@ -574,6 +575,10 @@ export default function AttendanceGrid() {
   const handleDownloadExcel = () => {
     let downloadMembers = [...members];
     const hasSearchQuery = searchQuery.trim().length > 0;
+    const configuredDownloadNames = Array.isArray(appSettings?.attendanceDownloadNames)
+      ? appSettings.attendanceDownloadNames.map(name => String(name || "").trim()).filter(Boolean)
+      : [];
+    const configuredNameSet = new Set(configuredDownloadNames);
 
     if (filterStatus) {
       downloadMembers = downloadMembers.filter(m => m.status === filterStatus);
@@ -596,6 +601,17 @@ export default function AttendanceGrid() {
       if (tokens.length > 0) {
         downloadMembers = downloadMembers.filter(m => tokens.some(token => m.name.toLowerCase().includes(token)));
       }
+    }
+
+    if (configuredNameSet.size > 0) {
+      downloadMembers = downloadMembers.filter(m => configuredNameSet.has(String(m.name || "").trim()));
+    }
+
+    if (downloadMembers.length === 0) {
+      alert(configuredNameSet.size > 0
+        ? "엑셀 다운로드 이름 설정과 현재 필터 조건에 맞는 성도가 없습니다."
+        : "현재 필터 조건에 맞는 성도가 없습니다.");
+      return;
     }
 
     downloadMembers.sort((a, b) => {

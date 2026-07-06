@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { Lock, Unlock, Calendar, CheckCircle2, AlertCircle, FileText, X } from "lucide-react";
@@ -19,16 +19,63 @@ const isWorshipPresentValue = (value) => {
 
 export default function MonthClose() {
   const { currentUser, isMockMode } = useAuth();
-  const { months, closeMonth, seedFirebaseDatabase, teams, zones, members } = useData();
+  const {
+    months,
+    closeMonth,
+    seedFirebaseDatabase,
+    teams,
+    zones,
+    members,
+    appSettings,
+    updateAttendanceDownloadNames
+  } = useData();
 
   const [reportMonthId, setReportMonthId] = useState(null);
   const [reportData, setReportData] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [downloadNameDrafts, setDownloadNameDrafts] = useState([]);
+  const [downloadNameInput, setDownloadNameInput] = useState("");
+  const [downloadNameSaving, setDownloadNameSaving] = useState(false);
+
+  useEffect(() => {
+    setDownloadNameDrafts(appSettings?.attendanceDownloadNames || []);
+  }, [appSettings?.attendanceDownloadNames]);
 
   const handleCloseMonth = (monthId) => {
     const formattedMonth = `${monthId.split("-")[0]}년 ${parseInt(monthId.split("-")[1])}월`;
     if (window.confirm(`${formattedMonth} 출결 입력을 마감하시겠습니까?\n마감 후에는 리더 및 팀장의 수정이 잠금 처리되며, 다음 달 데이터베이스가 자동으로 개설됩니다.`)) {
       closeMonth(monthId);
+    }
+  };
+
+  const handleAddDownloadNames = () => {
+    const names = downloadNameInput
+      .split(/[\n,]+/)
+      .map(name => name.trim())
+      .filter(Boolean);
+    if (names.length === 0) return;
+    setDownloadNameDrafts(prev => [...new Set([...prev, ...names])]);
+    setDownloadNameInput("");
+  };
+
+  const handleUpdateDownloadName = (index, value) => {
+    setDownloadNameDrafts(prev => prev.map((name, i) => i === index ? value : name));
+  };
+
+  const handleRemoveDownloadName = (index) => {
+    setDownloadNameDrafts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveDownloadNames = async () => {
+    setDownloadNameSaving(true);
+    try {
+      await updateAttendanceDownloadNames(downloadNameDrafts);
+      alert("엑셀 다운로드 이름 설정을 저장했습니다.");
+    } catch (error) {
+      console.error("엑셀 다운로드 이름 설정 저장 실패:", error);
+      alert("저장 중 오류가 발생했습니다.");
+    } finally {
+      setDownloadNameSaving(false);
     }
   };
 
@@ -674,6 +721,68 @@ export default function MonthClose() {
         </div>
       </div>
 
+      <div className="download-settings-card glass-panel">
+        <div className="card-header">
+          <FileText size={18} />
+          <h3>출결관리 엑셀 다운로드 이름 설정</h3>
+        </div>
+        <p className="download-settings-description">
+          이름을 등록하면 출결관리 엑셀 다운로드 시 현재 필터 조건 안에서 아래 이름에 해당하는 성도만 다운로드됩니다. 비워두면 기존처럼 전체 필터 결과가 다운로드됩니다.
+        </p>
+
+        <div className="download-name-add-row">
+          <textarea
+            value={downloadNameInput}
+            onChange={(e) => setDownloadNameInput(e.target.value)}
+            placeholder="이름을 입력하세요. 여러 명은 줄바꿈 또는 쉼표로 구분"
+            rows={2}
+          />
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleAddDownloadNames}
+          >
+            추가
+          </button>
+        </div>
+
+        <div className="download-name-list">
+          {downloadNameDrafts.length === 0 ? (
+            <div className="download-name-empty">등록된 이름이 없습니다. 전체 필터 결과가 다운로드됩니다.</div>
+          ) : (
+            downloadNameDrafts.map((name, index) => (
+              <div key={`${name}-${index}`} className="download-name-row">
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => handleUpdateDownloadName(index, e.target.value)}
+                  placeholder="이름"
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleRemoveDownloadName(index)}
+                >
+                  삭제
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="download-settings-actions">
+          <span>{downloadNameDrafts.filter(name => name.trim()).length}명 설정됨</span>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={handleSaveDownloadNames}
+            disabled={downloadNameSaving}
+          >
+            {downloadNameSaving ? "저장 중..." : "저장"}
+          </button>
+        </div>
+      </div>
+
       <div className="month-list-card glass-panel">
         <div className="card-header">
           <Calendar size={18} />
@@ -836,6 +945,86 @@ export default function MonthClose() {
           font-size: 12px;
           color: var(--text-muted);
           line-height: 1.6;
+        }
+
+        .download-settings-card {
+          padding: 24px;
+        }
+
+        .download-settings-description {
+          margin: 12px 0 16px;
+          color: var(--text-secondary);
+          font-size: 13px;
+          line-height: 1.6;
+        }
+
+        .download-name-add-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 10px;
+          align-items: stretch;
+          margin-bottom: 14px;
+        }
+
+        .download-name-add-row textarea,
+        .download-name-row input {
+          width: 100%;
+          border: 1px solid var(--glass-border);
+          border-radius: var(--radius-sm);
+          background: var(--bg-secondary);
+          color: var(--text-primary);
+          font-size: 13px;
+        }
+
+        .download-name-add-row textarea {
+          min-height: 58px;
+          padding: 10px 12px;
+          resize: vertical;
+        }
+
+        .download-name-row input {
+          height: 36px;
+          padding: 0 10px;
+        }
+
+        .download-name-list {
+          display: grid;
+          gap: 8px;
+          max-height: 260px;
+          overflow-y: auto;
+          padding-right: 4px;
+        }
+
+        .download-name-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .download-name-empty {
+          padding: 14px;
+          border: 1px dashed var(--glass-border);
+          border-radius: var(--radius-sm);
+          color: var(--text-muted);
+          font-size: 13px;
+          text-align: center;
+        }
+
+        .download-settings-actions {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 12px;
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid var(--glass-border);
+        }
+
+        .download-settings-actions span {
+          color: var(--text-secondary);
+          font-size: 13px;
+          font-weight: 700;
         }
 
         .text-warning {

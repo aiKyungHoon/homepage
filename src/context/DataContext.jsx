@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { isMockEnabled, db, auth } from "../firebase";
 import { useAuth } from "./AuthContext";
 import { 
-  collection, getDocs, doc, setDoc, updateDoc, addDoc, 
+  collection, getDocs, doc, getDoc, setDoc, updateDoc, addDoc, 
   query, where, deleteDoc, writeBatch, orderBy, limit 
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
@@ -28,6 +28,9 @@ export function DataProvider({ children }) {
   const [visitationRecords, setVisitationRecords] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [users, setUsers] = useState([]);
+  const [appSettings, setAppSettings] = useState({
+    attendanceDownloadNames: []
+  });
   
   const [activeMonthId, setActiveMonthId] = useState("");
   const [activeWeekNo, setActiveWeekNo] = useState(1);
@@ -66,6 +69,9 @@ export function DataProvider({ children }) {
       }
       if (!localStorage.getItem("mock_member_notes")) {
         localStorage.setItem("mock_member_notes", JSON.stringify([]));
+      }
+      if (!localStorage.getItem("mock_app_settings")) {
+        localStorage.setItem("mock_app_settings", JSON.stringify({ attendanceDownloadNames: [] }));
       }
 
       setTeams(JSON.parse(localStorage.getItem("mock_teams")));
@@ -107,6 +113,7 @@ export function DataProvider({ children }) {
       
       const mockVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
       setVisitationRecords(mockVisits);
+      setAppSettings(JSON.parse(localStorage.getItem("mock_app_settings")) || { attendanceDownloadNames: [] });
       
       setLoading(false);
     } else {
@@ -133,6 +140,13 @@ export function DataProvider({ children }) {
 
         const usersSnap = await getDocs(collection(db, "users"));
         setUsers(usersSnap.docs.map(d => ({ userId: d.id, ...d.data() })));
+
+        const settingsSnap = await getDoc(doc(db, "appSettings", "attendanceDownload"));
+        setAppSettings({
+          attendanceDownloadNames: settingsSnap.exists() && Array.isArray(settingsSnap.data().names)
+            ? settingsSnap.data().names
+            : []
+        });
 
         const visitsSnap = await getDocs(collection(db, "visitationRecords"));
         setVisitationRecords(visitsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -165,6 +179,30 @@ export function DataProvider({ children }) {
         setLoading(false);
       }
     }
+  };
+
+  const updateAttendanceDownloadNames = async (names) => {
+    const normalizedNames = [...new Set(
+      names
+        .map(name => String(name || "").trim())
+        .filter(Boolean)
+    )];
+
+    if (isMockEnabled) {
+      const nextSettings = { ...appSettings, attendanceDownloadNames: normalizedNames };
+      localStorage.setItem("mock_app_settings", JSON.stringify(nextSettings));
+      setAppSettings(nextSettings);
+      logChange("settings", "system", "출결관리 엑셀 다운로드 이름 설정 수정");
+      return;
+    }
+
+    await setDoc(doc(db, "appSettings", "attendanceDownload"), {
+      names: normalizedNames,
+      updatedAt: new Date().toISOString(),
+      updatedBy: currentUser?.uid || currentUser?.username || "unknown"
+    }, { merge: true });
+    setAppSettings(prev => ({ ...prev, attendanceDownloadNames: normalizedNames }));
+    logChange("settings", "system", "출결관리 엑셀 다운로드 이름 설정 수정");
   };
 
   useEffect(() => {
@@ -1148,6 +1186,7 @@ export function DataProvider({ children }) {
     visitationRecords,
     auditLogs,
     users,
+    appSettings,
     activeMonthId,
     setActiveMonthId,
     activeWeekNo,
@@ -1174,6 +1213,7 @@ export function DataProvider({ children }) {
     deleteVisitationRecord,
     updateVisitationRecord,
     updateVisitationFeedback,
+    updateAttendanceDownloadNames,
     refreshData
   };
 
