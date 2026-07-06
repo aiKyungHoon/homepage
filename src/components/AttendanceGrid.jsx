@@ -41,6 +41,37 @@ export default function AttendanceGrid() {
 
   const role = currentUser?.role;
 
+  const getStickyStyle = (colName) => {
+    let left = 0;
+    let width = 0;
+    
+    if (colName === "name") {
+      left = 0;
+      width = 110;
+    } else if (colName === "rank") {
+      left = 110;
+      width = 75;
+    } else if (colName === "team") {
+      if (role !== "admin") return {};
+      left = 110 + 75;
+      width = 95;
+    } else if (colName === "zone") {
+      if (role === "leader") return {};
+      left = 110 + 75 + (role === "admin" ? 95 : 0);
+      width = 125;
+    } else {
+      return {};
+    }
+    
+    return {
+      position: "sticky",
+      left: `${left}px`,
+      width: `${width}px`,
+      minWidth: `${width}px`,
+      maxWidth: `${width}px`,
+    };
+  };
+
   // Local Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTeamId, setFilterTeamId] = useState("");
@@ -1259,10 +1290,10 @@ export default function AttendanceGrid() {
           <table className="attendance-table">
             <thead>
               <tr>
-                <th className="sticky-col">이름</th>
-                <th>직분</th>
-                {role === "admin" && <th>소속 팀</th>}
-                {role !== "leader" && <th>소속 구역</th>}
+                <th className="sticky-col" style={getStickyStyle("name")}>이름</th>
+                <th className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={getStickyStyle("rank")}>직분</th>
+                {role === "admin" && <th className="sticky-col" style={getStickyStyle("team")}>소속 팀</th>}
+                {role !== "leader" && <th className="sticky-col sticky-col-last" style={getStickyStyle("zone")}>소속 구역</th>}
                 {shouldShowColumn("samil_pre") && <th className="sep-col worship-report-col" style={{ whiteSpace: "nowrap" }}>삼일사전<br/>(분류/시간)</th>}
                 {shouldShowColumn("samil_pre_confirm") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>예배확인<br/>방법</th>}
                 {shouldShowColumn("samil_pre_reason") && <th className="worship-report-col" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>미확인/미보고 사유<br/>(미인증 사유)</th>}
@@ -1316,7 +1347,7 @@ export default function AttendanceGrid() {
 
                 return (
                   <tr key={member.memberId} className="grid-row">
-                    <td className="sticky-col member-name-col">
+                    <td className="sticky-col member-name-col" style={getStickyStyle("name")}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span className={`member-name ${leadershipMember ? "leadership-member-name" : ""}`}>{member.name}</span>
                         <span className={`status-dot status-${member.status}`}></span>
@@ -1339,9 +1370,9 @@ export default function AttendanceGrid() {
                         </button>
                       </div>
                     </td>
-                    <td className="member-rank">{member.rank}</td>
-                    {role === "admin" && <td>{getTeamName(member.teamId)}</td>}
-                    {role !== "leader" && <td>{getZoneName(member.zoneId)}</td>}
+                    <td className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={{ ...getStickyStyle("rank"), fontSize: "12px", color: "var(--text-secondary)" }}>{member.rank}</td>
+                    {role === "admin" && <td className="sticky-col" style={{ ...getStickyStyle("team"), fontSize: "12px", color: "var(--text-secondary)" }}>{getTeamName(member.teamId)}</td>}
+                    {role !== "leader" && <td className="sticky-col sticky-col-last" style={{ ...getStickyStyle("zone"), fontSize: "12px", color: "var(--text-secondary)", textAlign: "left" }}>{getZoneName(member.zoneId)}</td>}
                     
                     {/* Weekly worship */}
                     {shouldShowColumn("samil_pre") && (
@@ -2297,18 +2328,22 @@ export default function AttendanceGrid() {
           z-index: 6;
         }
 
-        /* Sticky first column for names */
+        /* Sticky columns for names, rank, team, zone */
         .sticky-col {
           position: sticky;
           left: 0;
           background-color: var(--bg-secondary) !important;
           z-index: 12;
-          box-shadow: 2px 0 5px -2px rgba(0,0,0,0.15);
         }
 
         .attendance-table td.sticky-col {
           background-color: var(--bg-secondary) !important;
           z-index: 5;
+        }
+
+        .sticky-col-last {
+          box-shadow: 3px 0 6px -3px rgba(0,0,0,0.25) !important;
+          border-right: 2px solid var(--glass-border) !important;
         }
 
         .worship-cell-value {
