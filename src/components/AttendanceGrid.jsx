@@ -571,6 +571,11 @@ export default function AttendanceGrid() {
   };
 
   const formatCheckboxValue = (value) => value ? "O" : "";
+  const normalizeDownloadName = (value) => String(value || "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\s+/g, "")
+    .trim()
+    .toLowerCase();
 
   const handleDownloadExcel = () => {
     let downloadMembers = [...members];
@@ -581,22 +586,20 @@ export default function AttendanceGrid() {
     const configuredDownloadNames = Array.isArray(appSettings?.attendanceDownloadNames)
       ? appSettings.attendanceDownloadNames.map(name => String(name || "").trim()).filter(Boolean)
       : [];
-    const configuredIdSet = new Set(configuredDownloadTargets
-      .filter(item => !String(item?.name || "").trim())
-      .map(item => String(item?.memberId || "").trim())
-      .filter(Boolean));
     const configuredNameSet = new Set([
       ...configuredDownloadTargets.map(item => String(item?.name || "").trim()).filter(Boolean),
       ...configuredDownloadNames
-    ]);
-    const hasConfiguredDownloadMembers = configuredIdSet.size > 0 || configuredNameSet.size > 0;
+    ].map(normalizeDownloadName).filter(Boolean));
+    const currentUserNameKeys = [
+      currentUser?.name,
+      currentUser?.email?.split("@")[0],
+      currentUser?.userId
+    ].map(normalizeDownloadName).filter(Boolean);
+    const canDownloadExcel = role === "admin" || currentUserNameKeys.some(name => configuredNameSet.has(name));
 
-    if (hasConfiguredDownloadMembers) {
-      downloadMembers = members.filter(member => {
-        const memberId = String(member.memberId || "").trim();
-        const memberName = String(member.name || "").trim();
-        return configuredIdSet.has(memberId) || configuredNameSet.has(memberName);
-      });
+    if (!canDownloadExcel) {
+      alert("다운로드 권한이 없습니다.");
+      return;
     }
 
     if (filterStatus) {
@@ -623,9 +626,7 @@ export default function AttendanceGrid() {
     }
 
     if (downloadMembers.length === 0) {
-      alert(hasConfiguredDownloadMembers
-        ? "엑셀 다운로드 이름 설정과 현재 필터 조건에 맞는 성도가 없습니다."
-        : "현재 필터 조건에 맞는 성도가 없습니다.");
+      alert("현재 필터 조건에 맞는 성도가 없습니다.");
       return;
     }
 

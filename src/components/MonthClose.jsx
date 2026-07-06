@@ -81,9 +81,9 @@ export default function MonthClose() {
   const getMatchingDownloadMembers = (queryText = downloadNameInput) => {
     const query = queryText.trim().toLowerCase();
     if (!query) return [];
-    const selectedIds = new Set(downloadTargetDrafts.map(target => target.memberId).filter(Boolean));
+    const selectedNames = new Set(downloadTargetDrafts.map(target => target.name).filter(Boolean));
     return members
-      .filter(member => !selectedIds.has(member.memberId))
+      .filter(member => !selectedNames.has(member.name))
       .filter(member => [
         member.name,
         member.memberId,
@@ -95,7 +95,7 @@ export default function MonthClose() {
 
   const addDownloadTarget = (member) => {
     setDownloadTargetDrafts(prev => {
-      if (prev.some(target => target.memberId === member.memberId)) return prev;
+      if (prev.some(target => target.name === member.name)) return prev;
       return [...prev, toDownloadTarget(member)];
     });
     setDownloadNameInput("");
@@ -110,17 +110,21 @@ export default function MonthClose() {
     const matchedMembers = tokens
       .map(token => members.find(member => member.name === token || member.memberId === token))
       .filter(Boolean);
-    if (matchedMembers.length === 0) {
-      alert("일치하는 성도를 찾지 못했습니다. 아래 검색 결과에서 성도를 선택해주세요.");
-      return;
-    }
     setDownloadTargetDrafts(prev => {
-      const existingIds = new Set(prev.map(target => target.memberId).filter(Boolean));
+      const existingNames = new Set(prev.map(target => target.name).filter(Boolean));
       const nextTargets = [...prev];
       matchedMembers.forEach(member => {
-        if (!existingIds.has(member.memberId)) {
+        if (!existingNames.has(member.name)) {
           nextTargets.push(toDownloadTarget(member));
-          existingIds.add(member.memberId);
+          existingNames.add(member.name);
+        }
+      });
+      tokens.forEach(token => {
+        const matchedMember = members.find(member => member.name === token || member.memberId === token);
+        const name = matchedMember?.name || token;
+        if (!existingNames.has(name)) {
+          nextTargets.push(matchedMember ? toDownloadTarget(matchedMember) : { memberId: "", name, teamId: "", zoneId: "" });
+          existingNames.add(name);
         }
       });
       return nextTargets;
@@ -150,7 +154,10 @@ export default function MonthClose() {
     }
     setDownloadNameSaving(true);
     try {
-      await updateAttendanceDownloadNames(downloadTargetDrafts);
+      await updateAttendanceDownloadNames(downloadTargetDrafts.map(target => ({
+        memberId: "",
+        name: target.name
+      })));
       alert("엑셀 다운로드 이름 설정을 저장했습니다.");
     } catch (error) {
       console.error("엑셀 다운로드 이름 설정 저장 실패:", error);
@@ -809,14 +816,14 @@ export default function MonthClose() {
             <h3>출결관리 엑셀 다운로드 이름 설정</h3>
           </div>
           <p className="download-settings-description">
-            이름을 등록하면 출결관리 엑셀 다운로드 시 현재 필터 조건 안에서 아래 이름에 해당하는 성도만 다운로드됩니다. 비워두면 기존처럼 전체 필터 결과가 다운로드됩니다.
+            이름을 등록하면 해당 이름의 로그인 계정만 출결관리 엑셀 다운로드를 사용할 수 있습니다. 관리자는 항상 다운로드할 수 있습니다.
           </p>
 
           <div className="download-name-add-row">
             <textarea
               value={downloadNameInput}
               onChange={(e) => setDownloadNameInput(e.target.value)}
-              placeholder="성도 이름 또는 ID를 입력하세요. 검색 결과에서 선택하거나, 정확한 이름/ID는 추가 버튼으로 등록"
+              placeholder="다운로드 권한을 줄 이름을 입력하세요. 여러 명은 줄바꿈 또는 쉼표로 구분"
               rows={2}
             />
             <button
@@ -851,7 +858,7 @@ export default function MonthClose() {
 
           <div className="download-name-list">
             {downloadTargetDrafts.length === 0 ? (
-              <div className="download-name-empty">등록된 이름이 없습니다. 전체 필터 결과가 다운로드됩니다.</div>
+              <div className="download-name-empty">등록된 이름이 없습니다. 관리자만 다운로드할 수 있습니다.</div>
             ) : (
               downloadTargetDrafts.map((target, index) => (
                 <div key={`${target.memberId || target.name}-${index}`} className="download-name-row">
@@ -863,8 +870,8 @@ export default function MonthClose() {
                       placeholder="이름 또는 ID"
                     />
                     <div className="download-selected-meta">
-                      <span>ID {target.memberId || "미매칭"}</span>
-                      <span>{target.zoneId ? getZoneName(target.zoneId) : "성도 선택 필요"}</span>
+                      <span>{target.memberId ? "성도 목록에서 선택됨" : "이름 기준 권한"}</span>
+                      <span>{target.zoneId ? getZoneName(target.zoneId) : "로그인 이름과 일치해야 함"}</span>
                     </div>
                   </div>
                   <button

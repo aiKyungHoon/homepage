@@ -197,7 +197,7 @@ export function DataProvider({ children }) {
         const memberId = String(item?.memberId || "").trim();
         const name = String(item?.name || "").trim();
         if (!memberId && !name) return null;
-        return { memberId, name };
+        return { memberId: name ? "" : memberId, name };
       })
       .filter(Boolean)
       .filter(item => {
