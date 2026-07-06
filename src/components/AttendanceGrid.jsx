@@ -2776,8 +2776,9 @@ export default function AttendanceGrid() {
         @media (max-width: 1024px) {
           .table-responsive {
             max-height: none !important;
-            overflow-y: visible !important;
-            -webkit-overflow-scrolling: auto;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
           }
         }
 
