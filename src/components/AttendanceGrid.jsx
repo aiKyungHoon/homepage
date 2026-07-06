@@ -914,7 +914,8 @@ export default function AttendanceGrid() {
     if (cat === "zone") return ["대면", "줌", "개별", "불참", "미보고"];
     if (worshipCategories.includes(cat)) return cellOptions.weeklyWorship;
     if (cat === "test") return cellOptions.test;
-    if (["radio", "simon", "visit"].includes(cat)) return cellOptions.weeklyEdu;
+    if (cat === "simon") return ["월O", "목O", "둘다", "X"];
+    if (["radio", "visit"].includes(cat)) return cellOptions.weeklyEdu;
     return cellOptions.weeklyActivity;
   };
 
@@ -1088,7 +1089,7 @@ export default function AttendanceGrid() {
       zone: ["대면"],
       test: ["정규시험", "개별시험"],
       radio: ["O"],
-      simon: ["O"],
+      simon: ["O", "월O", "목O", "둘다"],
       activity: ["O"]
     };
 
