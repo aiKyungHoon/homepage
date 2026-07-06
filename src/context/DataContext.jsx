@@ -137,6 +137,14 @@ export function DataProvider({ children }) {
         const visitsSnap = await getDocs(collection(db, "visitationRecords"));
         setVisitationRecords(visitsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
+        try {
+          const logsQuery = query(collection(db, "auditLogs"), orderBy("timestamp", "desc"), limit(200));
+          const logsSnap = await getDocs(logsQuery);
+          setAuditLogs(logsSnap.docs.map(d => ({ logId: d.id, ...d.data() })));
+        } catch (e) {
+          console.error("Failed to fetch audit logs from Firestore:", e);
+        }
+
         if (targetMonthId) {
           const attQuery = query(collection(db, "attendanceRecords"), where("monthId", "==", targetMonthId));
           const attSnap = await getDocs(attQuery);
