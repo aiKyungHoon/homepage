@@ -51,112 +51,44 @@ export default function AttendanceGrid() {
   const [activeCell, setActiveCell] = useState(null); // { memberId, category, x, y }
   const [visitVisitor, setVisitVisitor] = useState("구역장");
   const [visitType, setVisitType] = useState("전화심방");
-  const [worshipType, setWorshipType] = useState("정규성전");
-  const [worshipTime, setWorshipTime] = useState("9:00");
   const [noteModalMemberId, setNoteModalMemberId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const popoverRef = useRef(null);
 
-  const worshipTypes = [
-    "정규성전",
-    "모임방",
-    "협력교회(덕양)",
-    "협력교회(일산)",
-    "협력교회(마포)",
-    "협력교회(마포구청)",
-    "협력교회(그외-특이사항에 기재)",
-    "줌/화면O",
-    "줌/화면X",
-    "1:1대체예배(수주일)",
-    "만남대체예배(수주일)",
-    "마이심대체예배(특이사항에 요일기재)",
-    "미보고",
+  const [preWorshipType, setPreWorshipType] = useState("정식예배");
+  const [preWorshipReason, setPreWorshipReason] = useState("");
+  const [actualWorshipMethod, setActualWorshipMethod] = useState("미보고");
+  const [actualWorshipAuth, setActualWorshipAuth] = useState("인증안함");
+  const [actualWorshipReason, setActualWorshipReason] = useState("");
+
+  const actualWorshipMethods = [
+    "확인",
+    "미충족(노트)",
+    "미충족(인증샷)",
+    "미충족(노트,인증샷)",
     "미확인",
-    "대체성전",
-    "대체줌",
-    "대체만남예배(수주일 외)",
-    "대체1:1예배(수주일 외)",
-    "일회성",
-    "장기관리가능",
-    "장기관리불가능",
-    "야외예배",
-    "출결제외자",
-    "지파교육대체(지복사,지구사 등)",
-    "사랑예배",
-    "그 외 예배(특이사항에 기재)",
-    "형제교회(서대문)",
-    "형제교회(파주)",
-    "형제교회(남산)",
-    "형제교회(불광)",
-    "형제교회(영등포)",
-    "형제교회(화곡)",
-    "형제교회(광명)",
-    "형제교회(왕십리)",
-    "형제교회(수원)",
-    "형제교회(서울)",
-    "형제교회(동대문)",
-    "형제교회(의정부)",
-    "형제교회(계양)",
-    "형제교회(만수)",
-    "형제교회(주안)",
-    "형제교회(성남)",
-    "형제교회(강동)",
-    "형제교회(하남)",
-    "형제교회(평택)",
-    "형제교회(연수)",
-    "형제교회(인천)",
-    "형제교회(청주)",
-    "형제교회(해외)",
-    "형제교회(그외-특이사항에 기재)"
-  ];
-  const worshipTypesWithoutTime = [
-    "일회성",
-    "미확인",
-    "출결제외자",
-    "장기관리불가능",
-    "장기관리가능"
+    "미보고"
   ];
 
-  const worshipTimes = [
-    "9:00",
-    "12:00",
-    "15:00",
-    "19:30",
-    "20:00",
-    "22:00",
-    "7:00",
-    "7:30",
-    "8:00",
-    "8:30",
-    "9:30",
-    "10:00",
-    "10:30",
-    "11:00",
-    "11:30",
-    "12:30",
-    "13:00",
-    "13:30",
-    "14:00",
-    "14:30",
-    "15:30",
-    "16:00",
-    "16:30",
-    "17:00",
-    "17:30",
-    "18:00",
-    "18:30",
-    "19:00",
-    "20:30",
-    "21:00",
-    "21:30",
-    "22:30",
-    "23:00",
-    "23:30",
-    "24:00",
-    "5:00",
-    "5:30",
-    "6:00",
-    "6:30"
+  const actualWorshipAuths = [
+    "큐알인증",
+    "인증안함",
+    "인증오류",
+    "온라인예배",
+    "영상예배",
+    "대체예배",
+    "사유결석",
+    "출결제외"
+  ];
+
+  const preWorshipTypes = [
+    "정식예배",
+    "온라인예배",
+    "대체예배",
+    "영상예배",
+    "심방예배",
+    "결석",
+    "미보고"
   ];
   const worshipCategories = ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual"];
   const legacyWorshipCategoryMap = {
@@ -362,32 +294,60 @@ export default function AttendanceGrid() {
     return memberNotes.find(n => n.memberId === memberId && n.weekNo === activeWeekNo);
   };
 
-  const parseWorshipValue = (value) => {
-    if (!value || value === "미보고") return { type: "미보고", time: "" };
-    if (typeof value !== "string") return { type: String(value), time: "" };
-    const [type, time = ""] = value.split("|").map(part => part.trim());
-    const normalizedType = type || "미보고";
-    return { type: normalizedType, time: worshipTypesWithoutTime.includes(normalizedType) ? "" : time };
+  const parsePreWorship = (value) => {
+    if (!value || value === "미보고") {
+      return { type: "미보고", reason: "" };
+    }
+    if (typeof value !== "string") return { type: String(value), reason: "" };
+    const parts = value.split("|").map(p => p.trim());
+    return {
+      type: parts[0] || "미보고",
+      reason: parts[1] || ""
+    };
   };
 
-  const buildWorshipValue = (type, time) => {
-    if (!type || type === "미보고") return "미보고";
-    if (worshipTypesWithoutTime.includes(type)) return type;
-    return time ? `${type} | ${time}` : type;
+  const buildPreWorship = (type, reason) => {
+    return `${type || "미보고"}|${reason || ""}`;
   };
 
-  const formatWorshipValue = (value) => {
-    const { type, time } = parseWorshipValue(value);
-    return time ? `${type} ${time}` : type;
-  };
-
-  const renderWorshipCell = (value) => {
-    const { type, time } = parseWorshipValue(value);
-    if (!time) return type;
+  const renderPreWorshipCell = (value) => {
+    const { type, reason } = parsePreWorship(value);
     return (
-      <span className="worship-cell-value">
+      <span className="worship-cell-value" title={reason ? `사유: ${reason}` : undefined}>
         <span className="worship-cell-type">{type}</span>
-        <span className="worship-cell-time">{time}</span>
+        {reason && <span className="worship-cell-reason-dot" style={{ fontSize: "10px", marginLeft: "4px", verticalAlign: "middle" }}>💬</span>}
+      </span>
+    );
+  };
+
+  const parseActualWorship = (value) => {
+    if (!value || value === "미보고") {
+      return { method: "미보고", auth: "인증안함", reason: "" };
+    }
+    if (typeof value !== "string") return { method: String(value), auth: "인증안함", reason: "" };
+    const parts = value.split("|").map(p => p.trim());
+    return {
+      method: parts[0] || "미보고",
+      auth: parts[1] || "인증안함",
+      reason: parts[2] || ""
+    };
+  };
+
+  const buildActualWorship = (method, auth, reason) => {
+    return `${method || "미보고"}|${auth || "인증안함"}|${reason || ""}`;
+  };
+
+  const renderActualWorshipCell = (value) => {
+    const { method, auth, reason } = parseActualWorship(value);
+    return (
+      <span className="worship-cell-value" style={{ display: "inline-flex", flexDirection: "column", gap: "2px", alignItems: "center" }} title={reason ? `사유: ${reason}` : undefined}>
+        <span className="worship-cell-type" style={{ fontWeight: "600" }}>{method}</span>
+        {auth && auth !== "인증안함" && (
+          <span className="worship-cell-auth" style={{ fontSize: "9px", opacity: 0.8, backgroundColor: "rgba(255,255,255,0.1)", padding: "1px 4px", borderRadius: "3px" }}>
+            {auth}
+          </span>
+        )}
+        {reason && <span className="worship-cell-reason-dot" style={{ fontSize: "10px", verticalAlign: "middle" }}>💬</span>}
       </span>
     );
   };
@@ -454,31 +414,38 @@ export default function AttendanceGrid() {
     let worshipHeaders = [];
     let rowsCalculator = null;
 
-    const splitWorshipValue = (val) => {
-      const parsed = parseWorshipValue(val);
-      return [parsed.type, parsed.time];
-    };
-
     if (downloadCategory === "worship") {
       worshipHeaders = [
         "삼일사전(분류)",
-        "삼일사전(시간)",
-        "삼일실제(분류)",
-        "삼일실제(시간)",
+        "삼일사전(사유)",
+        "삼일실제(확인방법)",
+        "삼일실제(인증분류)",
+        "삼일실제(미인증사유)",
         "주일사전(분류)",
-        "주일사전(시간)",
-        "주일실제(분류)",
-        "주일실제(시간)",
+        "주일사전(사유)",
+        "주일실제(확인방법)",
+        "주일실제(인증분류)",
+        "주일실제(미인증사유)",
         "시험",
         "특이사항"
       ];
       rowsCalculator = (member) => {
         const note = getMemberNote(member.memberId);
+        const samilPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "samil_pre"));
+        const samilActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "samil_actual"));
+        const sundayPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "sunday_pre"));
+        const sundayActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "sunday_actual"));
         return [
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_pre")),
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_actual")),
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_pre")),
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_actual")),
+          samilPreParsed.type,
+          samilPreParsed.reason,
+          samilActualParsed.method,
+          samilActualParsed.auth,
+          samilActualParsed.reason,
+          sundayPreParsed.type,
+          sundayPreParsed.reason,
+          sundayActualParsed.method,
+          sundayActualParsed.auth,
+          sundayActualParsed.reason,
           getWeeklyValue(member.memberId, "test"),
           note?.text || ""
         ];
@@ -545,13 +512,15 @@ export default function AttendanceGrid() {
       // Default: "all"
       worshipHeaders = [
         "삼일사전(분류)",
-        "삼일사전(시간)",
-        "삼일실제(분류)",
-        "삼일실제(시간)",
+        "삼일사전(사유)",
+        "삼일실제(확인방법)",
+        "삼일실제(인증분류)",
+        "삼일실제(미인증사유)",
         "주일사전(분류)",
-        "주일사전(시간)",
-        "주일실제(분류)",
-        "주일실제(시간)",
+        "주일사전(사유)",
+        "주일실제(확인방법)",
+        "주일실제(인증분류)",
+        "주일실제(미인증사유)",
         "구역예배",
         "시험",
         "특이사항",
@@ -565,11 +534,21 @@ export default function AttendanceGrid() {
       ];
       rowsCalculator = (member) => {
         const note = getMemberNote(member.memberId);
+        const samilPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "samil_pre"));
+        const samilActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "samil_actual"));
+        const sundayPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "sunday_pre"));
+        const sundayActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "sunday_actual"));
         return [
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_pre")),
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_actual")),
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_pre")),
-          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_actual")),
+          samilPreParsed.type,
+          samilPreParsed.reason,
+          samilActualParsed.method,
+          samilActualParsed.auth,
+          samilActualParsed.reason,
+          sundayPreParsed.type,
+          sundayPreParsed.reason,
+          sundayActualParsed.method,
+          sundayActualParsed.auth,
+          sundayActualParsed.reason,
           getWeeklyValue(member.memberId, "zone"),
           getWeeklyValue(member.memberId, "test"),
           note?.text || "",
@@ -683,14 +662,27 @@ export default function AttendanceGrid() {
     } else {
       // Open selector popover
       const rect = e.currentTarget.getBoundingClientRect();
-      const isWorshipCell = worshipCategories.includes(category);
+      const isPreCell = ["samil_pre", "sunday_pre"].includes(category);
+      const isActualCell = ["samil_actual", "sunday_actual"].includes(category);
+      const isWorshipCell = isPreCell || isActualCell;
+      
       const popoverWidth = category === "visit"
         ? 240
-        : isWorshipCell
-          ? Math.min(880, window.innerWidth - 16)
-          : Math.min(260, Math.max(rect.width, 190));
+        : isPreCell
+          ? 320
+          : isActualCell
+            ? 420
+            : Math.min(260, Math.max(rect.width, 190));
+            
       const optionCount = category === "visit" || isWorshipCell ? 0 : getCategoryOptions(category).length;
-      const estimatedPopoverHeight = category === "visit" ? 230 : isWorshipCell ? Math.min(620, window.innerHeight - 16) : Math.min(320, (optionCount * 40) + 58);
+      const estimatedPopoverHeight = category === "visit"
+        ? 230
+        : isPreCell
+          ? 220
+          : isActualCell
+            ? 340
+            : Math.min(320, (optionCount * 40) + 58);
+            
       const viewportPadding = 8;
       const nextX = Math.min(
         Math.max(rect.left, viewportPadding),
@@ -701,6 +693,7 @@ export default function AttendanceGrid() {
         ? Math.max(viewportPadding, rect.top - estimatedPopoverHeight)
         : Math.min(rect.bottom, window.innerHeight - estimatedPopoverHeight - viewportPadding);
       const curVal = getWeeklyValue(memberId, category) || "";
+      
       if (category === "visit") {
         if (curVal && curVal.includes("-")) {
           const parts = curVal.split("-");
@@ -711,10 +704,16 @@ export default function AttendanceGrid() {
           setVisitType("전화심방");
         }
       }
-      if (isWorshipCell) {
-        const parsed = parseWorshipValue(curVal);
-        setWorshipType(worshipTypes.includes(parsed.type) ? parsed.type : "정규성전");
-        setWorshipTime(parsed.time || "9:00");
+      if (isPreCell) {
+        const parsed = parsePreWorship(curVal);
+        setPreWorshipType(parsed.type || "정식예배");
+        setPreWorshipReason(parsed.reason || "");
+      }
+      if (isActualCell) {
+        const parsed = parseActualWorship(curVal);
+        setActualWorshipMethod(parsed.method || "미보고");
+        setActualWorshipAuth(parsed.auth || "인증안함");
+        setActualWorshipReason(parsed.reason || "");
       }
       setActiveCell({
         memberId,
@@ -730,12 +729,6 @@ export default function AttendanceGrid() {
   const selectCellValue = (value) => {
     if (!activeCell) return;
     updateAttendance(activeCell.memberId, activeCell.category, value);
-    setActiveCell(null);
-  };
-
-  const selectWorshipValue = () => {
-    if (!activeCell) return;
-    updateAttendance(activeCell.memberId, activeCell.category, buildWorshipValue(worshipType, worshipTime));
     setActiveCell(null);
   };
 
@@ -767,27 +760,31 @@ export default function AttendanceGrid() {
 
   // Get status color coding class
   const getCellStyle = (val, category) => {
-    const worshipTypeValue = worshipCategories.includes(category) ? parseWorshipValue(val).type : val;
+    if (category === "samil_pre" || category === "sunday_pre") {
+      const { type } = parsePreWorship(val);
+      if (["정식예배", "정규성전"].includes(type)) return "cell-present";
+      if (type === "결석") return "cell-absent";
+      if (["온라인예배", "영상예배"].includes(type)) return "cell-online";
+      if (type.includes("대체") || ["모임방", "야외예배", "사랑예배", "심방예배"].includes(type)) return "cell-substitute";
+      return "cell-unreported";
+    }
+
+    if (category === "samil_actual" || category === "sunday_actual") {
+      const { method } = parseActualWorship(val);
+      if (method === "확인") return "cell-present";
+      if (method.startsWith("미충족")) return "cell-online";
+      if (method === "미확인") return "cell-substitute";
+      if (method === "미보고") return "cell-unreported";
+      return "cell-unreported";
+    }
+
     const greenByCategory = {
-      samil_pre: ["정규성전", "정식예배"],
-      samil_actual: ["정규성전", "정식예배"],
-      sunday_pre: ["정규성전", "정식예배"],
-      sunday_actual: ["정규성전", "정식예배"],
       zone: ["대면"],
       test: ["정규시험", "개별시험"],
       radio: ["O"],
       simon: ["O"],
       activity: ["O"]
     };
-
-    if (greenByCategory[category]?.includes(worshipTypeValue)) return "cell-present";
-    if (worshipTypeValue === "결석" || worshipTypeValue === "X") return "cell-absent";
-
-    if (worshipCategories.includes(category)) {
-      if (["줌/화면O", "줌/화면X", "대체줌", "비대면", "온라인예배"].includes(worshipTypeValue)) return "cell-online";
-      if (worshipTypeValue.includes("대체") || ["모임방", "야외예배", "사랑예배", "일회성"].includes(worshipTypeValue)) return "cell-substitute";
-      return "cell-unreported";
-    }
 
     if (category === "zone") {
       if (val === "줌" || val === "개별전달") return "cell-online";
@@ -1060,36 +1057,32 @@ export default function AttendanceGrid() {
                       <td 
                         onClick={(e) => handleCellClick(e, member.memberId, "samil_pre", false)}
                         className={`cell-click sep-col worship-report-cell ${getCellStyle(samilPre, "samil_pre")}`}
-                        title={formatWorshipValue(samilPre)}
                       >
-                        {renderWorshipCell(samilPre)}
+                        {renderPreWorshipCell(samilPre)}
                       </td>
                     )}
                     {shouldShowColumn("samil_actual") && (
                       <td 
                         onClick={(e) => handleCellClick(e, member.memberId, "samil_actual", false)}
                         className={`cell-click worship-report-cell ${getCellStyle(samilActual, "samil_actual")}`}
-                        title={formatWorshipValue(samilActual)}
                       >
-                        {renderWorshipCell(samilActual)}
+                        {renderActualWorshipCell(samilActual)}
                       </td>
                     )}
                     {shouldShowColumn("sunday_pre") && (
                       <td 
                         onClick={(e) => handleCellClick(e, member.memberId, "sunday_pre", false)}
                         className={`cell-click worship-report-cell ${getCellStyle(sundayPre, "sunday_pre")}`}
-                        title={formatWorshipValue(sundayPre)}
                       >
-                        {renderWorshipCell(sundayPre)}
+                        {renderPreWorshipCell(sundayPre)}
                       </td>
                     )}
                     {shouldShowColumn("sunday_actual") && (
                       <td 
                         onClick={(e) => handleCellClick(e, member.memberId, "sunday_actual", false)}
                         className={`cell-click worship-report-cell ${getCellStyle(sundayActual, "sunday_actual")}`}
-                        title={formatWorshipValue(sundayActual)}
                       >
-                        {renderWorshipCell(sundayActual)}
+                        {renderActualWorshipCell(sundayActual)}
                       </td>
                     )}
                     {shouldShowColumn("zone") && (
@@ -1412,76 +1405,241 @@ export default function AttendanceGrid() {
                 </button>
               </div>
             </div>
-          ) : worshipCategories.includes(activeCell.category) ? (
-            <div className="worship-popover">
-              <div className="worship-popover-grid">
-                <div className="worship-popover-section">
-                  <div className="worship-popover-title">예배분류</div>
-                  <div className="worship-option-list">
-                    {worshipTypes.map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={() => setWorshipType(type)}
-                        className={`worship-option ${worshipType === type ? "active" : ""}`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="worship-popover-section">
-                  <div className="worship-popover-title">시간</div>
-                  <div className="worship-time-grid">
-                    {worshipTimes.map((time) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onMouseDown={(e) => e.stopPropagation()}
-                        onClick={() => setWorshipTime(time)}
-                        className={`worship-time ${worshipTime === time ? "active" : ""}`}
-                      >
-                        {time}
-                      </button>
-                    ))}
-                  </div>
+          ) : ["samil_pre", "sunday_pre"].includes(activeCell.category) ? (
+            <div className="worship-popover" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div>
+                <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", marginBottom: "4px", color: "var(--accent-cyan)" }}>예배구분</div>
+                <div className="worship-option-list" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
+                  {preWorshipTypes.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => setPreWorshipType(type)}
+                      className={`worship-option ${preWorshipType === type ? "active" : ""}`}
+                      style={{
+                        padding: "5px",
+                        fontSize: "10px",
+                        borderRadius: "3px",
+                        border: "1px solid var(--glass-border)",
+                        backgroundColor: preWorshipType === type ? "var(--accent-cyan)" : "transparent",
+                        color: preWorshipType === type ? "#000" : "var(--text-secondary)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {type}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="worship-selection-summary">
-                <span>{worshipType}</span>
-                {worshipType !== "미보고" && !worshipTypesWithoutTime.includes(worshipType) && <strong>{worshipTime}</strong>}
+              <div>
+                <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", marginBottom: "4px", color: "var(--accent-cyan)" }}>미보고/미확인 사유</div>
+                <input
+                  type="text"
+                  placeholder="사유 입력..."
+                  value={preWorshipReason}
+                  onChange={(e) => setPreWorshipReason(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    width: "100%",
+                    padding: "6px",
+                    borderRadius: "3px",
+                    border: "1px solid var(--glass-border)",
+                    backgroundColor: "rgba(0,0,0,0.3)",
+                    color: "#fff",
+                    fontSize: "11px"
+                  }}
+                />
               </div>
 
-              <div className="popover-actions worship-actions">
+              <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
-                  onClick={selectWorshipValue}
-                  className="worship-save-btn"
+                  onClick={() => {
+                    updateAttendance(activeCell.memberId, activeCell.category, buildPreWorship(preWorshipType, preWorshipReason));
+                    setActiveCell(null);
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "6px",
+                    backgroundColor: "var(--accent-cyan)",
+                    color: "#000",
+                    border: "none",
+                    borderRadius: "3px",
+                    fontWeight: "700",
+                    fontSize: "11px",
+                    cursor: "pointer"
+                  }}
                 >
                   등록
                 </button>
                 <button
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
-                  onClick={() => selectCellValue("미보고")}
-                  className="worship-clear-btn"
+                  onClick={() => {
+                    updateAttendance(activeCell.memberId, activeCell.category, buildPreWorship("미보고", ""));
+                    setActiveCell(null);
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "3px",
+                    fontSize: "11px",
+                    cursor: "pointer"
+                  }}
                 >
                   지우기
                 </button>
                 <button
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onClick={() => setActiveCell(null)}
+                  style={{
+                    padding: "6px 10px",
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    color: "var(--text-secondary)",
+                    border: "none",
+                    borderRadius: "3px",
+                    fontSize: "11px",
+                    cursor: "pointer"
+                  }}
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          ) : ["samil_actual", "sunday_actual"].includes(activeCell.category) ? (
+            <div className="worship-popover" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div>
+                <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", marginBottom: "4px", color: "var(--accent-cyan)" }}>예배확인방법(노트,인증샷 여부)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px" }}>
+                  {actualWorshipMethods.map((method) => (
+                    <button
+                      key={method}
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => setActualWorshipMethod(method)}
+                      style={{
+                        padding: "5px",
+                        fontSize: "10px",
+                        borderRadius: "3px",
+                        border: "1px solid var(--glass-border)",
+                        backgroundColor: actualWorshipMethod === method ? "var(--accent-cyan)" : "transparent",
+                        color: actualWorshipMethod === method ? "#000" : "var(--text-secondary)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {method}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", marginBottom: "4px", color: "var(--accent-cyan)" }}>인증분류(위아원)</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
+                  {actualWorshipAuths.map((auth) => (
+                    <button
+                      key={auth}
+                      type="button"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={() => setActualWorshipAuth(auth)}
+                      style={{
+                        padding: "5px",
+                        fontSize: "10px",
+                        borderRadius: "3px",
+                        border: "1px solid var(--glass-border)",
+                        backgroundColor: actualWorshipAuth === auth ? "var(--accent-cyan)" : "transparent",
+                        color: actualWorshipAuth === auth ? "#000" : "var(--text-secondary)",
+                        cursor: "pointer"
+                      }}
+                    >
+                      {auth}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", marginBottom: "4px", color: "var(--accent-cyan)" }}>미확인/미보고 사유(미인증 사유)</div>
+                <input
+                  type="text"
+                  placeholder="사유 입력..."
+                  value={actualWorshipReason}
+                  onChange={(e) => setActualWorshipReason(e.target.value)}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  style={{
+                    width: "100%",
+                    padding: "6px",
+                    borderRadius: "3px",
+                    border: "1px solid var(--glass-border)",
+                    backgroundColor: "rgba(0,0,0,0.3)",
+                    color: "#fff",
+                    fontSize: "11px"
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    updateAttendance(activeCell.memberId, activeCell.category, buildActualWorship(actualWorshipMethod, actualWorshipAuth, actualWorshipReason));
                     setActiveCell(null);
                   }}
-                  className="worship-close-btn"
+                  style={{
+                    flex: 1,
+                    padding: "6px",
+                    backgroundColor: "var(--accent-cyan)",
+                    color: "#000",
+                    border: "none",
+                    borderRadius: "3px",
+                    fontWeight: "700",
+                    fontSize: "11px",
+                    cursor: "pointer"
+                  }}
                 >
-                  닫기
+                  등록
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => {
+                    updateAttendance(activeCell.memberId, activeCell.category, buildActualWorship("미보고", "인증안함", ""));
+                    setActiveCell(null);
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "3px",
+                    fontSize: "11px",
+                    cursor: "pointer"
+                  }}
+                >
+                  지우기
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={() => setActiveCell(null)}
+                  style={{
+                    padding: "6px 10px",
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    color: "var(--text-secondary)",
+                    border: "none",
+                    borderRadius: "3px",
+                    fontSize: "11px",
+                    cursor: "pointer"
+                  }}
+                >
+                  취소
                 </button>
               </div>
             </div>
