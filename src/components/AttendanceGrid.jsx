@@ -2171,6 +2171,9 @@ export default function AttendanceGrid() {
           display: flex;
           flex-direction: column;
           gap: 20px;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
         }
 
         .filters-panel {
@@ -2243,6 +2246,9 @@ export default function AttendanceGrid() {
         .grid-container {
           padding: 0;
           overflow: hidden;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
         }
 
         .read-only-banner {
@@ -2260,6 +2266,8 @@ export default function AttendanceGrid() {
         .table-responsive {
           overflow-x: auto;
           max-height: calc(100vh - 320px);
+          width: 100%;
+          max-width: 100%;
         }
 
         .attendance-table {
