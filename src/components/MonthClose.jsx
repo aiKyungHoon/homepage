@@ -143,8 +143,25 @@ export default function MonthClose() {
     )));
   };
 
-  const handleRemoveDownloadName = (index) => {
-    setDownloadTargetDrafts(prev => prev.filter((_, i) => i !== index));
+  const handleRemoveDownloadName = async (index) => {
+    if (!canManageDownloadSettings) {
+      alert("엑셀 다운로드 이름 설정은 관리자만 수정할 수 있습니다.");
+      return;
+    }
+    const nextTargets = downloadTargetDrafts.filter((_, i) => i !== index);
+    setDownloadTargetDrafts(nextTargets);
+    setDownloadNameSaving(true);
+    try {
+      await updateAttendanceDownloadNames(nextTargets.map(target => ({
+        memberId: "",
+        name: target.name
+      })));
+    } catch (error) {
+      console.error("엑셀 다운로드 이름 삭제 실패:", error);
+      alert("삭제 중 오류가 발생했습니다.");
+    } finally {
+      setDownloadNameSaving(false);
+    }
   };
 
   const handleSaveDownloadNames = async () => {
@@ -878,6 +895,7 @@ export default function MonthClose() {
                     type="button"
                     className="btn btn-secondary btn-sm"
                     onClick={() => handleRemoveDownloadName(index)}
+                    disabled={downloadNameSaving}
                   >
                     삭제
                   </button>
