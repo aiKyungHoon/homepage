@@ -19,7 +19,6 @@ export default function AttendanceGrid() {
     attendanceRecords,
     monthlyAchievements,
     memberNotes,
-    appSettings,
     updateAttendance,
     updateMonthlyAchievement,
     saveMemberNote,
@@ -571,62 +570,20 @@ export default function AttendanceGrid() {
   };
 
   const formatCheckboxValue = (value) => value ? "O" : "";
-  const normalizeDownloadName = (value) => String(value || "")
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\s+/g, "")
-    .trim()
-    .toLowerCase();
 
   const handleDownloadExcel = () => {
     let downloadMembers = [...members];
-    const hasSearchQuery = searchQuery.trim().length > 0;
-    const configuredDownloadTargets = Array.isArray(appSettings?.attendanceDownloadTargets)
-      ? appSettings.attendanceDownloadTargets
-      : [];
-    const configuredDownloadNames = Array.isArray(appSettings?.attendanceDownloadNames)
-      ? appSettings.attendanceDownloadNames.map(name => String(name || "").trim()).filter(Boolean)
-      : [];
-    const configuredNameSet = new Set([
-      ...configuredDownloadTargets.map(item => String(item?.name || "").trim()).filter(Boolean),
-      ...configuredDownloadNames
-    ].map(normalizeDownloadName).filter(Boolean));
-    const currentUserNameKeys = [
-      currentUser?.name,
-      currentUser?.email?.split("@")[0],
-      currentUser?.userId
-    ].map(normalizeDownloadName).filter(Boolean);
-    const canDownloadExcel = role === "admin" || currentUserNameKeys.some(name => configuredNameSet.has(name));
 
-    if (!canDownloadExcel) {
-      alert("다운로드 권한이 없습니다.");
-      return;
-    }
-
-    if (filterStatus) {
-      downloadMembers = downloadMembers.filter(m => m.status === filterStatus);
-    }
-
+    // Role-based scope filtering (team leader gets their team, zone leader gets their zone, admin/other roles get all)
+    // We ignore grid UI filters (filterStatus, filterTeamId, filterZoneId, searchQuery) so that all members in scope are downloaded.
     if (role === "team") {
       downloadMembers = downloadMembers.filter(m => m.teamId === currentUser.teamId);
-    } else if (filterTeamId) {
-      downloadMembers = downloadMembers.filter(m => m.teamId === filterTeamId);
-    }
-
-    if (role === "leader") {
+    } else if (role === "leader") {
       downloadMembers = downloadMembers.filter(m => m.zoneId === currentUser.zoneId);
-    } else if (filterZoneId) {
-      downloadMembers = downloadMembers.filter(m => m.zoneId === filterZoneId);
-    }
-
-    if (searchQuery) {
-      const tokens = searchQuery.split(/[\s,]+/).map(t => t.trim().toLowerCase()).filter(t => t);
-      if (tokens.length > 0) {
-        downloadMembers = downloadMembers.filter(m => tokens.some(token => m.name.toLowerCase().includes(token)));
-      }
     }
 
     if (downloadMembers.length === 0) {
-      alert("현재 필터 조건에 맞는 성도가 없습니다.");
+      alert("다운로드할 성도가 없습니다.");
       return;
     }
 

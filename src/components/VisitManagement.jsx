@@ -15,7 +15,8 @@ import {
   Award,
   BookOpen,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Copy
 } from "lucide-react";
 
 export default function VisitManagement() {
@@ -336,6 +337,53 @@ export default function VisitManagement() {
     } catch (err) {
       alert("심방 상세내역 수정에 실패했습니다.");
     }
+  };
+
+  const formatRecordDetailText = (record) => {
+    if (!record) return "";
+    const teamName = getTeamName(record.teamId);
+    const zoneName = getZoneName(record.zoneId);
+    
+    let text = `[심방 상세 내역]\n`;
+    text += `■ 대상 성도: ${record.memberName} (${teamName} ${zoneName})\n`;
+    text += `■ 심방일: ${record.date}\n`;
+    text += `■ 심방자: ${record.visitor}\n`;
+    text += `■ 심방형태: ${record.type}\n\n`;
+    
+    text += `■ 심방 상세 내용:\n${record.notes || "(내용 없음)"}\n`;
+    
+    const selfReflection = record.leaderFeedback || record.feedback;
+    if (selfReflection && selfReflection.trim() !== "") {
+      text += `\n■ 구역장 자가성찰 및 기도제목:\n${selfReflection}\n`;
+    }
+    if (record.teamFeedback && record.teamFeedback.trim() !== "") {
+      text += `\n■ 팀장 격려 피드백:\n${record.teamFeedback} (작성: ${record.teamFeedbackBy || "팀장"})\n`;
+    }
+    if (record.adminFeedback && record.adminFeedback.trim() !== "") {
+      text += `\n■ 임원 사역 피드백:\n${record.adminFeedback} (작성: ${record.adminFeedbackBy || "임원"})\n`;
+    }
+    return text;
+  };
+
+  const handleCopyRecordDetail = (record) => {
+    if (!record) return;
+    const text = formatRecordDetailText(record);
+    navigator.clipboard.writeText(text);
+    alert(`${record.memberName} 성도의 심방 상세 내역이 클립보드에 복사되었습니다.`);
+  };
+
+  const handleCopyRecordList = () => {
+    if (visibleRecords.length === 0) {
+      alert("복사할 심방 기록이 없습니다.");
+      return;
+    }
+    
+    const fullText = visibleRecords
+      .map(record => formatRecordDetailText(record))
+      .join("\n----------------------------------------\n\n");
+      
+    navigator.clipboard.writeText(fullText);
+    alert(`현재 목록의 심방 기록 ${visibleRecords.length}건이 클립보드에 복사되었습니다.`);
   };
 
   // Filtered Visitation Records
@@ -663,7 +711,7 @@ export default function VisitManagement() {
 
         {/* Right Column: Search, Filter, History Timeline */}
         <div className="visit-list-panel glass-panel">
-          <div className="panel-tab-header">
+          <div className="panel-tab-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div className="tabs">
               <button 
                 className={`tab-btn ${activeTab === "timeline" ? "active" : ""}`}
@@ -680,6 +728,29 @@ export default function VisitManagement() {
                 <span>구역장 성찰 일기</span>
               </button>
             </div>
+            
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleCopyRecordList}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "6px 12px",
+                fontSize: "11px",
+                fontWeight: "700",
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              <Copy size={12} />
+              <span>목록 복사</span>
+            </button>
           </div>
 
           {/* Filters & Search Sub-bar */}
@@ -848,7 +919,31 @@ export default function VisitManagement() {
                       </div>
                       <p className="detail-subtitle">{getTeamName(selectedRecord.teamId)} · {getZoneName(selectedRecord.zoneId)}</p>
                     </div>
-                    <div className="detail-header-actions">
+                    <div className="detail-header-actions" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      {editingRecordId !== selectedRecord.id && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopyRecordDetail(selectedRecord)}
+                          className="detail-action-icon-btn"
+                          title="상세 내역 복사"
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                            padding: "4px 8px",
+                            fontSize: "11px",
+                            width: "auto",
+                            borderRadius: "var(--radius-sm)",
+                            backgroundColor: "rgba(255,255,255,0.08)",
+                            border: "1px solid var(--glass-border)",
+                            color: "var(--text-secondary)",
+                            cursor: "pointer"
+                          }}
+                        >
+                          <Copy size={12} />
+                          <span>복사</span>
+                        </button>
+                      )}
                       {editingRecordId === selectedRecord.id ? (
                         <>
                           <button
