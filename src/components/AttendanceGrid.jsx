@@ -118,6 +118,7 @@ export default function AttendanceGrid() {
   const actualWorshipAuths = [
     "큐알인증",
     "인증안함",
+    "미보고",
     "인증오류",
     "온라인예배",
     "영상예배",
@@ -128,7 +129,12 @@ export default function AttendanceGrid() {
 
   const worshipTypes = [
     "정규성전",
-    "모임방",
+    "모임방(상수)",
+    "모임방(홍대/좌)",
+    "모임방(홍대/우)",
+    "모임방(서교)",
+    "모임방(주엽)",
+    "모임방(을지로)",
     "협력교회(덕양)",
     "협력교회(일산)",
     "협력교회(마포)",
@@ -1070,7 +1076,7 @@ export default function AttendanceGrid() {
       return "cell-unreported";
     }
     if (category.endsWith("_auth")) {
-      if (!val || val === "인증안함") return "cell-unreported";
+      if (!val || val === "인증안함" || val === "미보고") return "cell-unreported";
       if (val === "큐알인증") return "cell-present";
       if (val === "인증오류") return "cell-absent";
       return "cell-online";
@@ -1101,7 +1107,7 @@ export default function AttendanceGrid() {
 
     if (worshipCategories.includes(category)) {
       if (["줌/화면O", "줌/화면X", "대체줌", "비대면", "온라인예배"].includes(worshipTypeValue)) return "cell-online";
-      if (worshipTypeValue.includes("대체") || ["모임방", "야외예배", "사랑예배", "일회성"].includes(worshipTypeValue)) return "cell-substitute";
+      if (worshipTypeValue.includes("대체") || worshipTypeValue.startsWith("모임방(") || ["야외예배", "사랑예배", "일회성"].includes(worshipTypeValue)) return "cell-substitute";
       return "cell-unreported";
     }
 
@@ -2081,7 +2087,7 @@ export default function AttendanceGrid() {
                   인증분류(위아원)
                 </div>
                 <div className="popover-options-scroll" style={{ maxHeight: "200px", overflowY: "auto" }}>
-                  {["큐알인증", "인증안함", "인증오류", "온라인예배", "영상예배", "대체예배", "사유결석", "출결제외"].map((opt) => (
+                  {actualWorshipAuths.map((opt) => (
                     <button
                       key={opt}
                       type="button"
@@ -2110,7 +2116,7 @@ export default function AttendanceGrid() {
                   <button
                     type="button"
                     onMouseDown={(e) => e.stopPropagation()}
-                    onClick={() => handleSaveWorshipSubField(activeCell.memberId, activeCell.category, "auth", "인증안함")}
+                    onClick={() => handleSaveWorshipSubField(activeCell.memberId, activeCell.category, "auth", "미보고")}
                     style={{
                       flex: 1,
                       padding: "6px 0",

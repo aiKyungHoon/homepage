@@ -94,6 +94,14 @@ export default function Dashboard() {
     "협력교회(마포구청)",
     "협력교회(그외-특이사항에 기재)"
   ];
+  const MEETING_ROOM_VALUES = [
+    "모임방(상수)",
+    "모임방(홍대/좌)",
+    "모임방(홍대/우)",
+    "모임방(서교)",
+    "모임방(주엽)",
+    "모임방(을지로)"
+  ];
   const BROTHER_CHURCH_VALUES = [
     "형제교회(서대문)",
     "형제교회(파주)",
@@ -130,9 +138,10 @@ export default function Dashboard() {
     "대체1:1예배(수주일 외)"
   ];
   const ZOOM_WORSHIP_VALUES = ["줌/화면O", "줌/화면X"];
+  const WORSHIP_BREAKDOWN_CATEGORIES = ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual"];
   const SUNDAY_WORSHIP_GROUPS = [
     { key: "regular", label: "정규성전", values: ["정규성전", "정식예배"], icon: "emerald", subtext: "정규 예배 참석" },
-    { key: "meeting", label: "모임방", values: ["모임방"], icon: "cyan", subtext: "모임방 참석" },
+    { key: "meeting", label: "모임방", values: MEETING_ROOM_VALUES, icon: "cyan", subtext: "상수/홍대/서교/주엽/을지로" },
     { key: "partner", label: "협력교회", values: PARTNER_CHURCH_VALUES, icon: "blue", subtext: "덕양/일산/마포 등" },
     { key: "outdoor", label: "야외예배", values: ["야외예배"], icon: "gold", subtext: "야외예배 참석" },
     { key: "branchEducation", label: "지파교육대체", values: ["지파교육대체(지복사,지구사 등)"], icon: "purple", subtext: "지복사/지구사 등" },
@@ -240,8 +249,8 @@ export default function Dashboard() {
   const sundayActualStats = getAttendanceStats("sunday_actual");
   const attStats = sundayActualStats;
 
-  const getSundayWorshipGroupCount = (group, category = "sunday_actual") => scopedMembers.filter(m => {
-    return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
+  const getWorshipGroupTotalCount = (group) => scopedMembers.filter(m => {
+    return WORSHIP_BREAKDOWN_CATEGORIES.some(category => isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group));
   }).length;
 
   const getSundayActualAuthCount = (label) => {
@@ -538,6 +547,9 @@ export default function Dashboard() {
       const [, groupKey, category = "sunday_actual"] = String(categoryOrType).split(":");
       const group = getWorshipGroupByKey(groupKey);
       list = scopedMembers.filter(m => {
+        if (category === "all") {
+          return WORSHIP_BREAKDOWN_CATEGORIES.some(worshipCategory => isWorshipValueInGroup(getAttendanceValue(m.memberId, worshipCategory), group));
+        }
         return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
       });
     } else if (String(categoryOrType).startsWith("auth_class:")) {
@@ -1702,28 +1714,27 @@ export default function Dashboard() {
         </div>
 
         <div className="worship-breakdown-header">
-          <span>주일 예배분류</span>
-          <small>카드를 클릭하면 해당 예배분류 명단을 확인할 수 있습니다.</small>
+          <span>예배분류 현황</span>
+          <small>삼일사전/삼일실제/주일사전/주일실제 기준입니다.</small>
         </div>
         <div className="dashboard-grid worship-breakdown-grid">
           {SUNDAY_WORSHIP_GROUPS.map((group) => {
-            const preCount = getSundayWorshipGroupCount(group, "sunday_pre");
-            const actualCount = getSundayWorshipGroupCount(group, "sunday_actual");
+            const totalCount = getWorshipGroupTotalCount(group);
             return (
               <div
                 key={group.key}
-                onClick={() => handleCardClick(`${group.label} 실제보고`, `worship_group:${group.key}:sunday_actual`)}
+                onClick={() => handleCardClick(group.label, `worship_group:${group.key}:all`)}
                 className="stats-card glass-panel clickable-card worship-breakdown-card"
                 style={{ cursor: "pointer" }}
-                title={`${group.label} 실제보고 명단 확인`}
+                title={`${group.label} 명단 확인`}
               >
                 <div className={`stats-icon-wrapper ${group.icon}`}>
                   {group.key === "absent" ? <AlertCircle size={18} /> : group.key === "unreported" || group.key === "unchecked" ? <HelpCircle size={18} /> : <CheckCircle size={18} />}
                 </div>
                 <div className="stats-info">
                   <p className="stats-label">{group.label}</p>
-                  <h2 className="stats-value">{actualCount}명</h2>
-                  <p className="stats-subtext">사전 {preCount}명 · 실제 {actualCount}명</p>
+                  <h2 className="stats-value">{totalCount}명</h2>
+                  <p className="stats-subtext">{group.subtext}</p>
                 </div>
               </div>
             );
