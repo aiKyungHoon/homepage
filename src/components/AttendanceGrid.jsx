@@ -586,6 +586,15 @@ export default function AttendanceGrid() {
       ...configuredDownloadTargets.map(item => String(item?.name || "").trim()).filter(Boolean),
       ...configuredDownloadNames
     ]);
+    const hasConfiguredDownloadMembers = configuredIdSet.size > 0 || configuredNameSet.size > 0;
+
+    if (hasConfiguredDownloadMembers) {
+      downloadMembers = members.filter(member => {
+        const memberId = String(member.memberId || "").trim();
+        const memberName = String(member.name || "").trim();
+        return configuredIdSet.has(memberId) || configuredNameSet.has(memberName);
+      });
+    }
 
     if (filterStatus) {
       downloadMembers = downloadMembers.filter(m => m.status === filterStatus);
@@ -610,15 +619,8 @@ export default function AttendanceGrid() {
       }
     }
 
-    if (configuredIdSet.size > 0 || configuredNameSet.size > 0) {
-      downloadMembers = downloadMembers.filter(m => (
-        configuredIdSet.has(String(m.memberId || "").trim()) ||
-        configuredNameSet.has(String(m.name || "").trim())
-      ));
-    }
-
     if (downloadMembers.length === 0) {
-      alert(configuredIdSet.size > 0 || configuredNameSet.size > 0
+      alert(hasConfiguredDownloadMembers
         ? "엑셀 다운로드 이름 설정과 현재 필터 조건에 맞는 성도가 없습니다."
         : "현재 필터 조건에 맞는 성도가 없습니다.");
       return;
