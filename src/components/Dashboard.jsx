@@ -48,18 +48,24 @@ export default function Dashboard() {
   };
 
   const role = currentUser?.role;
-  const TEST_REGULAR_VALUES = ["정규시험", "개별시험", "대면"];
-  const TEST_ONLINE_VALUES = [
-    "비대면", 
-    "비공식", 
-    "(월)응시예정", 
-    "(월)비대면", 
-    "(월)비공식", 
-    "비공식(연락)", 
-    "비공식(줌예배 참석)", 
-    "비공식(텔 퀴즈 응시)"
+  const TEST_STATUS_CONFIG = [
+    { key: "regular", label: "정규시험", values: ["정규시험", "대면"], icon: "emerald", subtext: "정규시험 인원" },
+    { key: "individual", label: "개별시험", values: ["개별시험"], icon: "blue", subtext: "개별시험 인원" },
+    { key: "online", label: "비대면", values: ["비대면"], icon: "purple", subtext: "비대면 시험 인원" },
+    { key: "informal", label: "비공식", values: ["비공식", "비공식(연락)", "비공식(줌예배 참석)", "비공식(텔 퀴즈 응시)"], icon: "cyan", subtext: "비공식 응시 인원" },
+    { key: "mon_planned", label: "(월)응시예정", values: ["(월)응시예정"], icon: "gold", subtext: "월요일 응시 예정" },
+    { key: "mon_online", label: "(월)비대면", values: ["(월)비대면"], icon: "blue", subtext: "월요일 비대면" },
+    { key: "mon_informal", label: "(월)비공식", values: ["(월)비공식"], icon: "purple", subtext: "월요일 비공식" },
+    { key: "absent", label: "미응시", values: ["미응시"], icon: "red", subtext: "미응시 인원" },
+    { key: "unreported", label: "미보고", values: ["미보고"], icon: "muted", subtext: "보고 대기 인원" }
   ];
-  const TEST_REPORTED_VALUES = [...TEST_REGULAR_VALUES, ...TEST_ONLINE_VALUES];
+  const TEST_REGULAR_VALUES = TEST_STATUS_CONFIG.find(item => item.key === "regular").values;
+  const TEST_ONLINE_VALUES = TEST_STATUS_CONFIG
+    .filter(item => ["online", "informal", "mon_planned", "mon_online", "mon_informal"].includes(item.key))
+    .flatMap(item => item.values);
+  const TEST_REPORTED_VALUES = TEST_STATUS_CONFIG
+    .filter(item => !["absent", "unreported"].includes(item.key))
+    .flatMap(item => item.values);
   const ZONE_FACE_TO_FACE_VALUES = ["대면", "들어옴"];
   const ZONE_ZOOM_VALUES = ["줌"];
   const ZONE_INDIVIDUAL_VALUES = ["개별", "개별전달"];
@@ -301,27 +307,38 @@ export default function Dashboard() {
 
   const evTeamStats = getEvangelismTeamStats();
 
+  const getTestValueForMember = (memberId) => {
+    const rec = attendanceRecords.find(
+      r => r.memberId === memberId && r.weekNo === activeWeekNo && r.category === "test"
+    );
+    return rec ? rec.value : "미보고";
+  };
+
+  const matchesTestStatus = (value, status) => {
+    const normalizedValue = String(value || "미보고").trim();
+    const isKnownValue = TEST_STATUS_CONFIG.some(item => item.values.includes(normalizedValue));
+    if (status.key === "unreported") {
+      return !normalizedValue || status.values.includes(normalizedValue) || !isKnownValue;
+    }
+    if (status.key === "informal" && normalizedValue.startsWith("비공식(")) {
+      return true;
+    }
+    return status.values.includes(normalizedValue);
+  };
+
   const getTestStats = () => {
-    let present = 0; // 대면
-    let online = 0;  // 비대면
-    let unreported = 0; // 미보고
+    const counts = TEST_STATUS_CONFIG.reduce((acc, status) => {
+      acc[status.key] = 0;
+      return acc;
+    }, {});
 
     scopedMembers.forEach(m => {
-      const rec = attendanceRecords.find(
-        r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test"
-      );
-      const val = rec ? rec.value : "미보고";
-
-      if (TEST_REGULAR_VALUES.includes(val)) {
-        present++;
-      } else if (TEST_ONLINE_VALUES.includes(val)) {
-        online++;
-      } else {
-        unreported++;
-      }
+      const val = getTestValueForMember(m.memberId);
+      const status = TEST_STATUS_CONFIG.find(item => matchesTestStatus(val, item));
+      counts[status?.key || "unreported"] += 1;
     });
 
-    return { present, online, unreported };
+    return counts;
   };
 
   const testStats = getTestStats();
@@ -595,23 +612,12 @@ export default function Dashboard() {
         const val = rec ? rec.value : "미보고";
         return !["대면", "비대면"].includes(val);
       });
-    } else if (categoryOrType === "test_present") {
+    } else if (categoryOrType.startsWith("test_")) {
+      const testStatusKey = categoryOrType.replace("test_", "");
+      const testStatus = TEST_STATUS_CONFIG.find(item => item.key === testStatusKey);
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
-        const val = rec ? rec.value : "미보고";
-        return TEST_REGULAR_VALUES.includes(val);
-      });
-    } else if (categoryOrType === "test_online") {
-      list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
-        const val = rec ? rec.value : "미보고";
-        return TEST_ONLINE_VALUES.includes(val);
-      });
-    } else if (categoryOrType === "test_unreported") {
-      list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "test");
-        const val = rec ? rec.value : "미보고";
-        return !TEST_REPORTED_VALUES.includes(val);
+        const val = getTestValueForMember(m.memberId);
+        return testStatus ? matchesTestStatus(val, testStatus) : false;
       });
     }
 
@@ -1840,54 +1846,37 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
-          <div 
-            onClick={() => handleCardClick("정규시험", "test_present")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 정규시험 응시자 명단 확인"
-          >
-            <div className="stats-icon-wrapper emerald">
-              <CheckCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">정규시험</p>
-              <h2 className="stats-value">{testStats.present}명</h2>
-              <p className="stats-subtext">정규시험 인원</p>
-            </div>
-          </div>
+        <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+          {TEST_STATUS_CONFIG.map((status) => {
+            const Icon = status.key === "absent"
+              ? AlertCircle
+              : status.key === "unreported"
+                ? HelpCircle
+                : status.key.includes("mon")
+                  ? Clipboard
+                  : status.key === "individual"
+                    ? HeartHandshake
+                    : CheckCircle;
 
-          <div 
-            onClick={() => handleCardClick("시험 비대면", "test_online")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 비대면 시험 참석자 명단 확인"
-          >
-            <div className="stats-icon-wrapper blue">
-              <HeartHandshake size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">시험 비대면</p>
-              <h2 className="stats-value">{testStats.online}명</h2>
-              <p className="stats-subtext">비대면 시험 인원</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("시험 미보고", "test_unreported")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 시험 미보고자 명단 확인"
-          >
-            <div className="stats-icon-wrapper muted">
-              <HelpCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">시험 미보고</p>
-              <h2 className="stats-value">{testStats.unreported}명</h2>
-              <p className="stats-subtext">보고 대기 인원</p>
-            </div>
-          </div>
+            return (
+              <div 
+                key={status.key}
+                onClick={() => handleCardClick(status.label, `test_${status.key}`)}
+                className="stats-card glass-panel clickable-card"
+                style={{ cursor: "pointer" }}
+                title={`클릭 시 ${status.label} 명단 확인`}
+              >
+                <div className={`stats-icon-wrapper ${status.icon}`}>
+                  <Icon size={22} />
+                </div>
+                <div className="stats-info">
+                  <p className="stats-label">{status.label}</p>
+                  <h2 className="stats-value">{testStats[status.key] || 0}명</h2>
+                  <p className="stats-subtext">{status.subtext}</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -2627,6 +2616,7 @@ export default function Dashboard() {
         .stats-icon-wrapper.gold { background-color: hsla(42, 90%, 55%, 0.1); color: var(--accent-gold); }
         .stats-icon-wrapper.muted { background-color: hsla(220, 15%, 50%, 0.1); color: var(--text-secondary); }
         .stats-icon-wrapper.cyan { background-color: hsla(185, 90%, 48%, 0.1); color: var(--accent-cyan); }
+        .stats-icon-wrapper.red { background-color: hsla(350, 90%, 58%, 0.1); color: var(--accent-red); }
         .stats-icon-wrapper.purple { background-color: hsla(280, 80%, 60%, 0.10); color: hsl(280, 80%, 65%); }
 
         .stats-info { flex: 1; }
