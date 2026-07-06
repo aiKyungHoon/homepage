@@ -503,13 +503,44 @@ export default function AttendanceGrid() {
       };
     } else if (downloadCategory === "accounting") {
       worshipHeaders = [
+        "특이사항",
         "십일조",
         "청체비"
       ];
-      rowsCalculator = (member) => [
-        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
-        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee"))
+      rowsCalculator = (member) => {
+        const note = getMemberNote(member.memberId);
+        return [
+          note?.text || "",
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee"))
+        ];
+      };
+    } else if (downloadCategory === "evangelism") {
+      worshipHeaders = [
+        "특이사항",
+        "전도",
+        "전도단"
       ];
+      rowsCalculator = (member) => {
+        const note = getMemberNote(member.memberId);
+        return [
+          note?.text || "",
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "evangelism")),
+          getWeeklyValue(member.memberId, "activity")
+        ];
+      };
+    } else if (downloadCategory === "visitation") {
+      worshipHeaders = [
+        "특이사항",
+        "심방"
+      ];
+      rowsCalculator = (member) => {
+        const note = getMemberNote(member.memberId);
+        return [
+          note?.text || "",
+          getWeeklyValue(member.memberId, "visit")
+        ];
+      };
     } else {
       // Default: "all"
       worshipHeaders = [
@@ -580,12 +611,48 @@ export default function AttendanceGrid() {
     if (downloadCategory === "worship") categoryLabel = "_예배";
     else if (downloadCategory === "education") categoryLabel = "_교육";
     else if (downloadCategory === "accounting") categoryLabel = "_회계";
+    else if (downloadCategory === "evangelism") categoryLabel = "_전도";
+    else if (downloadCategory === "visitation") categoryLabel = "_심방";
 
     link.download = `출결관리_${safeMonth}_${safeWeek}주차${categoryLabel}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const shouldShowColumn = (colName) => {
+    if (downloadCategory === "all") return true;
+    if (colName === "name" || colName === "rank" || colName === "team" || colName === "zone_belong") return true;
+    if (colName === "note") return true; // 공통 특이사항
+
+    if (downloadCategory === "worship") {
+      return ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual", "test"].includes(colName);
+    }
+    if (downloadCategory === "education") {
+      return ["zone", "test", "radio", "simon"].includes(colName);
+    }
+    if (downloadCategory === "accounting") {
+      return ["tithing", "fee"].includes(colName);
+    }
+    if (downloadCategory === "evangelism") {
+      return ["evangelism", "activity"].includes(colName);
+    }
+    if (downloadCategory === "visitation") {
+      return ["visit"].includes(colName);
+    }
+    return false;
+  };
+
+  const getColSpanCount = () => {
+    let count = 2; // 이름, 직분
+    if (role === "admin") count += 1;
+    if (role !== "leader") count += 1;
+    const allCols = ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual", "zone", "test", "note", "radio", "simon", "visit", "evangelism", "tithing", "fee", "activity"];
+    allCols.forEach(col => {
+      if (shouldShowColumn(col)) count += 1;
+    });
+    return count;
   };
 
   // Grid Cell Config
@@ -799,6 +866,8 @@ export default function AttendanceGrid() {
               <option value="worship">예배</option>
               <option value="education">교육</option>
               <option value="accounting">회계</option>
+              <option value="evangelism">전도</option>
+              <option value="visitation">심방</option>
             </select>
 
             <button
@@ -921,20 +990,20 @@ export default function AttendanceGrid() {
                 <th>직분</th>
                 {role === "admin" && <th>소속 팀</th>}
                 {role !== "leader" && <th>소속 구역</th>}
-                <th className="sep-col worship-report-col">삼일사전</th>
-                <th className="worship-report-col">삼일실제</th>
-                <th className="worship-report-col">주일사전</th>
-                <th className="worship-report-col">주일실제</th>
-                <th>구역예배</th>
-                <th className="sep-col">시험</th>
-                <th className="sep-col note-header">특이사항</th>
-                <th>심야라디오</th>
-                <th>시몬스쿨</th>
-                <th className="sep-col">심방</th>
-                <th className="sep-col monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">전도*</th>
-                <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">십일조*</th>
-                <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">청체비*</th>
-                <th className="sep-col">전도단</th>
+                {shouldShowColumn("samil_pre") && <th className="sep-col worship-report-col">삼일사전</th>}
+                {shouldShowColumn("samil_actual") && <th className="worship-report-col">삼일실제</th>}
+                {shouldShowColumn("sunday_pre") && <th className="worship-report-col">주일사전</th>}
+                {shouldShowColumn("sunday_actual") && <th className="worship-report-col">주일실제</th>}
+                {shouldShowColumn("zone") && <th>구역예배</th>}
+                {shouldShowColumn("test") && <th className="sep-col">시험</th>}
+                {shouldShowColumn("note") && <th className="sep-col note-header">특이사항</th>}
+                {shouldShowColumn("radio") && <th>심야라디오</th>}
+                {shouldShowColumn("simon") && <th>시몬스쿨</th>}
+                {shouldShowColumn("visit") && <th className="sep-col">심방</th>}
+                {shouldShowColumn("evangelism") && <th className="sep-col monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">전도*</th>}
+                {shouldShowColumn("tithing") && <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">십일조*</th>}
+                {shouldShowColumn("fee") && <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">청체비*</th>}
+                {shouldShowColumn("activity") && <th className="sep-col">전도단</th>}
               </tr>
             </thead>
             <tbody>
@@ -987,144 +1056,172 @@ export default function AttendanceGrid() {
                     {role !== "leader" && <td>{getZoneName(member.zoneId)}</td>}
                     
                     {/* Weekly worship */}
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "samil_pre", false)}
-                      className={`cell-click sep-col worship-report-cell ${getCellStyle(samilPre, "samil_pre")}`}
-                      title={formatWorshipValue(samilPre)}
-                    >
-                      {renderWorshipCell(samilPre)}
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "samil_actual", false)}
-                      className={`cell-click worship-report-cell ${getCellStyle(samilActual, "samil_actual")}`}
-                      title={formatWorshipValue(samilActual)}
-                    >
-                      {renderWorshipCell(samilActual)}
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "sunday_pre", false)}
-                      className={`cell-click worship-report-cell ${getCellStyle(sundayPre, "sunday_pre")}`}
-                      title={formatWorshipValue(sundayPre)}
-                    >
-                      {renderWorshipCell(sundayPre)}
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "sunday_actual", false)}
-                      className={`cell-click worship-report-cell ${getCellStyle(sundayActual, "sunday_actual")}`}
-                      title={formatWorshipValue(sundayActual)}
-                    >
-                      {renderWorshipCell(sundayActual)}
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
-                      className={`cell-click ${getCellStyle(zone, "zone")}`}
-                    >
-                      {zone}
-                    </td>
+                    {shouldShowColumn("samil_pre") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "samil_pre", false)}
+                        className={`cell-click sep-col worship-report-cell ${getCellStyle(samilPre, "samil_pre")}`}
+                        title={formatWorshipValue(samilPre)}
+                      >
+                        {renderWorshipCell(samilPre)}
+                      </td>
+                    )}
+                    {shouldShowColumn("samil_actual") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "samil_actual", false)}
+                        className={`cell-click worship-report-cell ${getCellStyle(samilActual, "samil_actual")}`}
+                        title={formatWorshipValue(samilActual)}
+                      >
+                        {renderWorshipCell(samilActual)}
+                      </td>
+                    )}
+                    {shouldShowColumn("sunday_pre") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "sunday_pre", false)}
+                        className={`cell-click worship-report-cell ${getCellStyle(sundayPre, "sunday_pre")}`}
+                        title={formatWorshipValue(sundayPre)}
+                      >
+                        {renderWorshipCell(sundayPre)}
+                      </td>
+                    )}
+                    {shouldShowColumn("sunday_actual") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "sunday_actual", false)}
+                        className={`cell-click worship-report-cell ${getCellStyle(sundayActual, "sunday_actual")}`}
+                        title={formatWorshipValue(sundayActual)}
+                      >
+                        {renderWorshipCell(sundayActual)}
+                      </td>
+                    )}
+                    {shouldShowColumn("zone") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
+                        className={`cell-click ${getCellStyle(zone, "zone")}`}
+                      >
+                        {zone}
+                      </td>
+                    )}
 
                     {/* Weekly edu */}
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
-                      className={`cell-click sep-col ${getCellStyle(test, "test")}`}
-                    >
-                      {test}
-                    </td>
-
-                    <td className="sep-col note-cell">
-                      <button
-                        type="button"
-                        className={`note-trigger ${memberNote ? "has-note" : ""}`}
-                        onClick={() => openNoteModal(member.memberId)}
-                        title={memberNote ? memberNote.text : "특이사항 입력"}
+                    {shouldShowColumn("test") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
+                        className={`cell-click sep-col ${getCellStyle(test, "test")}`}
                       >
-                        {memberNote ? (
-                          <>
-                            <MessageSquare size={13} />
-                            <span>있음</span>
-                          </>
-                        ) : (
-                          <>
-                            <Edit3 size={13} />
-                            <span>입력</span>
-                          </>
-                        )}
-                      </button>
-                    </td>
+                        {test}
+                      </td>
+                    )}
 
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "radio", false)}
-                      className={`cell-click ${getCellStyle(radio, "radio")}`}
-                    >
-                      {radio}
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "simon", false)}
-                      className={`cell-click ${getCellStyle(simon, "simon")}`}
-                    >
-                      {simon}
-                    </td>
+                    {shouldShowColumn("note") && (
+                      <td className="sep-col note-cell">
+                        <button
+                          type="button"
+                          className={`note-trigger ${memberNote ? "has-note" : ""}`}
+                          onClick={() => openNoteModal(member.memberId)}
+                          title={memberNote ? memberNote.text : "특이사항 입력"}
+                        >
+                          {memberNote ? (
+                            <>
+                              <MessageSquare size={13} />
+                              <span>있음</span>
+                            </>
+                          ) : (
+                            <>
+                              <Edit3 size={13} />
+                              <span>입력</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    )}
+
+                    {shouldShowColumn("radio") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "radio", false)}
+                        className={`cell-click ${getCellStyle(radio, "radio")}`}
+                      >
+                        {radio}
+                      </td>
+                    )}
+                    {shouldShowColumn("simon") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "simon", false)}
+                        className={`cell-click ${getCellStyle(simon, "simon")}`}
+                      >
+                        {simon}
+                      </td>
+                    )}
 
                     {/* Weekly visit */}
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "visit", false)}
-                      className={`cell-click sep-col ${getCellStyle(visit, "visit")}`}
-                      title={visit && visit !== "X" ? visit.replace("-", " : ") : "심방 없음"}
-                    >
-                      {formatVisitCell(visit)}
-                    </td>
+                    {shouldShowColumn("visit") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "visit", false)}
+                        className={`cell-click sep-col ${getCellStyle(visit, "visit")}`}
+                        title={visit && visit !== "X" ? visit.replace("-", " : ") : "심방 없음"}
+                      >
+                        {formatVisitCell(visit)}
+                      </td>
+                    )}
 
                     {/* Monthly Achievements (Toggles) */}
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "evangelism", true)}
-                      className={`cell-click sep-col monthly-cell ${getCellStyle(evangelism, "evangelism")}`}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={evangelism} 
-                        readOnly 
-                        disabled={!canEdit}
-                        className="grid-checkbox"
-                      />
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "tithing", true)}
-                      className={`cell-click monthly-cell ${getCellStyle(tithing, "tithing")}`}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={tithing} 
-                        readOnly 
-                        disabled={!canEdit}
-                        className="grid-checkbox"
-                      />
-                    </td>
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "fee", true)}
-                      className={`cell-click monthly-cell ${getCellStyle(fee, "fee")}`}
-                    >
-                      <input 
-                        type="checkbox" 
-                        checked={fee} 
-                        readOnly 
-                        disabled={!canEdit}
-                        className="grid-checkbox"
-                      />
-                    </td>
+                    {shouldShowColumn("evangelism") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "evangelism", true)}
+                        className={`cell-click sep-col monthly-cell ${getCellStyle(evangelism, "evangelism")}`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={evangelism} 
+                          readOnly 
+                          disabled={!canEdit}
+                          className="grid-checkbox"
+                        />
+                      </td>
+                    )}
+                    {shouldShowColumn("tithing") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "tithing", true)}
+                        className={`cell-click monthly-cell ${getCellStyle(tithing, "tithing")}`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={tithing} 
+                          readOnly 
+                          disabled={!canEdit}
+                          className="grid-checkbox"
+                        />
+                      </td>
+                    )}
+                    {shouldShowColumn("fee") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "fee", true)}
+                        className={`cell-click monthly-cell ${getCellStyle(fee, "fee")}`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={fee} 
+                          readOnly 
+                          disabled={!canEdit}
+                          className="grid-checkbox"
+                        />
+                      </td>
+                    )}
 
                     {/* Weekly activity */}
-                    <td 
-                      onClick={(e) => handleCellClick(e, member.memberId, "activity", false)}
-                      className={`cell-click sep-col ${getCellStyle(activity, "activity")}`}
-                    >
-                      {activity}
-                    </td>
+                    {shouldShowColumn("activity") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "activity", false)}
+                        className={`cell-click sep-col ${getCellStyle(activity, "activity")}`}
+                      >
+                        {activity}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
 
               {filteredMembers.length === 0 && (
                 <tr>
-                  <td colSpan={role === "admin" ? 16 : role === "team" ? 15 : 14} className="no-members">
+                  <td colSpan={getColSpanCount()} className="no-members">
                     조건에 부합하는 성도가 없습니다.
                   </td>
                 </tr>
