@@ -55,7 +55,8 @@ export default function AttendanceGrid() {
   const [noteDraft, setNoteDraft] = useState("");
   const popoverRef = useRef(null);
 
-  const [preWorshipType, setPreWorshipType] = useState("정식예배");
+  const [preWorshipType, setPreWorshipType] = useState("정규성전");
+  const [preWorshipTime, setPreWorshipTime] = useState("9:00");
   const [preWorshipReason, setPreWorshipReason] = useState("");
   const [actualWorshipMethod, setActualWorshipMethod] = useState("미보고");
   const [actualWorshipAuth, setActualWorshipAuth] = useState("인증안함");
@@ -81,14 +82,107 @@ export default function AttendanceGrid() {
     "출결제외"
   ];
 
-  const preWorshipTypes = [
-    "정식예배",
-    "온라인예배",
-    "대체예배",
-    "영상예배",
-    "심방예배",
-    "결석",
-    "미보고"
+  const worshipTypes = [
+    "정규성전",
+    "모임방",
+    "협력교회(덕양)",
+    "협력교회(일산)",
+    "협력교회(마포)",
+    "협력교회(마포구청)",
+    "협력교회(그외-특이사항에 기재)",
+    "줌/화면O",
+    "줌/화면X",
+    "1:1대체예배(수주일)",
+    "만남대체예배(수주일)",
+    "마이심대체예배(특이사항에 요일기재)",
+    "미보고",
+    "미확인",
+    "대체성전",
+    "대체줌",
+    "대체만남예배(수주일 외)",
+    "대체1:1예배(수주일 외)",
+    "일회성",
+    "장기관리가능",
+    "장기관리불가능",
+    "야외예배",
+    "출결제외자",
+    "지파교육대체(지복사,지구사 등)",
+    "사랑예배",
+    "그 외 예배(특이사항에 기재)",
+    "형제교회(서대문)",
+    "형제교회(파주)",
+    "형제교회(남산)",
+    "형제교회(불광)",
+    "형제교회(영등포)",
+    "형제교회(화곡)",
+    "형제교회(광명)",
+    "형제교회(왕십리)",
+    "형제교회(수원)",
+    "형제교회(서울)",
+    "형제교회(동대문)",
+    "형제교회(의정부)",
+    "형제교회(계양)",
+    "형제교회(만수)",
+    "형제교회(주안)",
+    "형제교회(성남)",
+    "형제교회(강동)",
+    "형제교회(하남)",
+    "형제교회(평택)",
+    "형제교회(연수)",
+    "형제교회(인천)",
+    "형제교회(청주)",
+    "형제교회(해외)",
+    "형제교회(그외-특이사항에 기재)"
+  ];
+
+  const worshipTypesWithoutTime = [
+    "일회성",
+    "미확인",
+    "출결제외자",
+    "장기관리불가능",
+    "장기관리가능"
+  ];
+
+  const worshipTimes = [
+    "9:00",
+    "12:00",
+    "15:00",
+    "19:30",
+    "20:00",
+    "22:00",
+    "7:00",
+    "7:30",
+    "8:00",
+    "8:30",
+    "9:30",
+    "10:00",
+    "10:30",
+    "11:00",
+    "11:30",
+    "12:30",
+    "13:00",
+    "13:30",
+    "14:00",
+    "14:30",
+    "15:30",
+    "16:00",
+    "16:30",
+    "17:00",
+    "17:30",
+    "18:00",
+    "18:30",
+    "19:00",
+    "20:30",
+    "21:00",
+    "21:30",
+    "22:30",
+    "23:00",
+    "23:30",
+    "24:00",
+    "5:00",
+    "5:30",
+    "6:00",
+    "6:30"
   ];
   const worshipCategories = ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual"];
   const legacyWorshipCategoryMap = {
@@ -1406,30 +1500,63 @@ export default function AttendanceGrid() {
               </div>
             </div>
           ) : ["samil_pre", "sunday_pre"].includes(activeCell.category) ? (
-            <div className="worship-popover" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div>
-                <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", marginBottom: "4px", color: "var(--accent-cyan)" }}>예배구분</div>
-                <div className="worship-option-list" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
-                  {preWorshipTypes.map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={() => setPreWorshipType(type)}
-                      className={`worship-option ${preWorshipType === type ? "active" : ""}`}
-                      style={{
-                        padding: "5px",
-                        fontSize: "10px",
-                        borderRadius: "3px",
-                        border: "1px solid var(--glass-border)",
-                        backgroundColor: preWorshipType === type ? "var(--accent-cyan)" : "transparent",
-                        color: preWorshipType === type ? "#000" : "var(--text-secondary)",
-                        cursor: "pointer"
-                      }}
-                    >
-                      {type}
-                    </button>
-                  ))}
+            <div className="worship-popover" style={{ display: "flex", flexDirection: "column", gap: "10px", width: "620px" }}>
+              <div className="worship-popover-grid" style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "12px", maxHeight: "250px", overflow: "hidden" }}>
+                <div className="worship-popover-section" style={{ display: "flex", flexDirection: "column", gap: "6px", overflow: "hidden" }}>
+                  <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", color: "var(--accent-cyan)" }}>예배구분</div>
+                  <div className="worship-option-list" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "4px", overflowY: "auto", paddingRight: "4px" }}>
+                    {worshipTypes.map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => setPreWorshipType(type)}
+                        className={`worship-option ${preWorshipType === type ? "active" : ""}`}
+                        style={{
+                          padding: "6px 4px",
+                          fontSize: "10px",
+                          borderRadius: "3px",
+                          border: "1px solid var(--glass-border)",
+                          backgroundColor: preWorshipType === type ? "var(--accent-cyan)" : "transparent",
+                          color: preWorshipType === type ? "#000" : "var(--text-secondary)",
+                          cursor: "pointer",
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis"
+                        }}
+                        title={type}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="worship-popover-section" style={{ display: "flex", flexDirection: "column", gap: "6px", overflow: "hidden" }}>
+                  <div className="worship-popover-title" style={{ fontSize: "11px", fontWeight: "700", color: "var(--accent-cyan)" }}>시간</div>
+                  <div className="worship-time-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "4px", overflowY: "auto", paddingRight: "4px" }}>
+                    {worshipTimes.map((time) => (
+                      <button
+                        key={time}
+                        type="button"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={() => setPreWorshipTime(time)}
+                        className={`worship-time ${preWorshipTime === time ? "active" : ""}`}
+                        style={{
+                          padding: "5px",
+                          fontSize: "10px",
+                          borderRadius: "3px",
+                          border: "1px solid var(--glass-border)",
+                          backgroundColor: preWorshipTime === time ? "var(--accent-cyan)" : "transparent",
+                          color: preWorshipTime === time ? "#000" : "var(--text-secondary)",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -1453,12 +1580,18 @@ export default function AttendanceGrid() {
                 />
               </div>
 
+              <div className="worship-selection-summary" style={{ fontSize: "11px", display: "flex", gap: "12px", alignItems: "center", borderTop: "1px solid var(--glass-border)", paddingTop: "6px" }}>
+                <span>예배구분: <strong style={{ color: "var(--accent-cyan)" }}>{preWorshipType}</strong></span>
+                {!worshipTypesWithoutTime.includes(preWorshipType) && <span>시간: <strong style={{ color: "var(--accent-cyan)" }}>{preWorshipTime}</strong></span>}
+              </div>
+
               <div style={{ display: "flex", gap: "6px", marginTop: "2px" }}>
                 <button
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => {
-                    updateAttendance(activeCell.memberId, activeCell.category, buildPreWorship(preWorshipType, preWorshipReason));
+                    const finalTime = worshipTypesWithoutTime.includes(preWorshipType) ? "" : preWorshipTime;
+                    updateAttendance(activeCell.memberId, activeCell.category, buildPreWorship(preWorshipType, finalTime, preWorshipReason));
                     setActiveCell(null);
                   }}
                   style={{
@@ -1479,7 +1612,7 @@ export default function AttendanceGrid() {
                   type="button"
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => {
-                    updateAttendance(activeCell.memberId, activeCell.category, buildPreWorship("미보고", ""));
+                    updateAttendance(activeCell.memberId, activeCell.category, buildPreWorship("미보고", "", ""));
                     setActiveCell(null);
                   }}
                   style={{
