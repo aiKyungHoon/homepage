@@ -542,7 +542,7 @@ export default function AttendanceGrid() {
     weeklyEdu: ["O", "X"],
     weeklyVisit: ["O", "X"],
     weeklyActivity: ["대면", "비대면", "미보고"],
-    test: ["정규시험", "비대면", "비공식(연락)", "비공식(줌예배 참석)", "비공식(텔 퀴즈 응시)", "미보고"]
+    test: ["정규시험", "개별시험", "비대면", "비공식", "(월)응시예정", "(월)비대면", "(월)비공식", "미응시", "미보고"]
   };
 
   const getCategoryOptions = (cat) => {
@@ -655,7 +655,7 @@ export default function AttendanceGrid() {
       sunday_pre: ["정규성전", "정식예배"],
       sunday_actual: ["정규성전", "정식예배"],
       zone: ["대면"],
-      test: ["정규시험"],
+      test: ["정규시험", "개별시험"],
       radio: ["O"],
       simon: ["O"],
       activity: ["O"]
@@ -679,8 +679,9 @@ export default function AttendanceGrid() {
     }
 
     if (category === "test") {
-      if (val === "비대면") return "cell-online";
-      if (typeof val === "string" && val.startsWith("비공식(")) return "cell-substitute";
+      if (val === "비대면" || val === "(월)비대면" || val === "(월)응시예정") return "cell-online";
+      if (val === "비공식" || val === "(월)비공식" || (typeof val === "string" && val.startsWith("비공식("))) return "cell-substitute";
+      if (val === "미응시") return "cell-absent";
       return "cell-unreported";
     }
 

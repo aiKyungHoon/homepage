@@ -48,10 +48,18 @@ export default function Dashboard() {
   };
 
   const role = currentUser?.role;
-  const TEST_REGULAR_VALUES = ["정규시험", "대면"];
-  const TEST_ONLINE_VALUES = ["비대면"];
-  const TEST_UNOFFICIAL_VALUES = ["비공식(연락)", "비공식(줌예배 참석)", "비공식(텔 퀴즈 응시)"];
-  const TEST_REPORTED_VALUES = [...TEST_REGULAR_VALUES, ...TEST_ONLINE_VALUES, ...TEST_UNOFFICIAL_VALUES];
+  const TEST_REGULAR_VALUES = ["정규시험", "개별시험", "대면"];
+  const TEST_ONLINE_VALUES = [
+    "비대면", 
+    "비공식", 
+    "(월)응시예정", 
+    "(월)비대면", 
+    "(월)비공식", 
+    "비공식(연락)", 
+    "비공식(줌예배 참석)", 
+    "비공식(텔 퀴즈 응시)"
+  ];
+  const TEST_REPORTED_VALUES = [...TEST_REGULAR_VALUES, ...TEST_ONLINE_VALUES];
   const ZONE_FACE_TO_FACE_VALUES = ["대면", "들어옴"];
   const ZONE_ZOOM_VALUES = ["줌"];
   const ZONE_INDIVIDUAL_VALUES = ["개별", "개별전달"];
@@ -284,9 +292,9 @@ export default function Dashboard() {
       );
       const val = rec ? rec.value : "미보고";
 
-      if (val === "대면") {
+      if (TEST_REGULAR_VALUES.includes(val)) {
         present++;
-      } else if (val === "비대면") {
+      } else if (TEST_ONLINE_VALUES.includes(val)) {
         online++;
       } else {
         unreported++;
