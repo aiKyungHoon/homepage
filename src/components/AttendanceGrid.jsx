@@ -2272,9 +2272,12 @@ export default function AttendanceGrid() {
 
         .attendance-table {
           width: 100%;
-          border-collapse: collapse;
+          border-collapse: separate;
+          border-spacing: 0;
           text-align: center;
           font-size: 13px;
+          border-left: 1px solid var(--glass-border);
+          border-top: 1px solid var(--glass-border);
         }
 
         .attendance-table th,
@@ -2291,21 +2294,21 @@ export default function AttendanceGrid() {
           font-weight: 600;
           position: sticky;
           top: 0;
-          z-index: 2;
+          z-index: 6;
         }
 
         /* Sticky first column for names */
         .sticky-col {
           position: sticky;
           left: 0;
-          background-color: var(--bg-secondary);
-          z-index: 3;
-          box-shadow: 2px 0 5px -2px rgba(0,0,0,0.1);
+          background-color: var(--bg-secondary) !important;
+          z-index: 12;
+          box-shadow: 2px 0 5px -2px rgba(0,0,0,0.15);
         }
 
         .attendance-table td.sticky-col {
-          background-color: var(--bg-secondary);
-          z-index: 1;
+          background-color: var(--bg-secondary) !important;
+          z-index: 5;
         }
 
         .worship-cell-value {
