@@ -1234,11 +1234,23 @@ export default function VisitManagement() {
           display: grid;
           grid-template-columns: minmax(300px, 0.7fr) minmax(680px, 1.6fr);
           gap: 20px;
+          height: clamp(560px, calc(100vh - 320px), 920px);
+          min-height: 0;
         }
 
         @media (max-width: 1180px) {
           .visit-main-grid {
             grid-template-columns: 1fr;
+            height: auto;
+          }
+
+          .visit-form-panel, .visit-list-panel {
+            overflow: visible;
+          }
+
+          .visit-form {
+            max-height: none;
+            overflow: visible;
           }
         }
 
@@ -1249,6 +1261,7 @@ export default function VisitManagement() {
           flex-direction: column;
           gap: 16px;
           min-height: 0;
+          overflow: hidden;
         }
 
         .panel-header {
@@ -1292,6 +1305,10 @@ export default function VisitManagement() {
           display: flex;
           flex-direction: column;
           gap: 14px;
+          min-height: 0;
+          overflow-y: auto;
+          overscroll-behavior: contain;
+          padding-right: 4px;
         }
 
         .form-group {
@@ -1621,6 +1638,8 @@ export default function VisitManagement() {
           display: grid;
           grid-template-columns: minmax(360px, 1fr) minmax(320px, 0.78fr);
           gap: 14px;
+          flex: 1;
+          height: 100%;
           min-height: 0;
           overflow: hidden;
         }
@@ -1631,8 +1650,8 @@ export default function VisitManagement() {
           gap: 12px;
           overflow-y: auto;
           overscroll-behavior: contain;
-          max-height: calc(100vh - 360px);
-          min-height: 260px;
+          height: 100%;
+          min-height: 0;
           padding-right: 4px;
         }
 
@@ -1780,8 +1799,10 @@ export default function VisitManagement() {
           display: flex;
           flex-direction: column;
           gap: 12px;
-          max-height: calc(100vh - 360px);
+          height: 100%;
+          min-height: 0;
           overflow-y: auto;
+          overscroll-behavior: contain;
         }
 
         .visit-detail-header {
