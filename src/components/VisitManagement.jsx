@@ -1307,6 +1307,7 @@ export default function VisitManagement() {
           gap: 14px;
           min-height: 0;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
           padding-right: 4px;
         }
@@ -1380,6 +1381,7 @@ export default function VisitManagement() {
           flex-direction: column;
           max-height: 188px;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
           border: 1px solid var(--glass-border);
           border-radius: var(--radius-sm);
           background-color: var(--bg-primary);
@@ -1649,6 +1651,7 @@ export default function VisitManagement() {
           flex-direction: column;
           gap: 12px;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
           height: 100%;
           min-height: 0;
@@ -1802,6 +1805,7 @@ export default function VisitManagement() {
           height: 100%;
           min-height: 0;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
         }
 
@@ -1888,6 +1892,7 @@ export default function VisitManagement() {
         .visit-detail-scroll-box {
           max-height: 240px;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
           padding-right: 12px;
         }
@@ -2021,6 +2026,7 @@ export default function VisitManagement() {
         .visit-text-scroll-box {
           max-height: 220px;
           overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
           overscroll-behavior: contain;
           padding-right: 12px;
         }

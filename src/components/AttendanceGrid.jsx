@@ -2766,9 +2766,19 @@ export default function AttendanceGrid() {
 
         .table-responsive {
           overflow-x: auto;
+          overflow-y: auto;
           max-height: calc(100vh - 320px);
           width: 100%;
           max-width: 100%;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 1024px) {
+          .table-responsive {
+            max-height: none !important;
+            overflow-y: visible !important;
+            -webkit-overflow-scrolling: auto;
+          }
         }
 
         .attendance-table {
@@ -3002,6 +3012,15 @@ export default function AttendanceGrid() {
           justify-content: center;
           padding: 20px;
           background-color: rgba(0, 0, 0, 0.55);
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-height: 600px), (max-width: 480px) {
+          .note-modal-backdrop {
+            align-items: flex-start;
+            padding: 16px 10px;
+          }
         }
 
         .note-modal {
