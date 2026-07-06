@@ -95,8 +95,6 @@ export default function Header() {
             value={activeMonthId}
             onChange={(e) => {
               setActiveMonthId(e.target.value);
-              // Safely reset week to 1 when changing month
-              setActiveWeekNo(1);
             }}
             className="header-select"
           >

@@ -14,7 +14,8 @@ import {
   FileText,
   Clipboard,
   ChevronRight,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -27,8 +28,24 @@ export default function Dashboard() {
     activeMonthId, 
     activeWeekNo, 
     attendanceRecords, 
-    monthlyAchievements 
+    monthlyAchievements,
+    refreshData
   } = useData();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      alert("실시간으로 최신 데이터가 반영되었습니다.");
+    } catch (err) {
+      console.error("데이터 동기화 실패:", err);
+      alert("데이터 동기화 중 오류가 발생했습니다.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const role = currentUser?.role;
   const TEST_REGULAR_VALUES = ["정규시험", "대면"];
@@ -1473,9 +1490,26 @@ export default function Dashboard() {
           <p>2026년 {activeMonthId.split("-")[1]}월 {activeWeekNo}주차 기준으로 자동 집계된 수치입니다.</p>
         </div>
         <button 
+          onClick={handleRefresh} 
+          className="btn btn-secondary btn-sm no-print"
+          style={{ 
+            marginLeft: "auto", 
+            marginRight: "8px", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "6px",
+            backgroundColor: "rgba(6, 182, 212, 0.15)",
+            color: "var(--accent-cyan)",
+            border: "1px solid var(--accent-cyan)"
+          }}
+        >
+          <RefreshCw size={12} className={isRefreshing ? "spin" : ""} />
+          <span>실시간 동기화</span>
+        </button>
+        <button 
           onClick={() => setShowWeeklyReportModal(true)} 
           className="btn btn-secondary btn-sm no-print"
-          style={{ marginLeft: "auto", marginRight: "16px" }}
+          style={{ marginRight: "16px" }}
         >
           <FileText size={14} />
           <span>주간 리포트 생성</span>
@@ -2693,6 +2727,20 @@ export default function Dashboard() {
           .weekly-report-print-target {
             display: none;
           }
+        }
+
+        @keyframes rotate-refresh {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: rotate-refresh 1s linear infinite;
+        }
+
+        .refresh-data-btn:hover {
+          background-color: var(--accent-cyan) !important;
+          color: black !important;
         }
       `}</style>
     </>

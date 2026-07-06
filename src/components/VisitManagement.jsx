@@ -14,7 +14,8 @@ import {
   MessageSquare, 
   Award,
   BookOpen,
-  Filter
+  Filter,
+  RefreshCw
 } from "lucide-react";
 
 export default function VisitManagement() {
@@ -30,8 +31,24 @@ export default function VisitManagement() {
     addVisitationRecord, 
     deleteVisitationRecord,
     updateVisitationRecord,
-    updateVisitationFeedback
+    updateVisitationFeedback,
+    refreshData
   } = useData();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      alert("실시간으로 최신 데이터가 반영되었습니다.");
+    } catch (err) {
+      console.error("데이터 동기화 실패:", err);
+      alert("데이터 동기화 중 오류가 발생했습니다.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const role = currentUser?.role;
   const canManageAllVisits = role === "admin" || role === "visit";
@@ -449,11 +466,32 @@ export default function VisitManagement() {
   return (
     <div className="visit-management-container animate-fade">
       {/* 1. Header & Summary Stats */}
-      <div className="visit-header-row">
+      <div className="visit-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h3 className="section-title">심방기록 및 피드백 관리</h3>
           <p className="section-subtitle">구역장 성찰 일기와 구역 성도와의 심방 내역을 체계적으로 누적 관리합니다.</p>
         </div>
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="btn btn-secondary btn-sm"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 12px",
+            fontSize: "12px",
+            fontWeight: "700",
+            backgroundColor: "rgba(6, 182, 212, 0.15)",
+            color: "var(--accent-cyan)",
+            border: "1px solid var(--accent-cyan)",
+            borderRadius: "var(--radius-sm)",
+            cursor: "pointer"
+          }}
+        >
+          <RefreshCw size={12} className={isRefreshing ? "spin" : ""} />
+          <span>실시간 동기화</span>
+        </button>
       </div>
 
       <div className="stats-cards-grid">
@@ -2016,6 +2054,15 @@ export default function VisitManagement() {
             grid-column: 2;
             justify-self: flex-start;
           }
+        }
+
+        @keyframes rotate-refresh {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: rotate-refresh 1s linear infinite;
         }
       `}</style>
     </div>

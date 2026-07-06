@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download } from "lucide-react";
+import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, RefreshCw } from "lucide-react";
 
 export default function AttendanceGrid() {
   const { currentUser } = useAuth();
@@ -19,8 +19,25 @@ export default function AttendanceGrid() {
     updateAttendance,
     updateMonthlyAchievement,
     saveMemberNote,
-    deleteMemberNote
+    deleteMemberNote,
+    refreshData
   } = useData();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [downloadCategory, setDownloadCategory] = useState("all");
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      alert("실시간으로 최신 데이터가 반영되었습니다.");
+    } catch (err) {
+      console.error("데이터 동기화 실패:", err);
+      alert("데이터 동기화 중 오류가 발생했습니다.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const role = currentUser?.role;
 
@@ -337,7 +354,7 @@ export default function AttendanceGrid() {
   };
 
   const getMemberNote = (memberId) => {
-    return memberNotes.find(n => n.memberId === memberId);
+    return memberNotes.find(n => n.memberId === memberId && n.weekNo === activeWeekNo);
   };
 
   const parseWorshipValue = (value) => {
@@ -382,46 +399,118 @@ export default function AttendanceGrid() {
     if (role === "admin") baseHeaders.push("소속 팀");
     if (role !== "leader") baseHeaders.push("소속 구역");
 
-    const headers = [
-      ...baseHeaders,
-      "삼일사전",
-      "삼일실제",
-      "주일사전",
-      "주일실제",
-      "구역예배",
-      "시험",
-      "특이사항",
-      "심야라디오",
-      "시몬스쿨",
-      "심방",
-      "전도",
-      "십일조",
-      "청체비",
-      "전도단"
-    ];
+    let worshipHeaders = [];
+    let rowsCalculator = null;
+
+    const splitWorshipValue = (val) => {
+      const parsed = parseWorshipValue(val);
+      return [parsed.type, parsed.time];
+    };
+
+    if (downloadCategory === "worship") {
+      worshipHeaders = [
+        "삼일사전(분류)",
+        "삼일사전(시간)",
+        "삼일실제(분류)",
+        "삼일실제(시간)",
+        "주일사전(분류)",
+        "주일사전(시간)",
+        "주일실제(분류)",
+        "주일실제(시간)",
+        "시험",
+        "특이사항"
+      ];
+      rowsCalculator = (member) => {
+        const note = getMemberNote(member.memberId);
+        return [
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_pre")),
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_actual")),
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_pre")),
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_actual")),
+          getWeeklyValue(member.memberId, "test"),
+          note?.text || ""
+        ];
+      };
+    } else if (downloadCategory === "education") {
+      worshipHeaders = [
+        "구역예배",
+        "시험",
+        "특이사항",
+        "심야라디오",
+        "시몬스쿨"
+      ];
+      rowsCalculator = (member) => {
+        const note = getMemberNote(member.memberId);
+        return [
+          getWeeklyValue(member.memberId, "zone"),
+          getWeeklyValue(member.memberId, "test"),
+          note?.text || "",
+          getWeeklyValue(member.memberId, "radio"),
+          getWeeklyValue(member.memberId, "simon")
+        ];
+      };
+    } else if (downloadCategory === "accounting") {
+      worshipHeaders = [
+        "십일조",
+        "청체비"
+      ];
+      rowsCalculator = (member) => [
+        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
+        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee"))
+      ];
+    } else {
+      // Default: "all"
+      worshipHeaders = [
+        "삼일사전(분류)",
+        "삼일사전(시간)",
+        "삼일실제(분류)",
+        "삼일실제(시간)",
+        "주일사전(분류)",
+        "주일사전(시간)",
+        "주일실제(분류)",
+        "주일실제(시간)",
+        "구역예배",
+        "시험",
+        "특이사항",
+        "심야라디오",
+        "시몬스쿨",
+        "심방",
+        "전도",
+        "십일조",
+        "청체비",
+        "전도단"
+      ];
+      rowsCalculator = (member) => {
+        const note = getMemberNote(member.memberId);
+        return [
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_pre")),
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "samil_actual")),
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_pre")),
+          ...splitWorshipValue(getWeeklyValue(member.memberId, "sunday_actual")),
+          getWeeklyValue(member.memberId, "zone"),
+          getWeeklyValue(member.memberId, "test"),
+          note?.text || "",
+          getWeeklyValue(member.memberId, "radio"),
+          getWeeklyValue(member.memberId, "simon"),
+          getWeeklyValue(member.memberId, "visit"),
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "evangelism")),
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee")),
+          getWeeklyValue(member.memberId, "activity")
+        ];
+      };
+    }
+
+    const headers = [...baseHeaders, ...worshipHeaders];
 
     const rows = filteredMembers.map((member) => {
       const baseCells = [member.name, member.rank];
       if (role === "admin") baseCells.push(getTeamName(member.teamId));
       if (role !== "leader") baseCells.push(getZoneName(member.zoneId));
 
-      const note = getMemberNote(member.memberId);
       return [
         ...baseCells,
-        formatWorshipValue(getWeeklyValue(member.memberId, "samil_pre")),
-        formatWorshipValue(getWeeklyValue(member.memberId, "samil_actual")),
-        formatWorshipValue(getWeeklyValue(member.memberId, "sunday_pre")),
-        formatWorshipValue(getWeeklyValue(member.memberId, "sunday_actual")),
-        getWeeklyValue(member.memberId, "zone"),
-        getWeeklyValue(member.memberId, "test"),
-        note?.text || "",
-        getWeeklyValue(member.memberId, "radio"),
-        getWeeklyValue(member.memberId, "simon"),
-        getWeeklyValue(member.memberId, "visit"),
-        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "evangelism")),
-        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
-        formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee")),
-        getWeeklyValue(member.memberId, "activity")
+        ...rowsCalculator(member)
       ];
     });
 
@@ -434,7 +523,13 @@ export default function AttendanceGrid() {
     const safeMonth = activeMonthId || "month";
     const safeWeek = activeWeekNo || "week";
     link.href = url;
-    link.download = `출결관리_${safeMonth}_${safeWeek}주차.csv`;
+    
+    let categoryLabel = "";
+    if (downloadCategory === "worship") categoryLabel = "_예배";
+    else if (downloadCategory === "education") categoryLabel = "_교육";
+    else if (downloadCategory === "accounting") categoryLabel = "_회계";
+
+    link.download = `출결관리_${safeMonth}_${safeWeek}주차${categoryLabel}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -626,9 +721,51 @@ export default function AttendanceGrid() {
     <div className="attendance-grid-wrapper animate-fade">
       {/* Filters Panel */}
       <div className="filters-panel glass-panel">
-        <div className="filter-header">
-          <Filter size={16} />
-          <h4>필터 및 검색</h4>
+        <div className="filter-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <Filter size={16} />
+            <h4>필터 및 검색</h4>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <select
+              value={downloadCategory}
+              onChange={(e) => setDownloadCategory(e.target.value)}
+              className="filter-select"
+              style={{
+                padding: "4px 10px",
+                fontSize: "12px",
+                height: "30px",
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+                color: "var(--text-primary)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer"
+              }}
+            >
+              <option value="all">전체</option>
+              <option value="worship">예배</option>
+              <option value="education">교육</option>
+              <option value="accounting">회계</option>
+            </select>
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm attendance-download-btn"
+              onClick={handleDownloadExcel}
+              disabled={filteredMembers.length === 0}
+              style={{
+                height: "30px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "0 12px",
+                fontSize: "12px"
+              }}
+            >
+              <Download size={13} />
+              <span>엑셀 다운로드</span>
+            </button>
+          </div>
         </div>
         
         <div className="filters-row">
@@ -690,12 +827,26 @@ export default function AttendanceGrid() {
 
           <button
             type="button"
-            className="btn btn-secondary btn-sm attendance-download-btn"
-            onClick={handleDownloadExcel}
-            disabled={filteredMembers.length === 0}
+            className="refresh-data-btn"
+            onClick={handleRefresh}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "0 12px",
+              fontSize: "12px",
+              fontWeight: "700",
+              backgroundColor: "rgba(6, 182, 212, 0.15)",
+              color: "var(--accent-cyan)",
+              border: "1px solid var(--accent-cyan)",
+              borderRadius: "var(--radius-sm)",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              height: "30px"
+            }}
           >
-            <Download size={14} />
-            <span>엑셀 다운로드</span>
+            <RefreshCw size={12} className={isRefreshing ? "spin" : ""} />
+            <span>실시간 동기화</span>
           </button>
         </div>
       </div>
@@ -756,9 +907,26 @@ export default function AttendanceGrid() {
                 return (
                   <tr key={member.memberId} className="grid-row">
                     <td className="sticky-col member-name-col">
-                      <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <span className={`member-name ${leadershipMember ? "leadership-member-name" : ""}`}>{member.name}</span>
                         <span className={`status-dot status-${member.status}`}></span>
+                        <button
+                          type="button"
+                          onClick={() => openNoteModal(member.memberId)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: "2px",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            color: memberNote ? "var(--accent-amber)" : "rgba(255,255,255,0.15)",
+                            transition: "color 0.2s"
+                          }}
+                          title={memberNote ? `특이사항: ${memberNote.text}` : "특이사항 작성"}
+                        >
+                          <MessageSquare size={13} style={{ fill: memberNote ? "rgba(245, 158, 11, 0.2)" : "none" }} />
+                        </button>
                       </div>
                     </td>
                     <td className="member-rank">{member.rank}</td>
@@ -1908,6 +2076,20 @@ export default function AttendanceGrid() {
           .table-responsive {
             max-height: calc(100vh - 400px);
           }
+        }
+
+        @keyframes rotate-refresh {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: rotate-refresh 1s linear infinite;
+        }
+
+        .refresh-data-btn:hover {
+          background-color: var(--accent-cyan) !important;
+          color: black !important;
         }
       `}</style>
     </div>

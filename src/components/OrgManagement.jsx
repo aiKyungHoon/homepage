@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search, RefreshCw } from "lucide-react";
 
 export default function OrgManagement() {
   const { currentUser } = useAuth();
@@ -19,8 +19,24 @@ export default function OrgManagement() {
     updateZone,
     addUser,
     updateUser,
-    deleteUser
+    deleteUser,
+    refreshData
   } = useData();
+
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      alert("실시간으로 최신 데이터가 반영되었습니다.");
+    } catch (err) {
+      console.error("데이터 동기화 실패:", err);
+      alert("데이터 동기화 중 오류가 발생했습니다.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const role = currentUser?.role;
 
@@ -397,7 +413,7 @@ export default function OrgManagement() {
   return (
     <div className="org-wrapper animate-fade">
       {/* Sub tabs header */}
-      <div className="sub-tabs-container glass-panel">
+      <div className="sub-tabs-container glass-panel" style={{ display: "flex", alignItems: "center" }}>
         <button
           onClick={() => setActiveSubTab("members")}
           className={`sub-tab-btn ${activeSubTab === "members" ? "active" : ""}`}
@@ -430,6 +446,29 @@ export default function OrgManagement() {
             <span>계정 관리</span>
           </button>
         )}
+        <button
+          type="button"
+          onClick={handleRefresh}
+          className="btn btn-secondary btn-sm"
+          style={{
+            marginLeft: "auto",
+            marginRight: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "6px 12px",
+            fontSize: "12px",
+            fontWeight: "700",
+            backgroundColor: "rgba(6, 182, 212, 0.15)",
+            color: "var(--accent-cyan)",
+            border: "1px solid var(--accent-cyan)",
+            borderRadius: "var(--radius-sm)",
+            cursor: "pointer"
+          }}
+        >
+          <RefreshCw size={12} className={isRefreshing ? "spin" : ""} />
+          <span>실시간 동기화</span>
+        </button>
       </div>
 
       {/* TABS INNER CONTENT */}
@@ -1268,6 +1307,15 @@ export default function OrgManagement() {
         .submit-btn {
           margin-top: 10px;
           padding: 12px;
+        }
+
+        @keyframes rotate-refresh {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        .spin {
+          animation: rotate-refresh 1s linear infinite;
         }
       `}</style>
     </div>
