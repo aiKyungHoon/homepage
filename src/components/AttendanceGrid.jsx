@@ -5,6 +5,38 @@ import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, 
 
 const SIMON_SCHOOL_OPTIONS = ["월O", "목O", "둘다", "X"];
 const SIMON_SCHOOL_PRESENT_VALUES = SIMON_SCHOOL_OPTIONS.filter(option => option !== "X");
+const REGISTRATION_TYPE_OPTIONS = ["총등", "교등", "입교"];
+const DEFAULT_REGISTRATION_TYPES = {
+  박어진: "교등",
+  김혜주: "교등",
+  허성태: "교등",
+  윤명근: "교등",
+  정운선: "교등",
+  박진우98: "교등",
+  김은주: "교등",
+  김성주: "교등",
+  신주영: "교등",
+  최현석: "교등",
+  김태건: "교등",
+  이혜연: "교등",
+  권보회: "교등",
+  오영심: "교등",
+  진성은: "교등",
+  김가희: "교등",
+  김소영: "교등",
+  김정은: "교등",
+  박상민: "교등",
+  송하신: "교등",
+  이미지: "교등",
+  이주영: "교등",
+  하헌영: "교등",
+  박재은: "교등",
+  조인겸: "입교",
+  윤준수: "입교",
+  문성현: "입교",
+  윤두진: "입교",
+  임상호: "입교"
+};
 
 export default function AttendanceGrid() {
   const { currentUser } = useAuth();
@@ -88,6 +120,7 @@ export default function AttendanceGrid() {
   const [filterTeamId, setFilterTeamId] = useState("");
   const [filterZoneId, setFilterZoneId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterRegistrationType, setFilterRegistrationType] = useState("");
 
   // Cell popover/quick-select state
   const [activeCell, setActiveCell] = useState(null); // { memberId, category, x, y }
@@ -242,6 +275,11 @@ export default function AttendanceGrid() {
   // Map team and zone IDs to names
   const getTeamName = (tId) => teams.find(t => t.teamId === tId)?.name || "";
   const getZoneName = (zId) => zones.find(z => z.zoneId === zId)?.name || "";
+  const getMemberRegistrationType = (member) => {
+    const savedValue = String(member?.registrationType || "").trim();
+    if (REGISTRATION_TYPE_OPTIONS.includes(savedValue)) return savedValue;
+    return DEFAULT_REGISTRATION_TYPES[member?.name] || "총등";
+  };
   const normalizeLeaderName = (name) => String(name || "").replace(/\s*\([^)]*\)\s*/g, "").trim();
 
   const getTeamSortValue = (teamId) => {
@@ -359,6 +397,10 @@ export default function AttendanceGrid() {
     } else if (!hasSearchQuery) {
       // Default "전체" keeps the active attendance list, but search can find excluded members.
       list = list.filter(m => m.status !== "excluded");
+    }
+
+    if (filterRegistrationType) {
+      list = list.filter(m => getMemberRegistrationType(m) === filterRegistrationType);
     }
 
     // Team Filter (locked for team leaders)
@@ -608,7 +650,7 @@ export default function AttendanceGrid() {
       return String(a.name || "").localeCompare(String(b.name || ""), "ko");
     });
 
-    const baseHeaders = ["이름", "직분"];
+    const baseHeaders = ["이름", "등록구분"];
     if (role === "admin") baseHeaders.push("소속 팀");
     if (role !== "leader") baseHeaders.push("소속 구역");
 
@@ -788,7 +830,7 @@ export default function AttendanceGrid() {
     const headers = [...baseHeaders, ...worshipHeaders];
 
     const rows = downloadMembers.map((member) => {
-      const baseCells = [member.name, member.rank];
+      const baseCells = [member.name, getMemberRegistrationType(member)];
       if (role === "admin") baseCells.push(getTeamName(member.teamId));
       if (role !== "leader") baseCells.push(getZoneName(member.zoneId));
 
@@ -864,7 +906,7 @@ export default function AttendanceGrid() {
   };
 
   const getColSpanCount = () => {
-    let count = 2; // 이름, 직분
+    let count = 2; // 이름, 등록구분
     if (role === "admin") count += 1;
     if (role !== "leader") count += 1;
     const allCols = [
@@ -1258,6 +1300,17 @@ export default function AttendanceGrid() {
             <option value="excluded">출결제외자</option>
           </select>
 
+          <select
+            value={filterRegistrationType}
+            onChange={(e) => setFilterRegistrationType(e.target.value)}
+            className="filter-select"
+          >
+            <option value="">등록구분 전체</option>
+            {REGISTRATION_TYPE_OPTIONS.map(type => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+
           <button
             type="button"
             className="refresh-data-btn"
@@ -1298,7 +1351,7 @@ export default function AttendanceGrid() {
             <thead>
               <tr>
                 <th className="sticky-col" style={getStickyStyle("name", true)}>이름</th>
-                <th className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={getStickyStyle("rank", true)}>직분</th>
+                <th className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={getStickyStyle("rank", true)}>등록구분</th>
                 {role === "admin" && <th className="sticky-col" style={getStickyStyle("team", true)}>소속 팀</th>}
                 {role !== "leader" && <th className="sticky-col sticky-col-last" style={getStickyStyle("zone", true)}>소속 구역</th>}
                 {shouldShowColumn("samil_pre") && <th className="sep-col worship-report-col" style={{ whiteSpace: "nowrap" }}>삼일사전<br/>(분류/시간)</th>}
@@ -1377,7 +1430,7 @@ export default function AttendanceGrid() {
                         </button>
                       </div>
                     </td>
-                    <td className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={{ ...getStickyStyle("rank", false), fontSize: "12px", color: "var(--text-secondary)" }}>{member.rank}</td>
+                    <td className={`sticky-col ${role === "leader" ? "sticky-col-last" : ""}`} style={{ ...getStickyStyle("rank", false), fontSize: "12px", color: "var(--text-secondary)" }}>{getMemberRegistrationType(member)}</td>
                     {role === "admin" && <td className="sticky-col" style={{ ...getStickyStyle("team", false), fontSize: "12px", color: "var(--text-secondary)" }}>{getTeamName(member.teamId)}</td>}
                     {role !== "leader" && <td className="sticky-col sticky-col-last" style={{ ...getStickyStyle("zone", false), fontSize: "12px", color: "var(--text-secondary)", textAlign: "left" }}>{getZoneName(member.zoneId)}</td>}
                     

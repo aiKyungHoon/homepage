@@ -613,8 +613,8 @@ export default function OrgManagement() {
             <table className="org-table">
               <thead>
                 <tr>
-                  <th>등록구분</th>
                   <th>이름</th>
+                  <th>등록구분</th>
                   <th>직분</th>
                   <th>소속 팀</th>
                   <th>소속 구역</th>
@@ -625,10 +625,10 @@ export default function OrgManagement() {
               <tbody>
                 {filteredMembers.map(m => (
                   <tr key={m.memberId}>
+                    <td style={{fontWeight: 600}}>{m.name}</td>
                     <td>
                       <span className="badge status-normal">{getMemberRegistrationType(m)}</span>
                     </td>
-                    <td style={{fontWeight: 600}}>{m.name}</td>
                     <td>{m.rank}</td>
                     <td>{getTeamName(m.teamId)}</td>
                     <td>{getZoneName(m.zoneId)}</td>
