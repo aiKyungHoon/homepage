@@ -209,6 +209,9 @@ export function DataProvider({ children }) {
   };
 
   const updateAttendanceDownloadNames = async (targets) => {
+    if (currentUser?.role !== "admin") {
+      throw new Error("엑셀 다운로드 이름 설정은 관리자만 수정할 수 있습니다.");
+    }
     const normalizedTargets = normalizeAttendanceDownloadTargets(targets);
     const normalizedNames = normalizedTargets.map(item => item.name).filter(Boolean);
 

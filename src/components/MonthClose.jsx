@@ -36,6 +36,7 @@ export default function MonthClose() {
   const [downloadTargetDrafts, setDownloadTargetDrafts] = useState([]);
   const [downloadNameInput, setDownloadNameInput] = useState("");
   const [downloadNameSaving, setDownloadNameSaving] = useState(false);
+  const canManageDownloadSettings = currentUser?.role === "admin";
 
   useEffect(() => {
     const savedTargets = Array.isArray(appSettings?.attendanceDownloadTargets)
@@ -143,6 +144,10 @@ export default function MonthClose() {
   };
 
   const handleSaveDownloadNames = async () => {
+    if (!canManageDownloadSettings) {
+      alert("엑셀 다운로드 이름 설정은 관리자만 수정할 수 있습니다.");
+      return;
+    }
     setDownloadNameSaving(true);
     try {
       await updateAttendanceDownloadNames(downloadTargetDrafts);
@@ -797,94 +802,96 @@ export default function MonthClose() {
         </div>
       </div>
 
-      <div className="download-settings-card glass-panel">
-        <div className="card-header">
-          <FileText size={18} />
-          <h3>출결관리 엑셀 다운로드 이름 설정</h3>
-        </div>
-        <p className="download-settings-description">
-          이름을 등록하면 출결관리 엑셀 다운로드 시 현재 필터 조건 안에서 아래 이름에 해당하는 성도만 다운로드됩니다. 비워두면 기존처럼 전체 필터 결과가 다운로드됩니다.
-        </p>
+      {canManageDownloadSettings && (
+        <div className="download-settings-card glass-panel">
+          <div className="card-header">
+            <FileText size={18} />
+            <h3>출결관리 엑셀 다운로드 이름 설정</h3>
+          </div>
+          <p className="download-settings-description">
+            이름을 등록하면 출결관리 엑셀 다운로드 시 현재 필터 조건 안에서 아래 이름에 해당하는 성도만 다운로드됩니다. 비워두면 기존처럼 전체 필터 결과가 다운로드됩니다.
+          </p>
 
-        <div className="download-name-add-row">
-          <textarea
-            value={downloadNameInput}
-            onChange={(e) => setDownloadNameInput(e.target.value)}
-            placeholder="성도 이름 또는 ID를 입력하세요. 검색 결과에서 선택하거나, 정확한 이름/ID는 추가 버튼으로 등록"
-            rows={2}
-          />
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={handleAddDownloadNames}
-          >
-            추가
-          </button>
-        </div>
+          <div className="download-name-add-row">
+            <textarea
+              value={downloadNameInput}
+              onChange={(e) => setDownloadNameInput(e.target.value)}
+              placeholder="성도 이름 또는 ID를 입력하세요. 검색 결과에서 선택하거나, 정확한 이름/ID는 추가 버튼으로 등록"
+              rows={2}
+            />
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleAddDownloadNames}
+            >
+              추가
+            </button>
+          </div>
 
-        {downloadNameInput.trim() && (
-          <div className="download-search-results">
-            {getMatchingDownloadMembers().length === 0 ? (
-              <div className="download-search-empty">검색 결과가 없습니다.</div>
+          {downloadNameInput.trim() && (
+            <div className="download-search-results">
+              {getMatchingDownloadMembers().length === 0 ? (
+                <div className="download-search-empty">검색 결과가 없습니다.</div>
+              ) : (
+                getMatchingDownloadMembers().map(member => (
+                  <button
+                    key={member.memberId}
+                    type="button"
+                    className="download-search-result"
+                    onClick={() => addDownloadTarget(member)}
+                  >
+                    <strong>{member.name}</strong>
+                    <span>ID {member.memberId}</span>
+                    <small>{getTeamName(member.teamId)} · {getZoneName(member.zoneId)}</small>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+
+          <div className="download-name-list">
+            {downloadTargetDrafts.length === 0 ? (
+              <div className="download-name-empty">등록된 이름이 없습니다. 전체 필터 결과가 다운로드됩니다.</div>
             ) : (
-              getMatchingDownloadMembers().map(member => (
-                <button
-                  key={member.memberId}
-                  type="button"
-                  className="download-search-result"
-                  onClick={() => addDownloadTarget(member)}
-                >
-                  <strong>{member.name}</strong>
-                  <span>ID {member.memberId}</span>
-                  <small>{getTeamName(member.teamId)} · {getZoneName(member.zoneId)}</small>
-                </button>
+              downloadTargetDrafts.map((target, index) => (
+                <div key={`${target.memberId || target.name}-${index}`} className="download-name-row">
+                  <div className="download-selected-member">
+                    <input
+                      type="text"
+                      value={target.name}
+                      onChange={(e) => handleUpdateDownloadName(index, e.target.value)}
+                      placeholder="이름 또는 ID"
+                    />
+                    <div className="download-selected-meta">
+                      <span>ID {target.memberId || "미매칭"}</span>
+                      <span>{target.zoneId ? getZoneName(target.zoneId) : "성도 선택 필요"}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleRemoveDownloadName(index)}
+                  >
+                    삭제
+                  </button>
+                </div>
               ))
             )}
           </div>
-        )}
 
-        <div className="download-name-list">
-          {downloadTargetDrafts.length === 0 ? (
-            <div className="download-name-empty">등록된 이름이 없습니다. 전체 필터 결과가 다운로드됩니다.</div>
-          ) : (
-            downloadTargetDrafts.map((target, index) => (
-              <div key={`${target.memberId || target.name}-${index}`} className="download-name-row">
-                <div className="download-selected-member">
-                  <input
-                    type="text"
-                    value={target.name}
-                    onChange={(e) => handleUpdateDownloadName(index, e.target.value)}
-                    placeholder="이름 또는 ID"
-                  />
-                  <div className="download-selected-meta">
-                    <span>ID {target.memberId || "미매칭"}</span>
-                    <span>{target.zoneId ? getZoneName(target.zoneId) : "성도 선택 필요"}</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm"
-                  onClick={() => handleRemoveDownloadName(index)}
-                >
-                  삭제
-                </button>
-              </div>
-            ))
-          )}
+          <div className="download-settings-actions">
+            <span>{downloadTargetDrafts.filter(target => target.name?.trim()).length}명 설정됨</span>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={handleSaveDownloadNames}
+              disabled={downloadNameSaving}
+            >
+              {downloadNameSaving ? "저장 중..." : "저장"}
+            </button>
+          </div>
         </div>
-
-        <div className="download-settings-actions">
-          <span>{downloadTargetDrafts.filter(target => target.name?.trim()).length}명 설정됨</span>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={handleSaveDownloadNames}
-            disabled={downloadNameSaving}
-          >
-            {downloadNameSaving ? "저장 중..." : "저장"}
-          </button>
-        </div>
-      </div>
+      )}
 
       <div className="month-list-card glass-panel">
         <div className="card-header">
