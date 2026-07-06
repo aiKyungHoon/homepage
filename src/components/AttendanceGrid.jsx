@@ -1237,6 +1237,7 @@ export default function AttendanceGrid() {
     
     const calculateGroupStats = (group) => {
       let presentCount = 0;
+      const presentNames = [];
       let daemyeonCount = 0;
       let hwajeongCount = 0;
       
@@ -1276,6 +1277,7 @@ export default function AttendanceGrid() {
         
         if (isPresentType) {
           presentCount++;
+          presentNames.push(m.name);
           
           const isFaceToFace = [
             "정규성전", "모임방(상수)", "모임방(홍대/좌)", "모임방(홍대/우)", "모임방(서교)", 
@@ -1378,7 +1380,8 @@ export default function AttendanceGrid() {
         absentOneTime,
         absentContinuous,
         absentLongTerm,
-        newAbsentNames
+        newAbsentNames,
+        presentNames
       };
     };
     
@@ -1402,6 +1405,9 @@ export default function AttendanceGrid() {
     
     const buildSectionText = (title, stats) => {
       let t = `▪️${title} ${stats.totalCount}명/출석 ${stats.presentCount}명\n`;
+      t += stats.presentCount > 0 
+        ? formatNamesInRows(stats.presentNames) + "\n\n" 
+        : "(없음)\n\n";
       t += `1. 대면 ${stats.daemyeonCount}명\n`;
       t += `- 화정성전 ${stats.hwajeongCount}명\n`;
       t += `*7시30분 ${stats.hwajeongTimes["7:30"]}\n`;
