@@ -3,6 +3,9 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, RefreshCw } from "lucide-react";
 
+const SIMON_SCHOOL_OPTIONS = ["월O", "목O", "둘다", "X"];
+const SIMON_SCHOOL_PRESENT_VALUES = SIMON_SCHOOL_OPTIONS.filter(option => option !== "X");
+
 export default function AttendanceGrid() {
   const { currentUser } = useAuth();
   const {
@@ -914,7 +917,7 @@ export default function AttendanceGrid() {
     if (cat === "zone") return ["대면", "줌", "개별", "불참", "미보고"];
     if (worshipCategories.includes(cat)) return cellOptions.weeklyWorship;
     if (cat === "test") return cellOptions.test;
-    if (cat === "simon") return ["월O", "목O", "둘다", "X"];
+    if (cat === "simon") return SIMON_SCHOOL_OPTIONS;
     if (["radio", "visit"].includes(cat)) return cellOptions.weeklyEdu;
     return cellOptions.weeklyActivity;
   };
@@ -1089,7 +1092,7 @@ export default function AttendanceGrid() {
       zone: ["대면"],
       test: ["정규시험", "개별시험"],
       radio: ["O"],
-      simon: ["O", "월O", "목O", "둘다"],
+      simon: ["O", ...SIMON_SCHOOL_PRESENT_VALUES],
       activity: ["O"]
     };
 
