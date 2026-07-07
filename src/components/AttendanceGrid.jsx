@@ -130,6 +130,8 @@ export default function AttendanceGrid() {
   const [visitType, setVisitType] = useState("전화심방");
   const [worshipType, setWorshipType] = useState("정규성전");
   const [worshipTime, setWorshipTime] = useState("9:00");
+  const [worshipTypeSearch, setWorshipTypeSearch] = useState("");
+  const [worshipTimeSearch, setWorshipTimeSearch] = useState("");
   const [noteModalMemberId, setNoteModalMemberId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
   const popoverRef = useRef(null);
@@ -1041,6 +1043,8 @@ export default function AttendanceGrid() {
         const parsed = isPre ? parsePreWorship(curVal) : parseActualWorship(curVal);
         setEditWorshipType(worshipTypes.includes(parsed.type) ? parsed.type : "정규성전");
         setEditWorshipTime(parsed.time || "9:00");
+        setWorshipTypeSearch("");
+        setWorshipTimeSearch("");
       }
 
       if (isWorshipConfirmCell) {
@@ -1082,6 +1086,14 @@ export default function AttendanceGrid() {
     updateAttendance(activeCell.memberId, activeCell.category, value);
     setActiveCell(null);
   };
+
+  const filteredWorshipTypes = worshipTypes.filter(type =>
+    type.toLowerCase().includes(worshipTypeSearch.trim().toLowerCase())
+  );
+
+  const filteredWorshipTimes = worshipTimes.filter(time =>
+    time.includes(worshipTimeSearch.trim())
+  );
 
   const openNoteModal = (memberId) => {
     const note = getMemberNote(memberId);
@@ -2307,8 +2319,16 @@ export default function AttendanceGrid() {
                 <div className="worship-popover-grid">
                   <div className="worship-popover-section">
                     <div className="worship-popover-title">예배분류</div>
+                    <input
+                      className="worship-search-input"
+                      value={worshipTypeSearch}
+                      onChange={(e) => setWorshipTypeSearch(e.target.value)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="예배분류 검색..."
+                    />
                     <div className="worship-option-list">
-                      {worshipTypes.map((type) => (
+                      {filteredWorshipTypes.map((type) => (
                         <button
                           key={type}
                           type="button"
@@ -2319,13 +2339,24 @@ export default function AttendanceGrid() {
                           {type}
                         </button>
                       ))}
+                      {filteredWorshipTypes.length === 0 && (
+                        <div className="worship-empty-result">검색 결과 없음</div>
+                      )}
                     </div>
                   </div>
 
                   <div className="worship-popover-section">
                     <div className="worship-popover-title">시간</div>
+                    <input
+                      className="worship-search-input"
+                      value={worshipTimeSearch}
+                      onChange={(e) => setWorshipTimeSearch(e.target.value)}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="시간 검색..."
+                    />
                     <div className="worship-time-grid">
-                      {worshipTimes.map((time) => (
+                      {filteredWorshipTimes.map((time) => (
                         <button
                           key={time}
                           type="button"
@@ -2336,6 +2367,9 @@ export default function AttendanceGrid() {
                           {time}
                         </button>
                       ))}
+                      {filteredWorshipTimes.length === 0 && (
+                        <div className="worship-empty-result">검색 결과 없음</div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -3243,12 +3277,37 @@ export default function AttendanceGrid() {
           background-color: var(--bg-tertiary);
         }
 
+        .worship-search-input {
+          margin: 8px 8px 4px;
+          width: calc(100% - 16px);
+          min-height: 34px;
+          padding: 7px 10px;
+          border: 1px solid var(--glass-border);
+          border-radius: 7px;
+          background-color: var(--bg-secondary);
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 700;
+          outline: none;
+          box-sizing: border-box;
+        }
+
+        .worship-search-input:focus {
+          border-color: var(--accent-cyan);
+          box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.16);
+        }
+
+        .worship-search-input::placeholder {
+          color: var(--text-muted);
+          font-weight: 600;
+        }
+
         .worship-option-list,
         .worship-time-grid {
           overflow-y: auto;
           overscroll-behavior: contain;
           padding: 6px;
-          max-height: min(440px, calc(100vh - 180px));
+          max-height: min(400px, calc(100vh - 222px));
         }
 
         .worship-option-list {
@@ -3301,6 +3360,15 @@ export default function AttendanceGrid() {
           border-color: var(--accent-cyan);
           background-color: rgba(6, 182, 212, 0.14);
           color: var(--accent-cyan);
+        }
+
+        .worship-empty-result {
+          grid-column: 1 / -1;
+          padding: 18px 10px;
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 700;
+          text-align: center;
         }
 
         .worship-selection-summary {
@@ -3374,7 +3442,7 @@ export default function AttendanceGrid() {
 
           .worship-option-list,
           .worship-time-grid {
-            max-height: 180px;
+            max-height: 150px;
           }
 
           .worship-option-list {
