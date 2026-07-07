@@ -693,6 +693,7 @@ export default function Dashboard() {
   const [showMoreRankingsModal, setShowMoreRankingsModal] = useState(false);
   const [showWeeklyReportModal, setShowWeeklyReportModal] = useState(false);
   const [clickedCardDetails, setClickedCardDetails] = useState(null);
+  const [selectedMonthlyMetric, setSelectedMonthlyMetric] = useState(null);
   const [visibleLines, setVisibleLines] = useState({ worship: true, test: true, ev: true });
 
   const getWeeklyCount = (cat) => {
@@ -1166,6 +1167,42 @@ export default function Dashboard() {
     };
   };
 
+  const calculateWeeklyMetricBreakdown = (definition, monthId = activeMonthId, records = attendanceRecords, achievements = monthlyAchievements) => {
+    if (!definition || !monthId || scopedMembers.length === 0) return [];
+    const weeks = [1, 2, 3, 4, 5];
+
+    if (definition.type === "achievement") {
+      return weeks.map(weekNo => {
+        const present = scopedMembers.filter(member => {
+          const item = achievements.find(a => a.memberId === member.memberId && a.category === definition.category);
+          if (!item?.achieved) return false;
+          return !item.achievedWeekNo || Number(item.achievedWeekNo) <= weekNo;
+        }).length;
+        const possible = scopedMembers.length;
+        return {
+          weekNo,
+          present,
+          possible,
+          rate: possible ? Math.round((present / possible) * 1000) / 10 : 0
+        };
+      });
+    }
+
+    return weeks.map(weekNo => {
+      const present = scopedMembers.filter(member => {
+        const value = getAttendanceValueFromRecords(records, member.memberId, definition.category, weekNo, monthId);
+        return isMonthlyMetricPresent(definition, value);
+      }).length;
+      const possible = scopedMembers.length;
+      return {
+        weekNo,
+        present,
+        possible,
+        rate: possible ? Math.round((present / possible) * 1000) / 10 : 0
+      };
+    });
+  };
+
   const monthlyMetrics = MONTHLY_METRICS.map(definition => {
     const current = calculateMonthlyMetric(definition, activeMonthId, attendanceRecords, monthlyAchievements);
     const previous = calculateMonthlyMetric(definition, previousMonthId, previousMonthRecords, previousMonthAchievements);
@@ -1204,6 +1241,55 @@ export default function Dashboard() {
     return <span className="monthly-delta neutral">전월과 동일</span>;
   };
 
+  const renderMonthlyMetricChart = (rows) => {
+    const width = 560;
+    const height = 210;
+    const paddingLeft = 44;
+    const paddingRight = 20;
+    const paddingTop = 22;
+    const paddingBottom = 34;
+    const chartWidth = width - paddingLeft - paddingRight;
+    const chartHeight = height - paddingTop - paddingBottom;
+    const getX = (index) => paddingLeft + index * (chartWidth / Math.max(1, rows.length - 1));
+    const getY = (rate) => paddingTop + (100 - rate) * (chartHeight / 100);
+    const points = rows.map((row, index) => ({ ...row, x: getX(index), y: getY(row.rate) }));
+    const pathD = points.length > 1
+      ? `M ${points[0].x} ${points[0].y} ${points.slice(1).map(point => `L ${point.x} ${point.y}`).join(" ")}`
+      : "";
+
+    return (
+      <svg className="monthly-detail-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="주차별 퍼센트 그래프">
+        {[0, 25, 50, 75, 100].map(rate => (
+          <g key={`grid-${rate}`}>
+            <line
+              x1={paddingLeft}
+              x2={width - paddingRight}
+              y1={getY(rate)}
+              y2={getY(rate)}
+              className="monthly-chart-grid"
+            />
+            <text x={paddingLeft - 10} y={getY(rate) + 4} textAnchor="end" className="monthly-chart-axis">
+              {rate}%
+            </text>
+          </g>
+        ))}
+        {pathD && <path d={pathD} className="monthly-chart-line" />}
+        {points.map(point => (
+          <g key={`point-${point.weekNo}`}>
+            <line x1={point.x} x2={point.x} y1={paddingTop} y2={height - paddingBottom} className="monthly-chart-week-line" />
+            <circle cx={point.x} cy={point.y} r="5" className="monthly-chart-point" />
+            <text x={point.x} y={Math.max(12, point.y - 10)} textAnchor="middle" className="monthly-chart-rate">
+              {point.rate}%
+            </text>
+            <text x={point.x} y={height - 10} textAnchor="middle" className="monthly-chart-axis">
+              {point.weekNo}주
+            </text>
+          </g>
+        ))}
+      </svg>
+    );
+  };
+
   const renderMonthlyDashboard = () => (
     <>
       <div className="dashboard-section-group monthly-overview-section">
@@ -1223,7 +1309,20 @@ export default function Dashboard() {
 
         <div className="monthly-metric-grid">
           {monthlyMetrics.map(metric => (
-            <div key={metric.key} className="monthly-metric-card glass-panel">
+            <div
+              key={metric.key}
+              className="monthly-metric-card glass-panel clickable-card"
+              onClick={() => setSelectedMonthlyMetric(metric)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedMonthlyMetric(metric);
+                }
+              }}
+              title={`${metric.label} 주차별 상세 보기`}
+            >
               <div className={`stats-icon-wrapper ${metric.icon}`}>
                 {metric.diff !== null && metric.diff < 0 ? <TrendingUp size={20} style={{ transform: "rotate(180deg)" }} /> : <TrendingUp size={20} />}
               </div>
@@ -2691,6 +2790,73 @@ export default function Dashboard() {
     </div>
 
       {/* ---------------- MODALS & PRINT TARGET ---------------- */}
+
+      {selectedMonthlyMetric && (
+        <div className="modal-backdrop no-print" onClick={() => setSelectedMonthlyMetric(null)}>
+          <div className="modal-content glass-panel monthly-detail-modal animate-slide" onClick={(e) => e.stopPropagation()}>
+            {(() => {
+              const rows = calculateWeeklyMetricBreakdown(selectedMonthlyMetric);
+              const bestWeek = rows.reduce((best, row) => row.rate > best.rate ? row : best, rows[0] || { weekNo: "-", rate: 0 });
+              return (
+                <>
+                  <div className="modal-header">
+                    <div>
+                      <h3>{selectedMonthlyMetric.label} 주차별 현황</h3>
+                      <p className="monthly-detail-subtitle">{formatMonthLabel(activeMonthId)} 기준 · 최고 {bestWeek.weekNo}주차 {bestWeek.rate}%</p>
+                    </div>
+                    <button onClick={() => setSelectedMonthlyMetric(null)} className="modal-close-btn">
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="monthly-detail-summary">
+                    <div>
+                      <span>월간 기준</span>
+                      <strong>{selectedMonthlyMetric.current.rate}%</strong>
+                      <small>{selectedMonthlyMetric.current.present} / {selectedMonthlyMetric.current.possible}명</small>
+                    </div>
+                    <div>
+                      <span>전월 대비</span>
+                      {renderMonthlyDelta(selectedMonthlyMetric.diff)}
+                    </div>
+                  </div>
+
+                  <div className="monthly-detail-chart-wrap">
+                    {renderMonthlyMetricChart(rows)}
+                  </div>
+
+                  <div className="monthly-detail-table-wrap">
+                    <table className="monthly-detail-table">
+                      <thead>
+                        <tr>
+                          <th>주차</th>
+                          <th>퍼센트</th>
+                          <th>인원</th>
+                          <th>그래프</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(row => (
+                          <tr key={row.weekNo}>
+                            <td>{row.weekNo}주차</td>
+                            <td>{row.rate}%</td>
+                            <td>{row.present} / {row.possible}명</td>
+                            <td>
+                              <div className="monthly-detail-row-bar">
+                                <span style={{ width: `${Math.min(100, row.rate)}%` }}></span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
       
       {/* 0. Card Details Popup Modal */}
       {clickedCardDetails && (
@@ -3158,6 +3324,158 @@ export default function Dashboard() {
         .monthly-compare-table td:nth-child(2) {
           color: var(--text-primary);
           font-size: 13px;
+        }
+
+        .monthly-detail-modal {
+          width: min(760px, 92vw);
+          max-height: 86vh;
+          overflow-y: auto;
+        }
+
+        .monthly-detail-subtitle {
+          margin-top: 4px;
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .monthly-detail-summary {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+          margin: 14px 0;
+        }
+
+        .monthly-detail-summary > div {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 14px;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+          background: var(--bg-secondary);
+        }
+
+        .monthly-detail-summary span {
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .monthly-detail-summary strong {
+          color: var(--accent-cyan);
+          font-family: var(--font-title);
+          font-size: 28px;
+          line-height: 1;
+        }
+
+        .monthly-detail-summary small {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .monthly-detail-chart-wrap {
+          overflow-x: auto;
+          padding: 10px 4px 4px;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+          background: var(--bg-secondary);
+        }
+
+        .monthly-detail-chart {
+          min-width: 560px;
+          width: 100%;
+          height: 230px;
+          display: block;
+        }
+
+        .monthly-chart-grid {
+          stroke: var(--glass-border);
+          stroke-width: 1;
+          stroke-dasharray: 4 4;
+        }
+
+        .monthly-chart-week-line {
+          stroke: var(--glass-border);
+          stroke-width: 1;
+          opacity: 0.55;
+        }
+
+        .monthly-chart-line {
+          fill: none;
+          stroke: var(--accent-cyan);
+          stroke-width: 4;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+        }
+
+        .monthly-chart-point {
+          fill: var(--bg-secondary);
+          stroke: var(--accent-cyan);
+          stroke-width: 3;
+        }
+
+        .monthly-chart-axis {
+          fill: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .monthly-chart-rate {
+          fill: var(--text-primary);
+          font-size: 12px;
+          font-weight: 900;
+        }
+
+        .monthly-detail-table-wrap {
+          margin-top: 14px;
+          overflow-x: auto;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+        }
+
+        .monthly-detail-table {
+          width: 100%;
+          min-width: 560px;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        .monthly-detail-table th,
+        .monthly-detail-table td {
+          padding: 11px 12px;
+          border-bottom: 1px solid var(--glass-border);
+          color: var(--text-secondary);
+          font-weight: 800;
+          text-align: left;
+        }
+
+        .monthly-detail-table th {
+          background: var(--bg-secondary);
+          color: var(--text-muted);
+          font-size: 11px;
+        }
+
+        .monthly-detail-table td:nth-child(2) {
+          color: var(--accent-cyan);
+        }
+
+        .monthly-detail-row-bar {
+          width: 100%;
+          min-width: 160px;
+          height: 8px;
+          border-radius: 999px;
+          overflow: hidden;
+          background: var(--bg-primary);
+          border: 1px solid var(--glass-border);
+        }
+
+        .monthly-detail-row-bar span {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
         }
 
         .dashboard-section-group {
