@@ -694,6 +694,7 @@ export default function Dashboard() {
   const [showWeeklyReportModal, setShowWeeklyReportModal] = useState(false);
   const [clickedCardDetails, setClickedCardDetails] = useState(null);
   const [selectedMonthlyMetric, setSelectedMonthlyMetric] = useState(null);
+  const [selectedWeeklyComparison, setSelectedWeeklyComparison] = useState(null);
   const [visibleLines, setVisibleLines] = useState({ worship: true, test: true, ev: true });
 
   const getWeeklyCount = (cat) => {
@@ -1203,6 +1204,41 @@ export default function Dashboard() {
     });
   };
 
+  const getWeeklyMetricMemberSet = (definition, weekNo, monthId, records = attendanceRecords, achievements = monthlyAchievements) => {
+    if (!definition || !monthId) return [];
+
+    if (definition.type === "achievement") {
+      return scopedMembers.filter(member => {
+        const item = achievements.find(a => a.memberId === member.memberId && a.category === definition.category);
+        if (!item?.achieved) return false;
+        return !item.achievedWeekNo || Number(item.achievedWeekNo) <= weekNo;
+      });
+    }
+
+    return scopedMembers.filter(member => {
+      const value = getAttendanceValueFromRecords(records, member.memberId, definition.category, weekNo, monthId);
+      return isMonthlyMetricPresent(definition, value);
+    });
+  };
+
+  const buildWeeklyComparisonDetail = (metric, row) => {
+    const currentMembers = getWeeklyMetricMemberSet(metric, row.weekNo, activeMonthId, attendanceRecords, monthlyAchievements);
+    const previousMembers = getWeeklyMetricMemberSet(metric, row.weekNo, previousMonthId, previousMonthRecords, previousMonthAchievements);
+    const currentIds = new Set(currentMembers.map(member => member.memberId));
+    const previousIds = new Set(previousMembers.map(member => member.memberId));
+
+    return {
+      metric,
+      weekNo: row.weekNo,
+      current: row.current,
+      previous: row.previous,
+      diff: row.diff,
+      currentOnly: currentMembers.filter(member => !previousIds.has(member.memberId)),
+      previousOnly: previousMembers.filter(member => !currentIds.has(member.memberId)),
+      same: currentMembers.filter(member => previousIds.has(member.memberId))
+    };
+  };
+
   const monthlyMetrics = MONTHLY_METRICS.map(definition => {
     const current = calculateMonthlyMetric(definition, activeMonthId, attendanceRecords, monthlyAchievements);
     const previous = calculateMonthlyMetric(definition, previousMonthId, previousMonthRecords, previousMonthAchievements);
@@ -1436,11 +1472,16 @@ export default function Dashboard() {
                   <td>{metric.label}</td>
                   {metric.weeklyRows.map(row => (
                     <td key={`${metric.key}-${row.weekNo}`}>
-                      <div className="monthly-week-cell">
+                      <button
+                        type="button"
+                        className="monthly-week-cell monthly-week-cell-button"
+                        onClick={() => setSelectedWeeklyComparison(buildWeeklyComparisonDetail(metric, row))}
+                        title={`${metric.label} ${row.weekNo}주차 명단 비교`}
+                      >
                         <strong>{row.current.rate}%</strong>
                         <small>{row.current.present}/{row.current.possible}명</small>
                         {renderWeeklyDiffBadge(row.diff)}
-                      </div>
+                      </button>
                     </td>
                   ))}
                 </tr>
@@ -2861,6 +2902,99 @@ export default function Dashboard() {
 
       {/* ---------------- MODALS & PRINT TARGET ---------------- */}
 
+      {selectedWeeklyComparison && (
+        <div className="modal-backdrop no-print" onClick={() => setSelectedWeeklyComparison(null)}>
+          <div className="modal-content glass-panel monthly-comparison-modal animate-slide" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>{selectedWeeklyComparison.metric.label} · {selectedWeeklyComparison.weekNo}주차 명단 비교</h3>
+                <p className="monthly-detail-subtitle">
+                  현재월 {selectedWeeklyComparison.current.rate}% ({selectedWeeklyComparison.current.present}/{selectedWeeklyComparison.current.possible}명)
+                  {" · "}
+                  전월 {selectedWeeklyComparison.diff === null ? "-" : `${selectedWeeklyComparison.previous.rate}% (${selectedWeeklyComparison.previous.present}/${selectedWeeklyComparison.previous.possible}명)`}
+                </p>
+              </div>
+              <button onClick={() => setSelectedWeeklyComparison(null)} className="modal-close-btn">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="monthly-comparison-summary">
+              <div>
+                <span>이번 달만 해당</span>
+                <strong>{selectedWeeklyComparison.currentOnly.length}명</strong>
+              </div>
+              <div>
+                <span>전월만 해당</span>
+                <strong>{selectedWeeklyComparison.previousOnly.length}명</strong>
+              </div>
+              <div>
+                <span>동일</span>
+                <strong>{selectedWeeklyComparison.same.length}명</strong>
+              </div>
+            </div>
+
+            <div className="monthly-comparison-list-grid">
+              {[
+                { key: "currentOnly", title: "이번 달만 해당", members: selectedWeeklyComparison.currentOnly },
+                { key: "previousOnly", title: "전월만 해당", members: selectedWeeklyComparison.previousOnly },
+                { key: "same", title: "동일", members: selectedWeeklyComparison.same }
+              ].map(group => (
+                <div key={group.key} className="monthly-comparison-list">
+                  <h4>{group.title} <span>{group.members.length}명</span></h4>
+                  <div>
+                    {group.members.length > 0 ? group.members.map(member => (
+                      <span key={member.memberId} className="monthly-member-chip">
+                        {member.name}
+                        <small>{getZoneName(member.zoneId)}</small>
+                      </span>
+                    )) : (
+                      <p>해당 명단이 없습니다.</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="popover-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+                onClick={() => {
+                  const detail = selectedWeeklyComparison;
+                  const makeNames = (items) => items.length ? items.map(member => `${member.name}(${getZoneName(member.zoneId)})`).join(", ") : "없음";
+                  const text = [
+                    `[${formatMonthLabel(activeMonthId)} ${detail.metric.label} ${detail.weekNo}주차 명단 비교]`,
+                    `현재월: ${detail.current.rate}% (${detail.current.present}/${detail.current.possible}명)`,
+                    `전월: ${detail.diff === null ? "전월 데이터 없음" : `${detail.previous.rate}% (${detail.previous.present}/${detail.previous.possible}명)`}`,
+                    `차이: ${detail.diff === null ? "-" : `${detail.diff > 0 ? "+" : ""}${detail.diff}%p`}`,
+                    "",
+                    `[이번 달만 해당 ${detail.currentOnly.length}명]`,
+                    makeNames(detail.currentOnly),
+                    "",
+                    `[전월만 해당 ${detail.previousOnly.length}명]`,
+                    makeNames(detail.previousOnly),
+                    "",
+                    `[동일 ${detail.same.length}명]`,
+                    makeNames(detail.same)
+                  ].join("\n");
+                  navigator.clipboard.writeText(text)
+                    .then(() => alert("주차별 비교 명단이 복사되었습니다."))
+                    .catch(err => alert("복사 실패: " + err));
+                }}
+              >
+                <Clipboard size={14} />
+                <span>명단 복사</span>
+              </button>
+              <button onClick={() => setSelectedWeeklyComparison(null)} className="btn btn-secondary" style={{ flex: 0.35 }}>
+                <span>닫기</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedMonthlyMetric && (
         <div className="modal-backdrop no-print" onClick={() => setSelectedMonthlyMetric(null)}>
           <div className="modal-content glass-panel monthly-detail-modal animate-slide" onClick={(e) => e.stopPropagation()}>
@@ -3465,6 +3599,22 @@ export default function Dashboard() {
           text-align: center;
         }
 
+        .monthly-week-cell-button {
+          width: 100%;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          padding: 8px 6px;
+          background: transparent;
+          cursor: pointer;
+          transition: border-color var(--transition-fast), background-color var(--transition-fast), transform var(--transition-fast);
+        }
+
+        .monthly-week-cell-button:hover {
+          border-color: var(--accent-cyan);
+          background: rgba(6, 182, 212, 0.08);
+          transform: translateY(-1px);
+        }
+
         .monthly-week-cell strong {
           color: var(--text-primary);
           font-size: 15px;
@@ -3502,6 +3652,117 @@ export default function Dashboard() {
         .monthly-week-diff.neutral {
           color: var(--text-secondary);
           background: hsla(220, 15%, 50%, 0.12);
+        }
+
+        .monthly-comparison-modal {
+          width: min(880px, 94vw);
+          max-height: 86vh;
+          overflow-y: auto;
+        }
+
+        .monthly-comparison-summary {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 10px;
+          margin: 14px 0;
+        }
+
+        .monthly-comparison-summary > div {
+          padding: 12px;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+          background: var(--bg-secondary);
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .monthly-comparison-summary span {
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 800;
+        }
+
+        .monthly-comparison-summary strong {
+          color: var(--accent-cyan);
+          font-size: 24px;
+          line-height: 1;
+        }
+
+        .monthly-comparison-list-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin-bottom: 14px;
+        }
+
+        .monthly-comparison-list {
+          min-height: 220px;
+          max-height: 340px;
+          overflow-y: auto;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+          background: var(--bg-secondary);
+        }
+
+        .monthly-comparison-list h4 {
+          position: sticky;
+          top: 0;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 10px 12px;
+          margin: 0;
+          border-bottom: 1px solid var(--glass-border);
+          background: var(--bg-tertiary);
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 900;
+          z-index: 1;
+        }
+
+        .monthly-comparison-list h4 span {
+          color: var(--accent-cyan);
+          font-size: 11px;
+        }
+
+        .monthly-comparison-list > div {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          padding: 12px;
+        }
+
+        .monthly-comparison-list p {
+          width: 100%;
+          margin: 0;
+          padding: 20px 0;
+          color: var(--text-muted);
+          font-size: 12px;
+          font-weight: 700;
+          text-align: center;
+        }
+
+        .monthly-member-chip {
+          display: inline-flex;
+          flex-direction: column;
+          gap: 2px;
+          max-width: 100%;
+          padding: 7px 9px;
+          border-radius: 8px;
+          border: 1px solid var(--glass-border);
+          background: var(--glass-bg);
+          color: var(--text-primary);
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.2;
+        }
+
+        .monthly-member-chip small {
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 700;
         }
 
         .monthly-detail-modal {
@@ -3839,6 +4100,16 @@ export default function Dashboard() {
           .monthly-metric-footer {
             align-items: flex-start;
             flex-direction: column;
+          }
+
+          .monthly-comparison-summary,
+          .monthly-comparison-list-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .monthly-comparison-list {
+            min-height: 160px;
+            max-height: 260px;
           }
 
           .overall-rate-display {
