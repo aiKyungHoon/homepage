@@ -1150,17 +1150,13 @@ export default function Dashboard() {
     }
 
     const weeks = getWeeksInMonth(monthId, records);
-    let present = 0;
-    let possible = 0;
-    weeks.forEach(weekNo => {
-      scopedMembers.forEach(member => {
-        possible += 1;
+    const present = scopedMembers.filter(member => (
+      weeks.some(weekNo => {
         const value = getAttendanceValueFromRecords(records, member.memberId, definition.category, weekNo, monthId);
-        if (isMonthlyMetricPresent(definition, value)) {
-          present += 1;
-        }
-      });
-    });
+        return isMonthlyMetricPresent(definition, value);
+      })
+    )).length;
+    const possible = scopedMembers.length;
 
     return {
       present,
