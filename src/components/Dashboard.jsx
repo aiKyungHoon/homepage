@@ -33,6 +33,21 @@ export default function Dashboard() {
   } = useData();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedCriteria, setSelectedCriteria] = useState("sunday_actual");
+
+  const getCriteriaLabel = (criteria) => {
+    switch (criteria) {
+      case "samil_pre": return "삼일사전";
+      case "samil_actual": return "삼일실제";
+      case "sunday_pre": return "주일사전";
+      case "sunday_actual": return "주일실제";
+      default: return "";
+    }
+  };
+
+  const authCategory = selectedCriteria.endsWith("_pre") 
+    ? (selectedCriteria === "samil_pre" ? "samil_actual" : "sunday_actual") 
+    : selectedCriteria;
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -250,12 +265,13 @@ export default function Dashboard() {
   const attStats = sundayActualStats;
 
   const getWorshipGroupTotalCount = (group) => scopedMembers.filter(m => {
-    return WORSHIP_BREAKDOWN_CATEGORIES.some(category => isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group));
+    const val = getAttendanceValue(m.memberId, selectedCriteria);
+    return isWorshipValueInGroup(val, group);
   }).length;
 
-  const getSundayActualAuthCount = (label) => {
+  const getWorshipAuthCount = (label) => {
     return scopedMembers.filter(m => {
-      const val = getAttendanceValue(m.memberId, "sunday_actual");
+      const val = getAttendanceValue(m.memberId, authCategory);
       if (!val || val === "미보고") return false;
       const parts = val.split("|").map(s => s.trim());
       const authClass = parts[4] || "";
@@ -553,9 +569,9 @@ export default function Dashboard() {
         return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
       });
     } else if (String(categoryOrType).startsWith("auth_class:")) {
-      const [, label] = String(categoryOrType).split(":");
+      const [, label, category = "sunday_actual"] = String(categoryOrType).split(":");
       list = scopedMembers.filter(m => {
-        const val = getAttendanceValue(m.memberId, "sunday_actual");
+        const val = getAttendanceValue(m.memberId, category);
         if (!val || val === "미보고") return false;
         const parts = val.split("|").map(s => s.trim());
         const authClass = parts[4] || "";
@@ -1612,110 +1628,96 @@ export default function Dashboard() {
 
       {/* 예배 현황 Section */}
       <div className="dashboard-section-group">
-        <h3 className="section-group-title">
-          <span className="title-decorator"></span> 예배 현황
-        </h3>
-        <div className="dashboard-grid">
-          <div 
-            onClick={() => handleCardClick("주일사전 출석", "sunday_stat:sunday_pre:present")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 출석자 명단 확인"
-          >
-            <div className="stats-icon-wrapper emerald">
-              <CheckCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">주일사전 출석</p>
-              <h2 className="stats-value">{sundayPreStats.present}명</h2>
-              <p className="stats-subtext">사전보고 기준</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("주일사전 결석", "sunday_stat:sunday_pre:absent")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 결석자 명단 확인"
-          >
-            <div className="stats-icon-wrapper gold">
-              <AlertCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">주일사전 결석</p>
-              <h2 className="stats-value">{sundayPreStats.absent}명</h2>
-              <p className="stats-subtext">사전보고 기준</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("주일사전 미보고", "sunday_stat:sunday_pre:unreported")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 미보고자 명단 확인"
-          >
-            <div className="stats-icon-wrapper muted">
-              <HelpCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">주일사전 미보고</p>
-              <h2 className="stats-value">{sundayPreStats.unreported}명</h2>
-              <p className="stats-subtext">사전보고 기준</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("주일실제 출석", "sunday_stat:sunday_actual:present")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 출석자 명단 확인"
-          >
-            <div className="stats-icon-wrapper emerald">
-              <CheckCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">주일실제 출석</p>
-              <h2 className="stats-value">{sundayActualStats.present}명</h2>
-              <p className="stats-subtext">실제보고 기준</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("주일실제 결석", "sunday_stat:sunday_actual:absent")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 결석자 명단 확인"
-          >
-            <div className="stats-icon-wrapper gold">
-              <AlertCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">주일실제 결석</p>
-              <h2 className="stats-value">{sundayActualStats.absent}명</h2>
-              <p className="stats-subtext">실제보고 기준</p>
-            </div>
-          </div>
-
-          <div 
-            onClick={() => handleCardClick("주일실제 미보고", "sunday_stat:sunday_actual:unreported")}
-            className="stats-card glass-panel clickable-card"
-            style={{ cursor: "pointer" }}
-            title="클릭 시 미보고자 명단 확인"
-          >
-            <div className="stats-icon-wrapper muted">
-              <HelpCircle size={22} />
-            </div>
-            <div className="stats-info">
-              <p className="stats-label">주일실제 미보고</p>
-              <h2 className="stats-value">{sundayActualStats.unreported}명</h2>
-              <p className="stats-subtext">실제보고 기준</p>
-            </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
+          <h3 className="section-group-title" style={{ margin: 0 }}>
+            <span className="title-decorator"></span> 예배 현황 ({getCriteriaLabel(selectedCriteria)})
+          </h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: "600" }}>기준 구분:</span>
+            <select
+              value={selectedCriteria}
+              onChange={(e) => setSelectedCriteria(e.target.value)}
+              style={{
+                padding: "6px 10px",
+                fontSize: "12px",
+                fontWeight: "700",
+                borderRadius: "6px",
+                border: "1px solid var(--glass-border)",
+                backgroundColor: "var(--bg-secondary)",
+                color: "var(--text-primary)",
+                cursor: "pointer",
+                outline: "none",
+                boxShadow: "var(--shadow-sm)"
+              }}
+            >
+              <option value="samil_pre">삼일사전</option>
+              <option value="samil_actual">삼일실제</option>
+              <option value="sunday_pre">주일사전</option>
+              <option value="sunday_actual">주일실제</option>
+            </select>
           </div>
         </div>
 
+        <div className="dashboard-grid">
+          {(() => {
+            const stats = getAttendanceStats(selectedCriteria);
+            return (
+              <>
+                <div 
+                  onClick={() => handleCardClick(`${getCriteriaLabel(selectedCriteria)} 출석`, `sunday_stat:${selectedCriteria}:present`)}
+                  className="stats-card glass-panel clickable-card"
+                  style={{ cursor: "pointer" }}
+                  title="클릭 시 출석자 명단 확인"
+                >
+                  <div className="stats-icon-wrapper emerald">
+                    <CheckCircle size={22} />
+                  </div>
+                  <div className="stats-info">
+                    <p className="stats-label">{getCriteriaLabel(selectedCriteria)} 출석/확답</p>
+                    <h2 className="stats-value">{stats.present}명</h2>
+                    <p className="stats-subtext">{selectedCriteria.endsWith("_pre") ? "사전보고 기준" : "실제보고 기준"}</p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => handleCardClick(`${getCriteriaLabel(selectedCriteria)} 결석`, `sunday_stat:${selectedCriteria}:absent`)}
+                  className="stats-card glass-panel clickable-card"
+                  style={{ cursor: "pointer" }}
+                  title="클릭 시 결석자 명단 확인"
+                >
+                  <div className="stats-icon-wrapper gold">
+                    <AlertCircle size={22} />
+                  </div>
+                  <div className="stats-info">
+                    <p className="stats-label">{getCriteriaLabel(selectedCriteria)} 결석</p>
+                    <h2 className="stats-value">{stats.absent}명</h2>
+                    <p className="stats-subtext">{selectedCriteria.endsWith("_pre") ? "사전보고 기준" : "실제보고 기준"}</p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => handleCardClick(`${getCriteriaLabel(selectedCriteria)} 미보고`, `sunday_stat:${selectedCriteria}:unreported`)}
+                  className="stats-card glass-panel clickable-card"
+                  style={{ cursor: "pointer" }}
+                  title="클릭 시 미보고자 명단 확인"
+                >
+                  <div className="stats-icon-wrapper muted">
+                    <HelpCircle size={22} />
+                  </div>
+                  <div className="stats-info">
+                    <p className="stats-label">{getCriteriaLabel(selectedCriteria)} 미보고</p>
+                    <h2 className="stats-value">{stats.unreported}명</h2>
+                    <p className="stats-subtext">{selectedCriteria.endsWith("_pre") ? "사전보고 기준" : "실제보고 기준"}</p>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
         <div className="worship-breakdown-header">
-          <span>예배분류 현황</span>
-          <small>삼일사전/삼일실제/주일사전/주일실제 기준입니다.</small>
+          <span>{getCriteriaLabel(selectedCriteria)} 예배분류 현황</span>
+          <small>{getCriteriaLabel(selectedCriteria)} 보고 기준에 따른 대면/비대면 상세 분류입니다.</small>
         </div>
         <div className="dashboard-grid worship-breakdown-grid">
           {SUNDAY_WORSHIP_GROUPS.map((group) => {
@@ -1723,7 +1725,7 @@ export default function Dashboard() {
             return (
               <div
                 key={group.key}
-                onClick={() => handleCardClick(group.label, `worship_group:${group.key}:all`)}
+                onClick={() => handleCardClick(`${group.label} (${getCriteriaLabel(selectedCriteria)})`, `worship_group:${group.key}:${selectedCriteria}`)}
                 className="stats-card glass-panel clickable-card worship-breakdown-card"
                 style={{ cursor: "pointer" }}
                 title={`${group.label} 명단 확인`}
@@ -1742,16 +1744,16 @@ export default function Dashboard() {
         </div>
 
         <div className="worship-breakdown-header" style={{ marginTop: "32px" }}>
-          <span>주일실제 인증분류</span>
-          <small>카드를 클릭하면 해당 인증분류 명단을 확인할 수 있습니다.</small>
+          <span>{getCriteriaLabel(authCategory)} 인증분류 현황</span>
+          <small>{selectedCriteria.endsWith("_pre") ? `사전 보고서는 인증 분류가 없으므로 ${getCriteriaLabel(authCategory)} 기준으로 집계됩니다.` : "카드를 클릭하면 해당 인증분류 명단을 확인할 수 있습니다."}</small>
         </div>
         <div className="dashboard-grid worship-breakdown-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
           {AUTH_CLASSES.map((group) => {
-            const count = getSundayActualAuthCount(group.label);
+            const count = getWorshipAuthCount(group.label);
             return (
               <div
                 key={group.key}
-                onClick={() => handleCardClick(`${group.label} (주일실제)`, `auth_class:${group.label}`)}
+                onClick={() => handleCardClick(`${group.label} (${getCriteriaLabel(authCategory)})`, `auth_class:${group.label}:${authCategory}`)}
                 className="stats-card glass-panel clickable-card worship-breakdown-card"
                 style={{ cursor: "pointer" }}
                 title={`${group.label} 명단 확인`}
@@ -1762,7 +1764,7 @@ export default function Dashboard() {
                 <div className="stats-info">
                   <p className="stats-label">{group.label}</p>
                   <h2 className="stats-value">{count}명</h2>
-                  <p className="stats-subtext">주일실제 기준</p>
+                  <p className="stats-subtext">{getCriteriaLabel(authCategory)} 기준</p>
                 </div>
               </div>
             );
