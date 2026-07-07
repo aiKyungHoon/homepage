@@ -1215,6 +1215,25 @@ export default function Dashboard() {
     };
   });
 
+  const monthlyWeeklyComparisons = monthlyMetrics.map(metric => {
+    const currentRows = calculateWeeklyMetricBreakdown(metric, activeMonthId, attendanceRecords, monthlyAchievements);
+    const previousRows = calculateWeeklyMetricBreakdown(metric, previousMonthId, previousMonthRecords, previousMonthAchievements);
+    const hasPrevious = metric.diff !== null;
+
+    return {
+      ...metric,
+      weeklyRows: currentRows.map((currentRow, index) => {
+        const previousRow = previousRows[index] || { rate: 0, present: 0, possible: scopedMembers.length };
+        return {
+          weekNo: currentRow.weekNo,
+          current: currentRow,
+          previous: previousRow,
+          diff: hasPrevious ? Math.round((currentRow.rate - previousRow.rate) * 10) / 10 : null
+        };
+      })
+    };
+  });
+
   const monthlyOverallRate = monthlyMetrics.length
     ? Math.round((monthlyMetrics.reduce((sum, metric) => sum + metric.current.rate, 0) / monthlyMetrics.length) * 10) / 10
     : 0;
@@ -1239,6 +1258,22 @@ export default function Dashboard() {
       return <span className="monthly-delta down">전월 대비 {diff}%p</span>;
     }
     return <span className="monthly-delta neutral">전월과 동일</span>;
+  };
+
+  const renderWeeklyDiffBadge = (diff) => {
+    if (isMonthlyCompareLoading) {
+      return <span className="monthly-week-diff neutral">확인 중</span>;
+    }
+    if (diff === null) {
+      return <span className="monthly-week-diff neutral">-</span>;
+    }
+    if (diff > 0) {
+      return <span className="monthly-week-diff up">+{diff}%p</span>;
+    }
+    if (diff < 0) {
+      return <span className="monthly-week-diff down">{diff}%p</span>;
+    }
+    return <span className="monthly-week-diff neutral">0%p</span>;
   };
 
   const renderMonthlyMetricChart = (rows) => {
@@ -1373,6 +1408,41 @@ export default function Dashboard() {
                   <td>{metric.diff === null ? "-" : `${metric.previous.rate}%`}</td>
                   <td>{renderMonthlyDelta(metric.diff)}</td>
                   <td>{metric.current.present} / {metric.current.possible}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="monthly-weekly-compare-header">
+          <h3 className="section-group-title">
+            <span className="title-decorator"></span> 주차별 세부 비교
+          </h3>
+          <span>각 주차의 현재월 퍼센트와 전월 같은 주차 대비 차이입니다.</span>
+        </div>
+        <div className="monthly-weekly-compare-wrap">
+          <table className="monthly-weekly-compare-table">
+            <thead>
+              <tr>
+                <th>항목</th>
+                {[1, 2, 3, 4, 5].map(weekNo => (
+                  <th key={weekNo}>{weekNo}주차</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyWeeklyComparisons.map(metric => (
+                <tr key={`weekly-${metric.key}`}>
+                  <td>{metric.label}</td>
+                  {metric.weeklyRows.map(row => (
+                    <td key={`${metric.key}-${row.weekNo}`}>
+                      <div className="monthly-week-cell">
+                        <strong>{row.current.rate}%</strong>
+                        <small>{row.current.present}/{row.current.possible}명</small>
+                        {renderWeeklyDiffBadge(row.diff)}
+                      </div>
+                    </td>
+                  ))}
                 </tr>
               ))}
             </tbody>
@@ -3324,6 +3394,114 @@ export default function Dashboard() {
         .monthly-compare-table td:nth-child(2) {
           color: var(--text-primary);
           font-size: 13px;
+        }
+
+        .monthly-weekly-compare-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 20px;
+          padding-top: 18px;
+          border-top: 1px solid var(--glass-border);
+        }
+
+        .monthly-weekly-compare-header span {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .monthly-weekly-compare-wrap {
+          overflow-x: auto;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+        }
+
+        .monthly-weekly-compare-table {
+          width: 100%;
+          min-width: 980px;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        .monthly-weekly-compare-table th,
+        .monthly-weekly-compare-table td {
+          padding: 12px;
+          border-bottom: 1px solid var(--glass-border);
+          border-right: 1px solid var(--glass-border);
+          color: var(--text-secondary);
+          font-weight: 800;
+          text-align: left;
+          vertical-align: top;
+        }
+
+        .monthly-weekly-compare-table th {
+          background: var(--bg-secondary);
+          color: var(--text-muted);
+          font-size: 11px;
+          text-align: center;
+        }
+
+        .monthly-weekly-compare-table th:first-child,
+        .monthly-weekly-compare-table td:first-child {
+          width: 170px;
+          color: var(--text-primary);
+          text-align: left;
+        }
+
+        .monthly-weekly-compare-table th:last-child,
+        .monthly-weekly-compare-table td:last-child {
+          border-right: 0;
+        }
+
+        .monthly-week-cell {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 5px;
+          min-width: 112px;
+          text-align: center;
+        }
+
+        .monthly-week-cell strong {
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1;
+        }
+
+        .monthly-week-cell small {
+          color: var(--text-muted);
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        .monthly-week-diff {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 20px;
+          padding: 3px 7px;
+          border-radius: 999px;
+          font-size: 10px;
+          font-weight: 900;
+          white-space: nowrap;
+        }
+
+        .monthly-week-diff.up {
+          color: hsl(150, 70%, 35%);
+          background: hsla(150, 70%, 50%, 0.12);
+        }
+
+        .monthly-week-diff.down {
+          color: hsl(350, 90%, 48%);
+          background: hsla(350, 90%, 58%, 0.12);
+        }
+
+        .monthly-week-diff.neutral {
+          color: var(--text-secondary);
+          background: hsla(220, 15%, 50%, 0.12);
         }
 
         .monthly-detail-modal {
