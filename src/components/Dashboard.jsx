@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
+import { db, isMockEnabled } from "../firebase";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { 
   Users, 
   CheckCircle, 
@@ -34,6 +36,10 @@ export default function Dashboard() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedCriteria, setSelectedCriteria] = useState("sunday_actual");
+  const [dashboardTab, setDashboardTab] = useState("weekly");
+  const [previousMonthRecords, setPreviousMonthRecords] = useState([]);
+  const [previousMonthAchievements, setPreviousMonthAchievements] = useState([]);
+  const [isMonthlyCompareLoading, setIsMonthlyCompareLoading] = useState(false);
 
   const getCriteriaLabel = (criteria) => {
     switch (criteria) {
@@ -48,6 +54,73 @@ export default function Dashboard() {
   const authCategory = selectedCriteria.endsWith("_pre") 
     ? (selectedCriteria === "samil_pre" ? "samil_actual" : "sunday_actual") 
     : selectedCriteria;
+
+  const getPrevMonthId = (monthId) => {
+    if (!monthId) return null;
+    const [year, month] = monthId.split("-").map(Number);
+    if (month === 1) {
+      return `${year - 1}-12`;
+    }
+    const prevMonth = month - 1;
+    return `${year}-${String(prevMonth).padStart(2, "0")}`;
+  };
+
+  const getWeeksInMonth = (monthId, records = attendanceRecords) => {
+    const weeks = new Set();
+    records.forEach(r => {
+      if (r.monthId === monthId) {
+        weeks.add(r.weekNo);
+      }
+    });
+    return weeks.size > 0 ? Array.from(weeks).sort((a, b) => a - b) : [1];
+  };
+
+  useEffect(() => {
+    const prevMonthId = getPrevMonthId(activeMonthId);
+    if (!prevMonthId) {
+      setPreviousMonthRecords([]);
+      setPreviousMonthAchievements([]);
+      return;
+    }
+
+    let cancelled = false;
+    const loadPreviousMonthData = async () => {
+      setIsMonthlyCompareLoading(true);
+      try {
+        if (isMockEnabled) {
+          const allAtt = JSON.parse(localStorage.getItem("mock_attendance")) || [];
+          const allAch = JSON.parse(localStorage.getItem("mock_achievements")) || [];
+          if (!cancelled) {
+            setPreviousMonthRecords(allAtt.filter(r => r.monthId === prevMonthId));
+            setPreviousMonthAchievements(allAch.filter(a => a.monthId === prevMonthId));
+          }
+          return;
+        }
+
+        const attSnap = await getDocs(query(collection(db, "attendanceRecords"), where("monthId", "==", prevMonthId)));
+        const achSnap = await getDocs(query(collection(db, "monthlyAchievements"), where("monthId", "==", prevMonthId)));
+        if (!cancelled) {
+          setPreviousMonthRecords(attSnap.docs.map(d => ({ recordId: d.id, ...d.data() })));
+          setPreviousMonthAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
+        }
+      } catch (err) {
+        console.error("Failed to load previous month dashboard data:", err);
+        if (!cancelled) {
+          setPreviousMonthRecords([]);
+          setPreviousMonthAchievements([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsMonthlyCompareLoading(false);
+        }
+      }
+    };
+
+    loadPreviousMonthData();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeMonthId]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -187,13 +260,18 @@ export default function Dashboard() {
     sunday_pre: "sunday"
   };
 
-  const getAttendanceValue = (memberId, category, weekNo = activeWeekNo, monthId = activeMonthId) => {
+  const getAttendanceValueFromRecords = (records, memberId, category, weekNo = activeWeekNo, monthId = activeMonthId) => {
     const findRecord = (targetCategory) => attendanceRecords.find(r =>
       r.memberId === memberId &&
       r.weekNo === weekNo &&
       r.category === targetCategory &&
       (!monthId || r.monthId === monthId)
-    ) || attendanceRecords.find(r =>
+    ) || records.find(r =>
+      r.memberId === memberId &&
+      r.weekNo === weekNo &&
+      r.category === targetCategory &&
+      (!monthId || r.monthId === monthId)
+    ) || records.find(r =>
       r.memberId === memberId &&
       r.weekNo === weekNo &&
       r.category === targetCategory
@@ -210,6 +288,10 @@ export default function Dashboard() {
 
     return "미보고";
   };
+
+  const getAttendanceValue = (memberId, category, weekNo = activeWeekNo, monthId = activeMonthId) => (
+    getAttendanceValueFromRecords(attendanceRecords, memberId, category, weekNo, monthId)
+  );
 
   // Filter members based on user role
   const getScopedMembers = () => {
@@ -277,6 +359,99 @@ export default function Dashboard() {
       const authClass = parts[4] || "";
       return authClass === label;
     }).length;
+  };
+
+  const getMonthlyAttendanceStats = (monthId, category = selectedCriteria, records = attendanceRecords) => {
+    if (!monthId) return { present: 0, absent: 0, unreported: 0, rate: 0 };
+    const weeks = getWeeksInMonth(monthId, records);
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalUnreported = 0;
+    
+    weeks.forEach(w => {
+      scopedMembers.forEach(m => {
+        const val = getAttendanceValueFromRecords(records, m.memberId, category, w, monthId);
+        if (isWorshipPresentValue(val)) {
+          totalPresent++;
+        } else if (isWorshipAbsentValue(val)) {
+          totalAbsent++;
+        } else {
+          totalUnreported++;
+        }
+      });
+    });
+    
+    const denominator = weeks.length || 1;
+    const avgPresent = totalPresent / denominator;
+    const avgAbsent = totalAbsent / denominator;
+    const avgUnreported = totalUnreported / denominator;
+    const totalActive = totalPresent + totalAbsent + totalUnreported;
+    const rate = totalActive > 0 ? (totalPresent / totalActive) * 100 : 0;
+    
+    return { 
+      present: Math.round(avgPresent * 10) / 10, 
+      absent: Math.round(avgAbsent * 10) / 10, 
+      unreported: Math.round(avgUnreported * 10) / 10, 
+      rate: Math.round(rate * 10) / 10 
+    };
+  };
+
+  const getMonthlyWorshipGroupStats = (group, monthId, category = selectedCriteria, records = attendanceRecords) => {
+    if (!monthId) return { count: 0, percentage: 0 };
+    const weeks = getWeeksInMonth(monthId, records);
+    let totalCount = 0;
+    
+    weeks.forEach(w => {
+      scopedMembers.forEach(m => {
+        const val = getAttendanceValueFromRecords(records, m.memberId, category, w, monthId);
+        if (isWorshipValueInGroup(val, group)) {
+          totalCount++;
+        }
+      });
+    });
+    
+    const denominator = weeks.length || 1;
+    const avgCount = totalCount / denominator;
+    const percentage = (scopedMembers.length * denominator) > 0 ? (totalCount / (scopedMembers.length * denominator)) * 100 : 0;
+    
+    return {
+      count: Math.round(avgCount * 10) / 10,
+      percentage: Math.round(percentage * 10) / 10
+    };
+  };
+
+  const getMonthlyWorshipAuthStats = (label, monthId, category = authCategory, records = attendanceRecords) => {
+    if (!monthId) return { count: 0, percentage: 0 };
+    const weeks = getWeeksInMonth(monthId, records);
+    let totalCount = 0;
+    let totalActualWorshipers = 0;
+    
+    weeks.forEach(w => {
+      scopedMembers.forEach(m => {
+        const val = getAttendanceValueFromRecords(records, m.memberId, category, w, monthId);
+        if (!val || val === "미보고") return;
+        
+        const parts = val.split("|").map(s => s.trim());
+        const authClass = parts[4] || "";
+        
+        const type = parts[0];
+        if (!isWorshipAbsentValue(type)) {
+          totalActualWorshipers++;
+          if (authClass === label) {
+            totalCount++;
+          }
+        }
+      });
+    });
+    
+    const denominator = weeks.length || 1;
+    const avgCount = totalCount / denominator;
+    const percentage = totalActualWorshipers > 0 ? (totalCount / totalActualWorshipers) * 100 : 0;
+    
+    return {
+      count: Math.round(avgCount * 10) / 10,
+      percentage: Math.round(percentage * 10) / 10
+    };
   };
 
   const getZoneWorshipStats = () => {
@@ -909,6 +1084,208 @@ export default function Dashboard() {
   };
 
   const svgData = generateSvgElements();
+
+  const previousMonthId = getPrevMonthId(activeMonthId);
+  const formatMonthLabel = (monthId) => {
+    if (!monthId) return "-";
+    const [year, month] = monthId.split("-");
+    return `${year}년 ${parseInt(month, 10)}월`;
+  };
+
+  const MONTHLY_METRICS = [
+    { key: "sunday_actual", label: "주일실제 출석률", category: "sunday_actual", type: "worship", icon: "emerald" },
+    { key: "samil_actual", label: "삼일실제 출석률", category: "samil_actual", type: "worship", icon: "cyan" },
+    { key: "zone", label: "구역예배 참석률", category: "zone", type: "zone", icon: "blue" },
+    { key: "test", label: "시험 응시율", category: "test", type: "test", icon: "purple" },
+    { key: "radio", label: "심야라디오 참여율", category: "radio", type: "simple", icon: "gold" },
+    { key: "school", label: "시몬스쿨 참여율", category: "school", type: "simple", icon: "emerald" },
+    { key: "activity", label: "전도단 참여율", category: "activity", type: "activity", icon: "cyan" },
+    { key: "evangelism", label: "전도 실적률", category: "evangelism", type: "achievement", icon: "blue" },
+    { key: "tithing", label: "십일조 참여율", category: "tithing", type: "achievement", icon: "gold" },
+    { key: "fee", label: "청체비 납부율", category: "fee", type: "achievement", icon: "purple" }
+  ];
+
+  const hasMonthlyComparableData = (definition, records, achievements) => {
+    if (definition.type === "achievement") {
+      return achievements.some(a => a.category === definition.category);
+    }
+    return records.some(r => r.category === definition.category);
+  };
+
+  const isMonthlyMetricPresent = (definition, value) => {
+    const normalized = String(value || "미보고").trim();
+    if (definition.type === "worship") {
+      return isWorshipPresentValue(normalized);
+    }
+    if (definition.type === "zone") {
+      return [...ZONE_FACE_TO_FACE_VALUES, ...ZONE_ZOOM_VALUES, ...ZONE_INDIVIDUAL_VALUES].includes(normalized);
+    }
+    if (definition.type === "test") {
+      return TEST_STATUS_CONFIG.some(item => !["absent", "unreported"].includes(item.key) && item.values.includes(normalized))
+        || normalized.startsWith("비공식(");
+    }
+    if (definition.type === "activity") {
+      return ["대면", "비대면", "O"].includes(normalized);
+    }
+    return ["O", "월O", "목O", "대면", "비대면", "온라인", "참석"].includes(normalized);
+  };
+
+  const calculateMonthlyMetric = (definition, monthId, records = attendanceRecords, achievements = monthlyAchievements) => {
+    if (!monthId || scopedMembers.length === 0) {
+      return { present: 0, possible: 0, rate: 0, weeks: 0 };
+    }
+
+    if (definition.type === "achievement") {
+      const present = scopedMembers.filter(member => {
+        const item = achievements.find(a => a.memberId === member.memberId && a.category === definition.category);
+        return item?.achieved;
+      }).length;
+      const possible = scopedMembers.length;
+      return {
+        present,
+        possible,
+        rate: possible ? Math.round((present / possible) * 1000) / 10 : 0,
+        weeks: 1
+      };
+    }
+
+    const weeks = getWeeksInMonth(monthId, records);
+    let present = 0;
+    let possible = 0;
+    weeks.forEach(weekNo => {
+      scopedMembers.forEach(member => {
+        possible += 1;
+        const value = getAttendanceValueFromRecords(records, member.memberId, definition.category, weekNo, monthId);
+        if (isMonthlyMetricPresent(definition, value)) {
+          present += 1;
+        }
+      });
+    });
+
+    return {
+      present,
+      possible,
+      rate: possible ? Math.round((present / possible) * 1000) / 10 : 0,
+      weeks: weeks.length
+    };
+  };
+
+  const monthlyMetrics = MONTHLY_METRICS.map(definition => {
+    const current = calculateMonthlyMetric(definition, activeMonthId, attendanceRecords, monthlyAchievements);
+    const previous = calculateMonthlyMetric(definition, previousMonthId, previousMonthRecords, previousMonthAchievements);
+    const hasPrevious = hasMonthlyComparableData(definition, previousMonthRecords, previousMonthAchievements);
+    return {
+      ...definition,
+      current,
+      previous,
+      diff: hasPrevious ? Math.round((current.rate - previous.rate) * 10) / 10 : null
+    };
+  });
+
+  const monthlyOverallRate = monthlyMetrics.length
+    ? Math.round((monthlyMetrics.reduce((sum, metric) => sum + metric.current.rate, 0) / monthlyMetrics.length) * 10) / 10
+    : 0;
+  const previousMonthlyOverallRate = monthlyMetrics.some(metric => metric.diff !== null)
+    ? Math.round((monthlyMetrics.reduce((sum, metric) => sum + metric.previous.rate, 0) / monthlyMetrics.length) * 10) / 10
+    : null;
+  const monthlyOverallDiff = previousMonthlyOverallRate === null
+    ? null
+    : Math.round((monthlyOverallRate - previousMonthlyOverallRate) * 10) / 10;
+
+  const renderMonthlyDelta = (diff) => {
+    if (isMonthlyCompareLoading) {
+      return <span className="monthly-delta neutral">전월 확인 중</span>;
+    }
+    if (diff === null) {
+      return <span className="monthly-delta neutral">전월 데이터 없음</span>;
+    }
+    if (diff > 0) {
+      return <span className="monthly-delta up">전월 대비 +{diff}%p</span>;
+    }
+    if (diff < 0) {
+      return <span className="monthly-delta down">전월 대비 {diff}%p</span>;
+    }
+    return <span className="monthly-delta neutral">전월과 동일</span>;
+  };
+
+  const renderMonthlyDashboard = () => (
+    <>
+      <div className="dashboard-section-group monthly-overview-section">
+        <div className="monthly-overview-header">
+          <div>
+            <h3 className="section-group-title">
+              <span className="title-decorator"></span> 월별 대시보드
+            </h3>
+            <p>{formatMonthLabel(activeMonthId)} 전체 주차 기준으로 퍼센트와 전월 대비 변화를 확인합니다.</p>
+          </div>
+          <div className="monthly-overall-card">
+            <span>월간 평균</span>
+            <strong>{monthlyOverallRate}%</strong>
+            {renderMonthlyDelta(monthlyOverallDiff)}
+          </div>
+        </div>
+
+        <div className="monthly-metric-grid">
+          {monthlyMetrics.map(metric => (
+            <div key={metric.key} className="monthly-metric-card glass-panel">
+              <div className={`stats-icon-wrapper ${metric.icon}`}>
+                {metric.diff !== null && metric.diff < 0 ? <TrendingUp size={20} style={{ transform: "rotate(180deg)" }} /> : <TrendingUp size={20} />}
+              </div>
+              <div className="monthly-metric-body">
+                <div className="monthly-metric-topline">
+                  <span>{metric.label}</span>
+                  <strong>{metric.current.rate}%</strong>
+                </div>
+                <div className="progress-bar-container">
+                  <div
+                    className="progress-bar-fill cyan"
+                    style={{ width: `${Math.min(100, metric.current.rate)}%` }}
+                  ></div>
+                </div>
+                <div className="monthly-metric-footer">
+                  <span>{metric.current.present} / {metric.current.possible}건</span>
+                  {renderMonthlyDelta(metric.diff)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="dashboard-section-group">
+        <div className="monthly-table-header">
+          <h3 className="section-group-title">
+            <span className="title-decorator"></span> 월별 세부 비교
+          </h3>
+          <span>{formatMonthLabel(previousMonthId)} 대비</span>
+        </div>
+        <div className="monthly-compare-table-wrap">
+          <table className="monthly-compare-table">
+            <thead>
+              <tr>
+                <th>항목</th>
+                <th>{formatMonthLabel(activeMonthId)}</th>
+                <th>{formatMonthLabel(previousMonthId)}</th>
+                <th>증감</th>
+                <th>현재 건수</th>
+              </tr>
+            </thead>
+            <tbody>
+              {monthlyMetrics.map(metric => (
+                <tr key={`row-${metric.key}`}>
+                  <td>{metric.label}</td>
+                  <td>{metric.current.rate}%</td>
+                  <td>{metric.diff === null ? "-" : `${metric.previous.rate}%`}</td>
+                  <td>{renderMonthlyDelta(metric.diff)}</td>
+                  <td>{metric.current.present} / {metric.current.possible}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
 
 
 
@@ -1557,8 +1934,12 @@ export default function Dashboard() {
       <div className="dashboard-banner glass-panel">
         <TrendingUp size={20} className="banner-icon" />
         <div>
-          <h3>{getScopeLabel()} 주간 리포트</h3>
-          <p>2026년 {activeMonthId.split("-")[1]}월 {activeWeekNo}주차 기준으로 자동 집계된 수치입니다.</p>
+          <h3>{getScopeLabel()} {dashboardTab === "monthly" ? "월별 대시보드" : "주차별 대시보드"}</h3>
+          <p>
+            {dashboardTab === "monthly"
+              ? `${formatMonthLabel(activeMonthId)} 전체 기준으로 자동 집계된 수치입니다.`
+              : `2026년 ${activeMonthId.split("-")[1]}월 ${activeWeekNo}주차 기준으로 자동 집계된 수치입니다.`}
+          </p>
         </div>
         <button 
           onClick={handleRefresh} 
@@ -1591,6 +1972,25 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <div className="dashboard-tab-switch no-print">
+        <button
+          type="button"
+          className={dashboardTab === "weekly" ? "active" : ""}
+          onClick={() => setDashboardTab("weekly")}
+        >
+          주차별 대시보드
+        </button>
+        <button
+          type="button"
+          className={dashboardTab === "monthly" ? "active" : ""}
+          onClick={() => setDashboardTab("monthly")}
+        >
+          월별 대시보드
+        </button>
+      </div>
+
+      {dashboardTab === "monthly" ? renderMonthlyDashboard() : (
+      <>
       {/* General Summary Cards */}
       <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <div 
@@ -2290,6 +2690,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
 
       {/* ---------------- MODALS & PRINT TARGET ---------------- */}
@@ -2577,6 +2979,191 @@ export default function Dashboard() {
           font-weight: 600;
         }
 
+        .dashboard-tab-switch {
+          display: inline-flex;
+          align-self: flex-start;
+          gap: 6px;
+          padding: 4px;
+          background: var(--bg-secondary);
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+          box-shadow: var(--shadow-sm);
+        }
+
+        .dashboard-tab-switch button {
+          min-width: 128px;
+          padding: 9px 14px;
+          border-radius: 7px;
+          border: 0;
+          color: var(--text-secondary);
+          font-size: 13px;
+          font-weight: 800;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .dashboard-tab-switch button.active {
+          color: var(--accent-cyan);
+          background: var(--glass-bg);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .monthly-overview-section {
+          gap: 20px;
+        }
+
+        .monthly-overview-header,
+        .monthly-table-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .monthly-overview-header p,
+        .monthly-table-header span {
+          margin: 6px 0 0;
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .monthly-overall-card {
+          min-width: 180px;
+          padding: 14px 16px;
+          border-radius: 10px;
+          border: 1px solid var(--glass-border);
+          background: var(--bg-secondary);
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+        }
+
+        .monthly-overall-card span {
+          color: var(--text-secondary);
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .monthly-overall-card strong {
+          color: var(--accent-cyan);
+          font-family: var(--font-title);
+          font-size: 30px;
+          line-height: 1;
+        }
+
+        .monthly-metric-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 12px;
+        }
+
+        .monthly-metric-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          padding: 16px;
+          min-height: 120px;
+        }
+
+        .monthly-metric-body {
+          min-width: 0;
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .monthly-metric-topline,
+        .monthly-metric-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .monthly-metric-topline span {
+          color: var(--text-secondary);
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .monthly-metric-topline strong {
+          color: var(--text-primary);
+          font-size: 22px;
+          line-height: 1;
+          white-space: nowrap;
+        }
+
+        .monthly-metric-footer span {
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .monthly-delta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 22px;
+          padding: 3px 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 800;
+          white-space: nowrap;
+        }
+
+        .monthly-delta.up {
+          color: hsl(150, 70%, 35%);
+          background: hsla(150, 70%, 50%, 0.12);
+        }
+
+        .monthly-delta.down {
+          color: hsl(350, 90%, 48%);
+          background: hsla(350, 90%, 58%, 0.12);
+        }
+
+        .monthly-delta.neutral {
+          color: var(--text-secondary);
+          background: hsla(220, 15%, 50%, 0.12);
+        }
+
+        .monthly-compare-table-wrap {
+          overflow-x: auto;
+          border: 1px solid var(--glass-border);
+          border-radius: 10px;
+        }
+
+        .monthly-compare-table {
+          width: 100%;
+          min-width: 720px;
+          border-collapse: collapse;
+          font-size: 12px;
+        }
+
+        .monthly-compare-table th,
+        .monthly-compare-table td {
+          padding: 12px 14px;
+          border-bottom: 1px solid var(--glass-border);
+          text-align: left;
+          color: var(--text-secondary);
+          font-weight: 700;
+        }
+
+        .monthly-compare-table th {
+          color: var(--text-muted);
+          background: var(--bg-secondary);
+          font-size: 11px;
+        }
+
+        .monthly-compare-table td:nth-child(2) {
+          color: var(--text-primary);
+          font-size: 13px;
+        }
+
         .dashboard-section-group {
           display: flex;
           flex-direction: column;
@@ -2742,6 +3329,26 @@ export default function Dashboard() {
         }
 
         @media (max-width: 768px) {
+          .dashboard-tab-switch {
+            width: 100%;
+          }
+
+          .dashboard-tab-switch button {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .monthly-overall-card {
+            width: 100%;
+            align-items: flex-start;
+          }
+
+          .monthly-metric-topline,
+          .monthly-metric-footer {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+
           .overall-rate-display {
             margin-left: 0;
             margin-top: 10px;
