@@ -679,14 +679,12 @@ export default function AttendanceGrid() {
     if (downloadCategory === "worship") {
       worshipHeaders = [
         "삼일사전(분류)",
-        "예배확인방법(사전)",
         "미확인/미보고 사유(사전)",
         "삼일실제(분류)",
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
         "주일사전(분류)",
-        "예배확인방법(사전)",
         "미확인/미보고 사유(사전)",
         "주일실제(분류)",
         "예배확인방법(실제)",
@@ -703,14 +701,12 @@ export default function AttendanceGrid() {
         const sundayActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "sunday_actual"));
         return [
           samilPreParsed.type === "미보고" ? "" : `${samilPreParsed.type} ${samilPreParsed.time}`.trim(),
-          samilPreParsed.confirmMethod,
           samilPreParsed.reason,
           samilActualParsed.type === "미보고" ? "" : `${samilActualParsed.type} ${samilActualParsed.time}`.trim(),
           samilActualParsed.confirmMethod,
           samilActualParsed.reason,
           samilActualParsed.auth,
           sundayPreParsed.type === "미보고" ? "" : `${sundayPreParsed.type} ${sundayPreParsed.time}`.trim(),
-          sundayPreParsed.confirmMethod,
           sundayPreParsed.reason,
           sundayActualParsed.type === "미보고" ? "" : `${sundayActualParsed.type} ${sundayActualParsed.time}`.trim(),
           sundayActualParsed.confirmMethod,
@@ -782,14 +778,12 @@ export default function AttendanceGrid() {
       // Default: "all"
       worshipHeaders = [
         "삼일사전(분류)",
-        "예배확인방법(사전)",
         "미확인/미보고 사유(사전)",
         "삼일실제(분류)",
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
         "주일사전(분류)",
-        "예배확인방법(사전)",
         "미확인/미보고 사유(사전)",
         "주일실제(분류)",
         "예배확인방법(실제)",
@@ -814,14 +808,12 @@ export default function AttendanceGrid() {
         const sundayActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "sunday_actual"));
         return [
           samilPreParsed.type === "미보고" ? "" : `${samilPreParsed.type} ${samilPreParsed.time}`.trim(),
-          samilPreParsed.confirmMethod,
           samilPreParsed.reason,
           samilActualParsed.type === "미보고" ? "" : `${samilActualParsed.type} ${samilActualParsed.time}`.trim(),
           samilActualParsed.confirmMethod,
           samilActualParsed.reason,
           samilActualParsed.auth,
           sundayPreParsed.type === "미보고" ? "" : `${sundayPreParsed.type} ${sundayPreParsed.time}`.trim(),
-          sundayPreParsed.confirmMethod,
           sundayPreParsed.reason,
           sundayActualParsed.type === "미보고" ? "" : `${sundayActualParsed.type} ${sundayActualParsed.time}`.trim(),
           sundayActualParsed.confirmMethod,
@@ -878,7 +870,10 @@ export default function AttendanceGrid() {
     URL.revokeObjectURL(url);
   };
 
+  const hiddenAttendanceColumns = new Set(["samil_pre_confirm", "sunday_pre_confirm"]);
+
   const shouldShowColumn = (colName) => {
+    if (hiddenAttendanceColumns.has(colName)) return false;
     if (downloadCategory === "all") return true;
     if (colName === "name" || colName === "rank" || colName === "team" || colName === "zone_belong") return true;
     if (colName === "note") return true; // 공통 특이사항
