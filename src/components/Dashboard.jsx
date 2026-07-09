@@ -3161,44 +3161,46 @@ export default function Dashboard() {
             </div>
             
             <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
-              {clickedCardDetails.members.length > 0 && (
-                <button 
-                  onClick={() => {
-                    const textLines = [];
-                    const groups = {};
-                    clickedCardDetails.members.forEach(m => {
-                      const tName = getTeamName(m.teamId) || "소속 없음";
-                      if (!groups[tName]) groups[tName] = [];
-                      groups[tName].push(m);
-                    });
-                    
-                    textLines.push(`[${getScopeLabel()} ${activeMonthId.split("-")[0]}년 ${parseInt(activeMonthId.split("-")[1])}월 ${activeWeekNo}주차 - ${clickedCardDetails.title} (총 ${clickedCardDetails.members.length}명)]`);
-                    
+              <button
+                onClick={() => {
+                  const textLines = [];
+                  const groups = {};
+                  clickedCardDetails.members.forEach(m => {
+                    const tName = getTeamName(m.teamId) || "소속 없음";
+                    if (!groups[tName]) groups[tName] = [];
+                    groups[tName].push(m);
+                  });
+
+                  textLines.push(`[${getScopeLabel()} ${activeMonthId.split("-")[0]}년 ${parseInt(activeMonthId.split("-")[1])}월 ${activeWeekNo}주차 - ${clickedCardDetails.title} (총 ${clickedCardDetails.members.length}명)]`);
+
+                  if (clickedCardDetails.members.length === 0) {
+                    textLines.push("없음");
+                  } else {
                     Object.keys(groups).sort().forEach(tName => {
                       const names = groups[tName].map(m => m.name).join(", ");
                       textLines.push(`- ${tName}: ${names}`);
                     });
-                    textLines.push(
-                      "",
-                      `[전주에는 있고 이번 주에는 없는 명단 ${clickedCardDetails.previousOnly.length}명]`,
-                      clickedCardDetails.previousOnly.length ? clickedCardDetails.previousOnly.map(m => m.name).join(", ") : "없음",
-                      "",
-                      `[이번 주에는 있고 전주에는 없는 명단 ${clickedCardDetails.currentOnly.length}명]`,
-                      clickedCardDetails.currentOnly.length ? clickedCardDetails.currentOnly.map(m => m.name).join(", ") : "없음"
-                    );
-                    
-                    navigator.clipboard.writeText(textLines.join("\n"))
-                      .then(() => alert("명단이 클립보드에 복사되었습니다."))
-                      .catch(err => alert("복사 실패: " + err));
-                  }} 
-                  className="btn btn-primary" 
-                  style={{ flex: 1 }}
-                >
-                  <Clipboard size={14} />
-                  <span>명단 복사 (카톡용)</span>
-                </button>
-              )}
-              <button onClick={() => setClickedCardDetails(null)} className="btn btn-secondary" style={{ flex: clickedCardDetails.members.length > 0 ? 0.4 : 1 }}>
+                  }
+                  textLines.push(
+                    "",
+                    `[전주에는 있고 이번 주에는 없는 명단 ${clickedCardDetails.previousOnly.length}명]`,
+                    clickedCardDetails.previousOnly.length ? clickedCardDetails.previousOnly.map(m => m.name).join(", ") : "없음",
+                    "",
+                    `[이번 주에는 있고 전주에는 없는 명단 ${clickedCardDetails.currentOnly.length}명]`,
+                    clickedCardDetails.currentOnly.length ? clickedCardDetails.currentOnly.map(m => m.name).join(", ") : "없음"
+                  );
+
+                  navigator.clipboard.writeText(textLines.join("\n"))
+                    .then(() => alert("명단이 클립보드에 복사되었습니다."))
+                    .catch(err => alert("복사 실패: " + err));
+                }}
+                className="btn btn-primary"
+                style={{ flex: 1 }}
+              >
+                <Clipboard size={14} />
+                <span>명단 복사 (카톡용)</span>
+              </button>
+              <button onClick={() => setClickedCardDetails(null)} className="btn btn-secondary" style={{ flex: 0.4 }}>
                 <span>닫기</span>
               </button>
             </div>
