@@ -192,16 +192,17 @@ export function DataProvider({ children }) {
       .map(item => {
         if (typeof item === "string") {
           const name = item.trim();
-          return name ? { memberId: "", name } : null;
+          return name ? { userId: "", memberId: "", name } : null;
         }
+        const userId = String(item?.userId || "").trim();
         const memberId = String(item?.memberId || "").trim();
         const name = String(item?.name || "").trim();
-        if (!memberId && !name) return null;
-        return { memberId: name ? "" : memberId, name };
+        if (!userId || !name) return null;
+        return { userId, memberId, name };
       })
       .filter(Boolean)
       .filter(item => {
-        const key = item.memberId || item.name;
+        const key = item.userId;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;

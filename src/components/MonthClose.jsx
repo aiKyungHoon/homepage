@@ -26,6 +26,7 @@ export default function MonthClose() {
     teams,
     zones,
     members,
+    users,
     appSettings,
     updateAttendanceDownloadNames
   } = useData();
@@ -37,13 +38,20 @@ export default function MonthClose() {
   const [downloadNameInput, setDownloadNameInput] = useState("");
   const [downloadNameSaving, setDownloadNameSaving] = useState(false);
   const canManageDownloadSettings = currentUser?.role === "admin";
+  const normalizePersonName = (value) => String(value || "")
+    .replace(/\s*\([^)]*\)\s*$/u, "")
+    .trim();
+  const findUserForMember = (member) => users.find(user => (
+    user.memberId === member.memberId ||
+    normalizePersonName(user.name) === normalizePersonName(member.name)
+  ));
 
   useEffect(() => {
     const savedTargets = Array.isArray(appSettings?.attendanceDownloadTargets)
       ? appSettings.attendanceDownloadTargets
       : [];
     const legacyNames = Array.isArray(appSettings?.attendanceDownloadNames)
-      ? appSettings.attendanceDownloadNames.map(name => ({ memberId: "", name }))
+      ? appSettings.attendanceDownloadNames.map(name => ({ userId: "", memberId: "", name }))
       : [];
     const rawTargets = savedTargets.length > 0 ? savedTargets : legacyNames;
     const resolvedTargets = rawTargets.map(target => {
@@ -51,15 +59,24 @@ export default function MonthClose() {
         (target.name && member.name === target.name) ||
         (!target.name && target.memberId && member.memberId === target.memberId)
       ));
+      const matchedUser = users.find(user => (
+        user.userId === target.userId ||
+        (matchedMember && (
+          user.memberId === matchedMember.memberId ||
+          normalizePersonName(user.name) === normalizePersonName(matchedMember.name)
+        )) ||
+        normalizePersonName(user.name) === normalizePersonName(target.name)
+      ));
       return {
+        userId: matchedUser?.userId || target.userId || "",
         memberId: matchedMember?.memberId || target.memberId || "",
         name: matchedMember?.name || target.name || "",
         teamId: matchedMember?.teamId || "",
         zoneId: matchedMember?.zoneId || ""
       };
-    });
+    }).filter(target => target.userId);
     setDownloadTargetDrafts(resolvedTargets);
-  }, [appSettings?.attendanceDownloadNames, appSettings?.attendanceDownloadTargets, members]);
+  }, [appSettings?.attendanceDownloadNames, appSettings?.attendanceDownloadTargets, members, users]);
 
   const handleCloseMonth = (monthId) => {
     const formattedMonth = `${monthId.split("-")[0]}년 ${parseInt(monthId.split("-")[1])}월`;
@@ -72,6 +89,7 @@ export default function MonthClose() {
   const getZoneName = (zoneId) => zones.find(zone => zone.zoneId === zoneId)?.name || "";
 
   const toDownloadTarget = (member) => ({
+    userId: findUserForMember(member)?.userId || "",
     memberId: member.memberId,
     name: member.name,
     teamId: member.teamId,
@@ -84,6 +102,7 @@ export default function MonthClose() {
     const selectedNames = new Set(downloadTargetDrafts.map(target => target.name).filter(Boolean));
     return members
       .filter(member => !selectedNames.has(member.name))
+      .filter(member => Boolean(findUserForMember(member)))
       .filter(member => [
         member.name,
         member.memberId,
@@ -94,9 +113,14 @@ export default function MonthClose() {
   };
 
   const addDownloadTarget = (member) => {
+    if (!findUserForMember(member)) {
+      alert("해당 이름으로 등록된 로그인 계정이 없습니다.");
+      return;
+    }
     setDownloadTargetDrafts(prev => {
-      if (prev.some(target => target.name === member.name)) return prev;
-      return [...prev, toDownloadTarget(member)];
+      const target = toDownloadTarget(member);
+      if (prev.some(item => item.userId === target.userId)) return prev;
+      return [...prev, target];
     });
     setDownloadNameInput("");
   };
@@ -109,22 +133,19 @@ export default function MonthClose() {
     if (tokens.length === 0) return;
     const matchedMembers = tokens
       .map(token => members.find(member => member.name === token || member.memberId === token))
-      .filter(Boolean);
+      .filter(member => member && findUserForMember(member));
+    if (matchedMembers.length === 0) {
+      alert("입력한 이름과 연결된 로그인 계정을 찾을 수 없습니다.");
+      return;
+    }
     setDownloadTargetDrafts(prev => {
-      const existingNames = new Set(prev.map(target => target.name).filter(Boolean));
+      const existingUserIds = new Set(prev.map(target => target.userId).filter(Boolean));
       const nextTargets = [...prev];
       matchedMembers.forEach(member => {
-        if (!existingNames.has(member.name)) {
-          nextTargets.push(toDownloadTarget(member));
-          existingNames.add(member.name);
-        }
-      });
-      tokens.forEach(token => {
-        const matchedMember = members.find(member => member.name === token || member.memberId === token);
-        const name = matchedMember?.name || token;
-        if (!existingNames.has(name)) {
-          nextTargets.push(matchedMember ? toDownloadTarget(matchedMember) : { memberId: "", name, teamId: "", zoneId: "" });
-          existingNames.add(name);
+        const target = toDownloadTarget(member);
+        if (!existingUserIds.has(target.userId)) {
+          nextTargets.push(target);
+          existingUserIds.add(target.userId);
         }
       });
       return nextTargets;
@@ -153,7 +174,8 @@ export default function MonthClose() {
     setDownloadNameSaving(true);
     try {
       await updateAttendanceDownloadNames(nextTargets.map(target => ({
-        memberId: "",
+        userId: target.userId,
+        memberId: target.memberId,
         name: target.name
       })));
     } catch (error) {
@@ -172,7 +194,8 @@ export default function MonthClose() {
     setDownloadNameSaving(true);
     try {
       await updateAttendanceDownloadNames(downloadTargetDrafts.map(target => ({
-        memberId: "",
+        userId: target.userId,
+        memberId: target.memberId,
         name: target.name
       })));
       alert("엑셀 다운로드 이름 설정을 저장했습니다.");
@@ -833,7 +856,7 @@ export default function MonthClose() {
             <h3>출결관리 엑셀 다운로드 이름 설정</h3>
           </div>
           <p className="download-settings-description">
-            이름을 등록하면 해당 이름의 로그인 계정만 출결관리 엑셀 다운로드를 사용할 수 있습니다. 관리자는 항상 다운로드할 수 있습니다.
+            이름을 검색해 계정을 연결하면 등록된 로그인 계정만 출결관리 엑셀 다운로드를 사용할 수 있습니다.
           </p>
 
           <div className="download-name-add-row">
@@ -865,7 +888,7 @@ export default function MonthClose() {
                     onClick={() => addDownloadTarget(member)}
                   >
                     <strong>{member.name}</strong>
-                    <span>ID {member.memberId}</span>
+                    <span>계정 ID {findUserForMember(member)?.userId || "계정 없음"}</span>
                     <small>{getTeamName(member.teamId)} · {getZoneName(member.zoneId)}</small>
                   </button>
                 ))
@@ -875,7 +898,7 @@ export default function MonthClose() {
 
           <div className="download-name-list">
             {downloadTargetDrafts.length === 0 ? (
-              <div className="download-name-empty">등록된 이름이 없습니다. 관리자만 다운로드할 수 있습니다.</div>
+              <div className="download-name-empty">등록된 계정이 없습니다.</div>
             ) : (
               downloadTargetDrafts.map((target, index) => (
                 <div key={`${target.memberId || target.name}-${index}`} className="download-name-row">
@@ -887,8 +910,8 @@ export default function MonthClose() {
                       placeholder="이름 또는 ID"
                     />
                     <div className="download-selected-meta">
-                      <span>{target.memberId ? "성도 목록에서 선택됨" : "이름 기준 권한"}</span>
-                      <span>{target.zoneId ? getZoneName(target.zoneId) : "로그인 이름과 일치해야 함"}</span>
+                      <span>{target.userId ? `계정 ID ${target.userId}` : "연결된 계정 없음"}</span>
+                      <span>{target.zoneId ? getZoneName(target.zoneId) : "소속 구역 없음"}</span>
                     </div>
                   </div>
                   <button

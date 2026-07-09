@@ -53,6 +53,7 @@ export default function AttendanceGrid() {
     attendanceRecords,
     monthlyAchievements,
     memberNotes,
+    appSettings,
     updateAttendance,
     updateMonthlyAchievement,
     saveMemberNote,
@@ -628,6 +629,21 @@ export default function AttendanceGrid() {
   const formatCheckboxValue = (value) => value ? "O" : "";
 
   const handleDownloadExcel = () => {
+    const downloadTargets = Array.isArray(appSettings?.attendanceDownloadTargets)
+      ? appSettings.attendanceDownloadTargets
+      : [];
+    const normalizeAccountName = (value) => String(value || "")
+      .replace(/\s*\([^)]*\)\s*$/u, "")
+      .trim();
+    const hasDownloadPermission = downloadTargets.some(target => (
+      (target?.userId && target.userId === currentUser?.userId) ||
+      (!target?.userId && normalizeAccountName(target?.name) === normalizeAccountName(currentUser?.name))
+    ));
+    if (!hasDownloadPermission) {
+      alert("권한이 없어서 다운로드가 안됩니다.");
+      return;
+    }
+
     let downloadMembers = [...members];
 
     // Role-based scope filtering (team leader gets their team, zone leader gets their zone, admin/other roles get all)
