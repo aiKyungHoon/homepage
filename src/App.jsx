@@ -10,6 +10,7 @@ import OrgManagement from "./components/OrgManagement";
 import MonthClose from "./components/MonthClose";
 import HistoryLog from "./components/HistoryLog";
 import VisitManagement from "./components/VisitManagement";
+import Watermark from "./components/Watermark";
 
 function AppContent() {
   const { currentUser, loading: authLoading } = useAuth();
@@ -67,6 +68,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
+      <Watermark />
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
       <main className="main-content">
         <Header />

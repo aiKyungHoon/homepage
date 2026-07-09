@@ -396,6 +396,18 @@ export default function AttendanceGrid() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // ESC key closes any open popover/modal
+  useEffect(() => {
+    function handleEscape(event) {
+      if (event.key !== "Escape") return;
+      setActiveCell(null);
+      setNoteModalMemberId(null);
+      setIsReportModalOpen(false);
+    }
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, []);
+
   const activeMonth = months.find(m => m.monthId === activeMonthId);
   const isClosed = activeMonth ? activeMonth.status === "closed" : false;
   // Admin can edit closed months, other roles cannot
@@ -1014,6 +1026,8 @@ export default function AttendanceGrid() {
                 : Math.min(260, Math.max(rect.width, 190));
 
       const viewportPadding = 8;
+      // 화면(특히 모바일)보다 넓은 팝오버는 뷰포트에 맞게 줄여 가려지지 않게 함
+      const effectivePopoverWidth = Math.min(popoverWidth, window.innerWidth - viewportPadding * 2);
       const optionCount = category === "visit" || isAnyWorshipCell ? 0 : getCategoryOptions(category).length;
       const maxVisiblePopoverHeight = window.innerHeight - (viewportPadding * 2);
       const estimatedContentHeight = category === "visit"
@@ -1030,7 +1044,7 @@ export default function AttendanceGrid() {
       const estimatedPopoverHeight = Math.min(maxVisiblePopoverHeight, estimatedContentHeight);
       const nextX = Math.min(
         Math.max(rect.left, viewportPadding),
-        window.innerWidth - popoverWidth - viewportPadding
+        window.innerWidth - effectivePopoverWidth - viewportPadding
       );
       const opensUpward = rect.bottom + estimatedPopoverHeight + viewportPadding > window.innerHeight;
       const nextY = opensUpward
@@ -1086,7 +1100,7 @@ export default function AttendanceGrid() {
         category,
         x: nextX,
         y: nextY,
-        width: popoverWidth
+        width: effectivePopoverWidth
       });
     }
   };
