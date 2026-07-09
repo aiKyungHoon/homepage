@@ -507,9 +507,9 @@ export default function Dashboard() {
 
   const evTeamStats = getEvangelismTeamStats();
 
-  const getTestValueForMember = (memberId) => {
-    const rec = attendanceRecords.find(
-      r => r.memberId === memberId && r.weekNo === activeWeekNo && r.category === "test"
+  const getTestValueForMember = (memberId, weekNo = activeWeekNo, records = attendanceRecords) => {
+    const rec = records.find(
+      r => r.memberId === memberId && r.weekNo === weekNo && r.category === "test"
     );
     return rec ? rec.value : "미보고";
   };
@@ -722,111 +722,127 @@ export default function Dashboard() {
   };
 
   const handleCardClick = (title, categoryOrType) => {
-    let list = [];
+    const resolveMembers = (weekNo, monthId, records, achievements) => {
+      let list = [];
+      const getValue = (memberId, category) => (
+        getAttendanceValueFromRecords(records, memberId, category, weekNo, monthId)
+      );
     
-    if (categoryOrType === "total") {
-      list = scopedMembers;
-    } else if (categoryOrType === "excluded") {
-      list = members.filter(m => m.status === "excluded" && (role === "admin" || (role === "team" && m.teamId === currentUser?.teamId) || (role === "leader" && m.zoneId === currentUser?.zoneId)));
-    } else if (String(categoryOrType).startsWith("sunday_stat:")) {
-      const [, category, status] = String(categoryOrType).split(":");
-      list = scopedMembers.filter(m => {
-        const val = getAttendanceValue(m.memberId, category);
-        if (status === "present") return isWorshipPresentValue(val);
-        if (status === "absent") return isWorshipAbsentValue(val);
-        return getWorshipTypeValue(val) === "미보고";
-      });
-    } else if (String(categoryOrType).startsWith("worship_group:")) {
-      const [, groupKey, category = "sunday_actual"] = String(categoryOrType).split(":");
-      const group = getWorshipGroupByKey(groupKey);
-      list = scopedMembers.filter(m => {
-        if (category === "all") {
-          return WORSHIP_BREAKDOWN_CATEGORIES.some(worshipCategory => isWorshipValueInGroup(getAttendanceValue(m.memberId, worshipCategory), group));
-        }
-        return isWorshipValueInGroup(getAttendanceValue(m.memberId, category), group);
-      });
-    } else if (String(categoryOrType).startsWith("auth_class:")) {
-      const [, label, category = "sunday_actual"] = String(categoryOrType).split(":");
-      list = scopedMembers.filter(m => {
-        const val = getAttendanceValue(m.memberId, category);
-        if (!val || val === "미보고") return false;
-        const parts = val.split("|").map(s => s.trim());
-        const authClass = parts[4] || "";
-        return authClass === label;
-      });
-    } else if (categoryOrType === "zone_entered") {
-      list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
-        const val = rec ? rec.value : "미보고";
+      if (categoryOrType === "total") {
+        list = scopedMembers;
+      } else if (categoryOrType === "excluded") {
+        list = members.filter(m => m.status === "excluded" && (role === "admin" || (role === "team" && m.teamId === currentUser?.teamId) || (role === "leader" && m.zoneId === currentUser?.zoneId)));
+      } else if (String(categoryOrType).startsWith("sunday_stat:")) {
+        const [, category, status] = String(categoryOrType).split(":");
+        list = scopedMembers.filter(m => {
+          const val = getValue(m.memberId, category);
+          if (status === "present") return isWorshipPresentValue(val);
+          if (status === "absent") return isWorshipAbsentValue(val);
+          return getWorshipTypeValue(val) === "미보고";
+        });
+      } else if (String(categoryOrType).startsWith("worship_group:")) {
+        const [, groupKey, category = "sunday_actual"] = String(categoryOrType).split(":");
+        const group = getWorshipGroupByKey(groupKey);
+        list = scopedMembers.filter(m => {
+          if (category === "all") {
+            return WORSHIP_BREAKDOWN_CATEGORIES.some(worshipCategory => isWorshipValueInGroup(getValue(m.memberId, worshipCategory), group));
+          }
+          return isWorshipValueInGroup(getValue(m.memberId, category), group);
+        });
+      } else if (String(categoryOrType).startsWith("auth_class:")) {
+        const [, label, category = "sunday_actual"] = String(categoryOrType).split(":");
+        list = scopedMembers.filter(m => {
+          const val = getValue(m.memberId, category);
+          if (!val || val === "미보고") return false;
+          const parts = val.split("|").map(s => s.trim());
+          return (parts[4] || "") === label;
+        });
+      } else if (categoryOrType === "zone_entered") {
+        list = scopedMembers.filter(m => {
+          const val = getValue(m.memberId, "zone");
         return ZONE_FACE_TO_FACE_VALUES.includes(val);
       });
     } else if (categoryOrType === "zone_delivered") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "zone");
         return [...ZONE_ZOOM_VALUES, ...ZONE_INDIVIDUAL_VALUES].includes(val);
       });
     } else if (categoryOrType === "zone_undelivered") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "zone");
         return ZONE_ABSENT_VALUES.includes(val);
       });
     } else if (categoryOrType === "zone_unreported") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "zone");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "zone");
         return !ZONE_REPORTED_VALUES.includes(val);
       });
     } else if (categoryOrType === "radio") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "radio");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "radio");
         return ["대면", "비대면", "온라인", "대체", "O"].includes(val);
       });
     } else if (categoryOrType === "tithing") {
       list = scopedMembers.filter(m => {
-        const ach = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "tithing");
+        const ach = achievements.find(a => a.memberId === m.memberId && a.category === "tithing");
         return ach && ach.achieved;
       });
     } else if (categoryOrType === "fee") {
       list = scopedMembers.filter(m => {
-        const ach = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "fee");
+        const ach = achievements.find(a => a.memberId === m.memberId && a.category === "fee");
         return ach && ach.achieved;
       });
     } else if (categoryOrType === "evangelism") {
       list = scopedMembers.filter(m => {
-        const ach = monthlyAchievements.find(a => a.memberId === m.memberId && a.category === "evangelism");
+        const ach = achievements.find(a => a.memberId === m.memberId && a.category === "evangelism");
         return ach && ach.achieved;
       });
     } else if (categoryOrType === "evteam_present") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "activity");
         return val === "대면";
       });
     } else if (categoryOrType === "evteam_online") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "activity");
         return val === "비대면";
       });
     } else if (categoryOrType === "evteam_unreported") {
       list = scopedMembers.filter(m => {
-        const rec = attendanceRecords.find(r => r.memberId === m.memberId && r.weekNo === activeWeekNo && r.category === "activity");
-        const val = rec ? rec.value : "미보고";
+        const val = getValue(m.memberId, "activity");
         return !["대면", "비대면"].includes(val);
       });
     } else if (categoryOrType.startsWith("test_")) {
       const testStatusKey = categoryOrType.replace("test_", "");
       const testStatus = TEST_STATUS_CONFIG.find(item => item.key === testStatusKey);
       list = scopedMembers.filter(m => {
-        const val = getTestValueForMember(m.memberId);
+        const val = getTestValueForMember(m.memberId, weekNo, records);
         return testStatus ? matchesTestStatus(val, testStatus) : false;
       });
     }
 
-    setClickedCardDetails({ title, members: list });
+      return list;
+    };
+
+    const list = resolveMembers(activeWeekNo, activeMonthId, attendanceRecords, monthlyAchievements);
+    const previousWeekNo = activeWeekNo > 1
+      ? activeWeekNo - 1
+      : Math.max(1, ...previousMonthRecords.map(record => Number(record.weekNo) || 1));
+    const previousRecords = activeWeekNo > 1 ? attendanceRecords : previousMonthRecords;
+    const previousAchievements = activeWeekNo > 1 ? monthlyAchievements : previousMonthAchievements;
+    const previousComparisonMonthId = activeWeekNo > 1 ? activeMonthId : previousMonthId;
+    const previousList = resolveMembers(previousWeekNo, previousComparisonMonthId, previousRecords, previousAchievements);
+    const currentIds = new Set(list.map(member => member.memberId));
+    const previousIds = new Set(previousList.map(member => member.memberId));
+
+    setClickedCardDetails({
+      title,
+      members: list,
+      previousWeekNo,
+      previousMonthId: previousComparisonMonthId,
+      currentOnly: list.filter(member => !previousIds.has(member.memberId)),
+      previousOnly: previousList.filter(member => !currentIds.has(member.memberId))
+    });
   };
 
   const getWeekDateRange = (year, month, weekNo) => {
@@ -2946,7 +2962,6 @@ export default function Dashboard() {
                     {group.members.length > 0 ? group.members.map(member => (
                       <span key={member.memberId} className="monthly-member-chip">
                         {member.name}
-                        <small>{getZoneName(member.zoneId)}</small>
                       </span>
                     )) : (
                       <p>해당 명단이 없습니다.</p>
@@ -2963,7 +2978,7 @@ export default function Dashboard() {
                 style={{ flex: 1 }}
                 onClick={() => {
                   const detail = selectedWeeklyComparison;
-                  const makeNames = (items) => items.length ? items.map(member => `${member.name}(${getZoneName(member.zoneId)})`).join(", ") : "없음";
+                  const makeNames = (items) => items.length ? items.map(member => member.name).join(", ") : "없음";
                   const text = [
                     `[${formatMonthLabel(activeMonthId)} ${detail.metric.label} ${detail.weekNo}주차 명단 비교]`,
                     `현재월: ${detail.current.rate}% (${detail.current.present}/${detail.current.possible}명)`,
@@ -3105,9 +3120,7 @@ export default function Dashboard() {
                       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{groups[tName].length}명</span>
                     </h4>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                      {groups[tName].map(m => {
-                        const zName = getZoneName(m.zoneId) || "구역 없음";
-                        return (
+                      {groups[tName].map(m => (
                           <span key={m.memberId} style={{ 
                             fontSize: "12px", 
                             color: "var(--text-primary)", 
@@ -3116,14 +3129,35 @@ export default function Dashboard() {
                             padding: "4px 8px", 
                             borderRadius: "4px" 
                           }}>
-                            {m.name} <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>({zName})</span>
+                            {m.name}
                           </span>
-                        );
-                      })}
+                      ))}
                     </div>
                   </div>
                 ));
               })()}
+            </div>
+
+            <div className="weekly-member-diff">
+              <div className="weekly-member-diff-header">
+                <strong>전주 대비 명단 변화</strong>
+                <span>
+                  {clickedCardDetails.previousMonthId === activeMonthId
+                    ? `${clickedCardDetails.previousWeekNo}주차 → ${activeWeekNo}주차`
+                    : `${formatMonthLabel(clickedCardDetails.previousMonthId)} ${clickedCardDetails.previousWeekNo}주차 → ${activeWeekNo}주차`}
+                </span>
+              </div>
+              <div className="weekly-member-diff-grid">
+                {[
+                  { title: "전주에는 있고 이번 주에는 없는 명단", members: clickedCardDetails.previousOnly },
+                  { title: "이번 주에는 있고 전주에는 없는 명단", members: clickedCardDetails.currentOnly }
+                ].map(group => (
+                  <div key={group.title} className="weekly-member-diff-list">
+                    <h4>{group.title} <span>{group.members.length}명</span></h4>
+                    <p>{group.members.length ? group.members.map(member => member.name).join(", ") : "해당 명단이 없습니다."}</p>
+                  </div>
+                ))}
+              </div>
             </div>
             
             <div style={{ display: "flex", gap: "10px", marginTop: "16px" }}>
@@ -3141,12 +3175,17 @@ export default function Dashboard() {
                     textLines.push(`[${getScopeLabel()} ${activeMonthId.split("-")[0]}년 ${parseInt(activeMonthId.split("-")[1])}월 ${activeWeekNo}주차 - ${clickedCardDetails.title} (총 ${clickedCardDetails.members.length}명)]`);
                     
                     Object.keys(groups).sort().forEach(tName => {
-                      const names = groups[tName].map(m => {
-                        const zName = getZoneName(m.zoneId) || "구역 없음";
-                        return `${m.name}(${zName})`;
-                      }).join(", ");
+                      const names = groups[tName].map(m => m.name).join(", ");
                       textLines.push(`- ${tName}: ${names}`);
                     });
+                    textLines.push(
+                      "",
+                      `[전주에는 있고 이번 주에는 없는 명단 ${clickedCardDetails.previousOnly.length}명]`,
+                      clickedCardDetails.previousOnly.length ? clickedCardDetails.previousOnly.map(m => m.name).join(", ") : "없음",
+                      "",
+                      `[이번 주에는 있고 전주에는 없는 명단 ${clickedCardDetails.currentOnly.length}명]`,
+                      clickedCardDetails.currentOnly.length ? clickedCardDetails.currentOnly.map(m => m.name).join(", ") : "없음"
+                    );
                     
                     navigator.clipboard.writeText(textLines.join("\n"))
                       .then(() => alert("명단이 클립보드에 복사되었습니다."))
@@ -3658,6 +3697,62 @@ export default function Dashboard() {
           width: min(880px, 94vw);
           max-height: 86vh;
           overflow-y: auto;
+        }
+
+        .weekly-member-diff {
+          padding: 14px;
+          border: 1px solid var(--glass-border);
+          border-radius: 8px;
+          background: var(--bg-secondary);
+        }
+
+        .weekly-member-diff-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 10px;
+        }
+
+        .weekly-member-diff-header span {
+          color: var(--text-muted);
+          font-size: 11px;
+        }
+
+        .weekly-member-diff-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px;
+        }
+
+        .weekly-member-diff-list {
+          min-width: 0;
+          padding: 10px;
+          border: 1px solid var(--glass-border);
+          border-radius: 6px;
+          background: var(--bg-primary);
+        }
+
+        .weekly-member-diff-list h4 {
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          margin: 0 0 8px;
+          font-size: 12px;
+          line-height: 1.4;
+        }
+
+        .weekly-member-diff-list h4 span {
+          flex: none;
+          color: var(--accent-cyan);
+        }
+
+        .weekly-member-diff-list p {
+          margin: 0;
+          color: var(--text-secondary);
+          font-size: 12px;
+          line-height: 1.6;
+          overflow-wrap: anywhere;
         }
 
         .monthly-comparison-summary {
