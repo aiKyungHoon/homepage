@@ -3098,7 +3098,7 @@ export default function Dashboard() {
             
             <div style={{ maxHeight: "350px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", margin: "10px 0", paddingRight: "4px" }}>
               {(() => {
-                const showWorshipSubtype = ["meeting", "partner"].includes(clickedCardDetails.worshipGroupKey);
+                const showWorshipSubtype = ["meeting", "partner", "brother"].includes(clickedCardDetails.worshipGroupKey);
                 const getMemberSubtype = (member) => {
                   if (!showWorshipSubtype || !clickedCardDetails.worshipCategory) return "";
                   const rawValue = getAttendanceValue(member.memberId, clickedCardDetails.worshipCategory);
@@ -3202,7 +3202,7 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   const textLines = [];
-                  const showWorshipSubtype = ["meeting", "partner"].includes(clickedCardDetails.worshipGroupKey);
+                  const showWorshipSubtype = ["meeting", "partner", "brother"].includes(clickedCardDetails.worshipGroupKey);
                   const getMemberSubtype = (member) => {
                     if (!showWorshipSubtype || !clickedCardDetails.worshipCategory) return "";
                     const rawValue = getAttendanceValue(member.memberId, clickedCardDetails.worshipCategory);
