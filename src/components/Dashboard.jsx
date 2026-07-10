@@ -722,6 +722,12 @@ export default function Dashboard() {
   };
 
   const handleCardClick = (title, categoryOrType) => {
+    const worshipGroupParts = String(categoryOrType).startsWith("worship_group:")
+      ? String(categoryOrType).split(":")
+      : null;
+    const clickedWorshipGroupKey = worshipGroupParts?.[1] || null;
+    const clickedWorshipCategory = worshipGroupParts?.[2] || null;
+
     const resolveMembers = (weekNo, monthId, records, achievements) => {
       let list = [];
       const getValue = (memberId, category) => (
@@ -838,6 +844,8 @@ export default function Dashboard() {
     setClickedCardDetails({
       title,
       members: list,
+      worshipGroupKey: clickedWorshipGroupKey,
+      worshipCategory: clickedWorshipCategory,
       previousWeekNo,
       previousMonthId: previousComparisonMonthId,
       currentOnly: list.filter(member => !previousIds.has(member.memberId)),
@@ -3090,7 +3098,13 @@ export default function Dashboard() {
             
             <div style={{ maxHeight: "350px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "16px", margin: "10px 0", paddingRight: "4px" }}>
               {(() => {
-                // Group members by teamId
+                const showWorshipSubtype = ["meeting", "partner"].includes(clickedCardDetails.worshipGroupKey);
+                const getMemberSubtype = (member) => {
+                  if (!showWorshipSubtype || !clickedCardDetails.worshipCategory) return "";
+                  const rawValue = getAttendanceValue(member.memberId, clickedCardDetails.worshipCategory);
+                  return getWorshipTypeValue(rawValue) || clickedCardDetails.title;
+                };
+
                 const groups = {};
                 clickedCardDetails.members.forEach(m => {
                   const tName = getTeamName(m.teamId) || "소속 없음";
@@ -3120,7 +3134,7 @@ export default function Dashboard() {
                       <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{groups[tName].length}명</span>
                     </h4>
                     <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                      {groups[tName].map(m => (
+                      {!showWorshipSubtype && groups[tName].map(m => (
                           <span key={m.memberId} style={{ 
                             fontSize: "12px", 
                             color: "var(--text-primary)", 
@@ -3132,6 +3146,30 @@ export default function Dashboard() {
                             {m.name}
                           </span>
                       ))}
+                      {showWorshipSubtype && (() => {
+                        const subtypeGroups = {};
+                        groups[tName].forEach(member => {
+                          const subtype = getMemberSubtype(member);
+                          if (!subtypeGroups[subtype]) subtypeGroups[subtype] = [];
+                          subtypeGroups[subtype].push(member);
+                        });
+
+                        return Object.keys(subtypeGroups).sort().map(subtype => (
+                          <div key={subtype} className="dashboard-subtype-group">
+                            <div className="dashboard-subtype-title">
+                              <span>{subtype}</span>
+                              <small>{subtypeGroups[subtype].length}명</small>
+                            </div>
+                            <div className="dashboard-subtype-members">
+                              {subtypeGroups[subtype].map(member => (
+                                <span key={member.memberId} className="dashboard-subtype-chip">
+                                  {member.name}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
                 ));
@@ -3164,6 +3202,12 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   const textLines = [];
+                  const showWorshipSubtype = ["meeting", "partner"].includes(clickedCardDetails.worshipGroupKey);
+                  const getMemberSubtype = (member) => {
+                    if (!showWorshipSubtype || !clickedCardDetails.worshipCategory) return "";
+                    const rawValue = getAttendanceValue(member.memberId, clickedCardDetails.worshipCategory);
+                    return getWorshipTypeValue(rawValue) || clickedCardDetails.title;
+                  };
                   const groups = {};
                   clickedCardDetails.members.forEach(m => {
                     const tName = getTeamName(m.teamId) || "소속 없음";
@@ -3177,8 +3221,23 @@ export default function Dashboard() {
                     textLines.push("없음");
                   } else {
                     Object.keys(groups).sort().forEach(tName => {
-                      const names = groups[tName].map(m => m.name).join(", ");
-                      textLines.push(`- ${tName}: ${names}`);
+                      if (!showWorshipSubtype) {
+                        const names = groups[tName].map(m => m.name).join(", ");
+                        textLines.push(`- ${tName}: ${names}`);
+                        return;
+                      }
+
+                      textLines.push(`- ${tName} (${groups[tName].length}명)`);
+                      const subtypeGroups = {};
+                      groups[tName].forEach(member => {
+                        const subtype = getMemberSubtype(member);
+                        if (!subtypeGroups[subtype]) subtypeGroups[subtype] = [];
+                        subtypeGroups[subtype].push(member);
+                      });
+                      Object.keys(subtypeGroups).sort().forEach(subtype => {
+                        const names = subtypeGroups[subtype].map(member => member.name).join(", ");
+                        textLines.push(`  · ${subtype}: ${names}`);
+                      });
                     });
                   }
                   textLines.push(
@@ -3706,6 +3765,46 @@ export default function Dashboard() {
           border: 1px solid var(--glass-border);
           border-radius: 8px;
           background: var(--bg-secondary);
+        }
+
+        .dashboard-subtype-group {
+          width: 100%;
+          padding: 8px;
+          border: 1px solid var(--glass-border);
+          border-radius: 6px;
+          background: var(--bg-primary);
+        }
+
+        .dashboard-subtype-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text-secondary);
+        }
+
+        .dashboard-subtype-title small {
+          flex: none;
+          color: var(--accent-cyan);
+          font-size: 11px;
+        }
+
+        .dashboard-subtype-members {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .dashboard-subtype-chip {
+          font-size: 12px;
+          color: var(--text-primary);
+          background: var(--bg-secondary);
+          border: 1px solid var(--glass-border);
+          padding: 4px 8px;
+          border-radius: 4px;
         }
 
         .weekly-member-diff-header {
