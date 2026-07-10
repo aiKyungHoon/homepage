@@ -436,6 +436,74 @@ export function DataProvider({ children }) {
     logChange(memberId, memberName, `${activeMonthId.split("-")[1]}월 ${activeWeekNo}주차 ${catLabel}: ${oldValue} -> ${value}`);
   };
 
+  // 3-b. Bulk fill attendance (e.g. "지난주 예배보고 불러오기")
+  // updates: [{ memberId, category, value }] — 대상 주차는 현재 활성 주차(activeWeekNo)
+  const bulkFillAttendance = async (updates) => {
+    if (!Array.isArray(updates) || updates.length === 0) return 0;
+
+    // Check if month is closed
+    const activeMonth = months.find(m => m.monthId === activeMonthId);
+    const isClosed = activeMonth && activeMonth.status === "closed";
+    if (isClosed && currentUser?.role !== "admin") {
+      alert("마감된 월의 데이터는 팀장/리더 권한으로 수정할 수 없습니다.");
+      return 0;
+    }
+
+    const newRecords = updates.map(({ memberId, category, value }) => ({
+      recordId: `${memberId}_${activeMonthId}_${activeWeekNo}_${category}`,
+      memberId,
+      monthId: activeMonthId,
+      weekNo: activeWeekNo,
+      category,
+      value
+    }));
+
+    if (isMockEnabled) {
+      const allAtt = JSON.parse(localStorage.getItem("mock_attendance")) || [];
+      newRecords.forEach(rec => {
+        const idx = allAtt.findIndex(r => r.recordId === rec.recordId);
+        if (idx >= 0) allAtt[idx] = rec;
+        else allAtt.push(rec);
+      });
+      localStorage.setItem("mock_attendance", JSON.stringify(allAtt));
+    } else {
+      try {
+        // Firestore writeBatch limit is 500; chunk to be safe
+        for (let i = 0; i < newRecords.length; i += 400) {
+          const batch = writeBatch(db);
+          newRecords.slice(i, i + 400).forEach(rec => {
+            batch.set(doc(db, "attendanceRecords", rec.recordId), {
+              memberId: rec.memberId,
+              monthId: rec.monthId,
+              weekNo: rec.weekNo,
+              category: rec.category,
+              value: rec.value
+            });
+          });
+          await batch.commit();
+        }
+      } catch (error) {
+        console.error("Bulk attendance update failed:", error);
+        return 0;
+      }
+    }
+
+    // Merge into state in one pass
+    setAttendanceRecords(prev => {
+      const map = new Map(prev.map(r => [r.recordId, r]));
+      newRecords.forEach(rec => map.set(rec.recordId, rec));
+      return Array.from(map.values());
+    });
+
+    logChange(
+      "attendance",
+      "출결관리",
+      `${activeMonthId.split("-")[1]}월 ${activeWeekNo}주차 지난주 예배보고 불러오기 (${newRecords.length}건 채움)`
+    );
+
+    return newRecords.length;
+  };
+
   // 4. Monthly Achievements CRUD (전도, 십일조, 청체비)
   const updateMonthlyAchievement = async (memberId, category, achieved) => {
     const member = members.find(m => m.memberId === memberId);
@@ -1230,6 +1298,7 @@ export function DataProvider({ children }) {
     setActiveWeekNo,
     loading,
     updateAttendance,
+    bulkFillAttendance,
     updateMonthlyAchievement,
     saveMemberNote,
     deleteMemberNote,

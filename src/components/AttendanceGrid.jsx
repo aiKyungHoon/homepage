@@ -55,6 +55,7 @@ export default function AttendanceGrid() {
     memberNotes,
     appSettings,
     updateAttendance,
+    bulkFillAttendance,
     updateMonthlyAchievement,
     saveMemberNote,
     deleteMemberNote,
@@ -135,6 +136,7 @@ export default function AttendanceGrid() {
   const [worshipTimeSearch, setWorshipTimeSearch] = useState("");
   const [noteModalMemberId, setNoteModalMemberId] = useState(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [isLoadingPrevWeek, setIsLoadingPrevWeek] = useState(false);
   const popoverRef = useRef(null);
 
   // Report Modal state
@@ -541,6 +543,70 @@ export default function AttendanceGrid() {
 
   const buildActualWorship = (type, time, confirmMethod, reason, auth) => {
     return `${type || "미보고"}|${time || ""}|${confirmMethod || ""}|${reason || ""}|${auth || ""}`;
+  };
+
+  // Read a member's stored value for a specific week (지난주 불러오기용)
+  const getValueForWeek = (memberId, category, weekNo) => {
+    const record = attendanceRecords.find(
+      r => r.memberId === memberId && r.weekNo === weekNo && r.category === category
+    );
+    if (record) return record.value;
+    const legacyCategory = legacyWorshipCategoryMap[category];
+    if (legacyCategory) {
+      const legacyRecord = attendanceRecords.find(
+        r => r.memberId === memberId && r.weekNo === weekNo && r.category === legacyCategory
+      );
+      if (legacyRecord) return legacyRecord.value;
+    }
+    return "미보고";
+  };
+
+  // 지난주 예배보고 불러오기 → 이번주 빈 칸만 자동완성 (예배 4개 항목)
+  const worshipMainCategories = ["samil_pre", "samil_actual", "sunday_pre", "sunday_actual"];
+  const isWorshipValueEmpty = (val) => !val || val === "미보고" || val.split("|")[0].trim() === "미보고" || val.split("|")[0].trim() === "";
+
+  const handleLoadPreviousWeek = async () => {
+    if (!canEdit) return;
+    const prevWeek = activeWeekNo - 1;
+    if (prevWeek < 1) {
+      alert("1주차는 이전 주가 없어 불러올 수 없습니다. (2주차부터 사용 가능)");
+      return;
+    }
+
+    const updates = [];
+    filteredMembers.forEach(member => {
+      worshipMainCategories.forEach(category => {
+        const curVal = getWeeklyValue(member.memberId, category);
+        const prevVal = getValueForWeek(member.memberId, category, prevWeek);
+        // 빈 칸만 채우기: 이번주가 비어있고, 지난주에 실제 보고가 있을 때만
+        if (isWorshipValueEmpty(curVal) && !isWorshipValueEmpty(prevVal)) {
+          updates.push({ memberId: member.memberId, category, value: prevVal });
+        }
+      });
+    });
+
+    if (updates.length === 0) {
+      alert(`${prevWeek}주차에서 불러올 예배보고가 없거나, 이번주 빈 칸이 이미 모두 채워져 있습니다.`);
+      return;
+    }
+
+    const affectedMembers = new Set(updates.map(u => u.memberId)).size;
+    const ok = window.confirm(
+      `${prevWeek}주차 예배보고를 이번(${activeWeekNo})주차 빈 칸에 불러옵니다.\n\n` +
+      `· 대상 성도: ${affectedMembers}명\n· 채울 항목: ${updates.length}건\n\n` +
+      `이미 입력된 칸은 그대로 두고 빈 칸만 채웁니다. 진행할까요?`
+    );
+    if (!ok) return;
+
+    setIsLoadingPrevWeek(true);
+    try {
+      const count = await bulkFillAttendance(updates);
+      if (count > 0) {
+        alert(`${prevWeek}주차 예배보고 ${count}건을 불러왔습니다.`);
+      }
+    } finally {
+      setIsLoadingPrevWeek(false);
+    }
   };
 
   const handleSaveWorshipSubField = (memberId, colCategory, subField, newValue) => {
@@ -1515,7 +1581,7 @@ export default function AttendanceGrid() {
             <Filter size={16} />
             <h4>필터 및 검색</h4>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
             <select
               value={downloadCategory}
               onChange={(e) => setDownloadCategory(e.target.value)}
@@ -1550,7 +1616,9 @@ export default function AttendanceGrid() {
                 alignItems: "center",
                 gap: "6px",
                 padding: "0 12px",
-                fontSize: "12px"
+                fontSize: "12px",
+                whiteSpace: "nowrap",
+                flexShrink: 0
               }}
             >
               <Download size={13} />
@@ -1572,15 +1640,46 @@ export default function AttendanceGrid() {
                 color: "var(--accent-cyan)",
                 border: "1px solid var(--accent-cyan)",
                 borderRadius: "var(--radius-sm)",
-                cursor: "pointer"
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                flexShrink: 0
               }}
             >
               <Copy size={13} />
               <span>결과텍스트 복사</span>
             </button>
+
+            {canEdit && (
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={handleLoadPreviousWeek}
+                disabled={isLoadingPrevWeek || activeWeekNo < 2 || filteredMembers.length === 0}
+                title="지난주 예배보고를 이번주 빈 칸에 불러옵니다"
+                style={{
+                  height: "30px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "0 12px",
+                  fontSize: "12px",
+                  backgroundColor: "rgba(16, 185, 129, 0.15)",
+                  color: "var(--accent-emerald)",
+                  border: "1px solid var(--accent-emerald)",
+                  borderRadius: "var(--radius-sm)",
+                  cursor: (isLoadingPrevWeek || activeWeekNo < 2) ? "not-allowed" : "pointer",
+                  opacity: (isLoadingPrevWeek || activeWeekNo < 2 || filteredMembers.length === 0) ? 0.5 : 1,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0
+                }}
+              >
+                <RefreshCw size={13} className={isLoadingPrevWeek ? "spin" : ""} />
+                <span>{isLoadingPrevWeek ? "불러오는 중..." : "지난주 예배보고 불러오기"}</span>
+              </button>
+            )}
           </div>
         </div>
-        
+
         <div className="filters-row">
           <div className="search-box">
             <Search size={14} className="search-icon" />
