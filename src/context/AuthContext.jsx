@@ -158,7 +158,9 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {/* 항상 children 을 렌더 → 로딩/타임아웃 화면은 AppContent가 authLoading 으로 처리.
+          (인앱 브라우저에서 auth 단계가 멈춰도 빈 화면 대신 복구 화면이 뜨도록) */}
+      {children}
     </AuthContext.Provider>
   );
 }
