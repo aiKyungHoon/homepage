@@ -427,6 +427,7 @@ export default function OrgManagement() {
     if (userRole === "admin") return "임원";
     if (userRole === "visit") return "심방팀장";
     if (userRole === "team") return "팀장";
+    if (userRole === "team_secretary") return "팀서기";
     return "구역장";
   };
 
@@ -1103,6 +1104,7 @@ export default function OrgManagement() {
                 >
                   <option value="leader">구역장</option>
                   <option value="team">팀장</option>
+                  <option value="team_secretary">팀서기</option>
                   <option value="visit">심방팀장</option>
                   <option value="admin">임원</option>
                 </select>

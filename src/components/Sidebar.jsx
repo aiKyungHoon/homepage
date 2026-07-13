@@ -78,7 +78,7 @@ export default function Sidebar({ activePage, setActivePage }) {
   // Define navigation tabs based on user role
   const menuItems = [
     { id: "dashboard", label: "대시보드", icon: LayoutDashboard, roles: ["admin", "team"] },
-    { id: "attendance", label: "출결 관리", icon: CalendarCheck, roles: ["admin", "team", "leader"] },
+    { id: "attendance", label: "출결 관리", icon: CalendarCheck, roles: ["admin", "team", "team_secretary", "leader"] },
     { id: "visit_manage", label: "심방 관리", icon: HeartHandshake, roles: ["admin", "visit", "team", "leader"] },
     { id: "org", label: "조직/성도 관리", icon: Users, roles: ["admin", "team"] },
     { id: "month", label: "월 마감 설정", icon: Lock, roles: ["admin"] },
@@ -120,6 +120,7 @@ export default function Sidebar({ activePage, setActivePage }) {
               {role === "admin" && "임원"}
               {role === "visit" && "심방팀장"}
               {role === "team" && "팀장"}
+              {role === "team_secretary" && "팀서기"}
               {role === "leader" && "구역장"}
             </p>
           </div>

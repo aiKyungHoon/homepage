@@ -79,6 +79,8 @@ export default function AttendanceGrid() {
   };
 
   const role = currentUser?.role;
+  const isTeamScopedRole = role === "team" || role === "team_secretary";
+  const isWorshipOnlyRole = role === "team_secretary";
 
   const getStickyStyle = (colName, isHeader = false) => {
     let left = 0;
@@ -379,13 +381,19 @@ export default function AttendanceGrid() {
 
   // Set default filters based on user role
   useEffect(() => {
-    if (role === "team") {
+    if (isTeamScopedRole) {
       setFilterTeamId(currentUser.teamId);
     } else if (role === "leader") {
       setFilterTeamId(currentUser.teamId);
       setFilterZoneId(currentUser.zoneId);
     }
-  }, [role, currentUser]);
+  }, [role, currentUser, isTeamScopedRole]);
+
+  useEffect(() => {
+    if (isWorshipOnlyRole && downloadCategory !== "worship") {
+      setDownloadCategory("worship");
+    }
+  }, [downloadCategory, isWorshipOnlyRole]);
 
   // Click outside listener for cell popover
   useEffect(() => {
@@ -433,7 +441,7 @@ export default function AttendanceGrid() {
     }
 
     // Team Filter (locked for team leaders)
-    if (role === "team") {
+    if (isTeamScopedRole) {
       list = list.filter(m => m.teamId === currentUser.teamId);
     } else if (filterTeamId) {
       list = list.filter(m => m.teamId === filterTeamId);
@@ -724,9 +732,9 @@ export default function AttendanceGrid() {
 
     let downloadMembers = [...members];
 
-    // Role-based scope filtering (team leader gets their team, zone leader gets their zone, admin/other roles get all)
+    // Role-based scope filtering (team-scoped roles get their team, zone leader gets their zone, admin/other roles get all)
     // We ignore grid UI filters (filterStatus, filterTeamId, filterZoneId, searchQuery) so that all members in scope are downloaded.
-    if (role === "team") {
+    if (isTeamScopedRole) {
       downloadMembers = downloadMembers.filter(m => m.teamId === currentUser.teamId);
     } else if (role === "leader") {
       downloadMembers = downloadMembers.filter(m => m.zoneId === currentUser.zoneId);
@@ -770,7 +778,9 @@ export default function AttendanceGrid() {
       return [parsed.type, parsed.time];
     };
 
-    if (downloadCategory === "worship") {
+    const effectiveDownloadCategory = isWorshipOnlyRole ? "worship" : downloadCategory;
+
+    if (effectiveDownloadCategory === "worship") {
       worshipHeaders = [
         "삼일사전(분류)",
         "미확인/미보고 사유(사전)",
@@ -810,7 +820,7 @@ export default function AttendanceGrid() {
           note?.text || ""
         ];
       };
-    } else if (downloadCategory === "education") {
+    } else if (effectiveDownloadCategory === "education") {
       worshipHeaders = [
         "구역예배",
         "시험",
@@ -828,7 +838,7 @@ export default function AttendanceGrid() {
           getWeeklyValue(member.memberId, "simon")
         ];
       };
-    } else if (downloadCategory === "accounting") {
+    } else if (effectiveDownloadCategory === "accounting") {
       worshipHeaders = [
         "특이사항",
         "십일조",
@@ -842,7 +852,7 @@ export default function AttendanceGrid() {
           formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee"))
         ];
       };
-    } else if (downloadCategory === "evangelism") {
+    } else if (effectiveDownloadCategory === "evangelism") {
       worshipHeaders = [
         "특이사항",
         "전도",
@@ -856,7 +866,7 @@ export default function AttendanceGrid() {
           getWeeklyValue(member.memberId, "activity")
         ];
       };
-    } else if (downloadCategory === "visitation") {
+    } else if (effectiveDownloadCategory === "visitation") {
       worshipHeaders = [
         "특이사항",
         "심방"
@@ -951,11 +961,11 @@ export default function AttendanceGrid() {
     link.href = url;
     
     let categoryLabel = "";
-    if (downloadCategory === "worship") categoryLabel = "_예배";
-    else if (downloadCategory === "education") categoryLabel = "_교육";
-    else if (downloadCategory === "accounting") categoryLabel = "_회계";
-    else if (downloadCategory === "evangelism") categoryLabel = "_전도";
-    else if (downloadCategory === "visitation") categoryLabel = "_심방";
+    if (effectiveDownloadCategory === "worship") categoryLabel = "_예배";
+    else if (effectiveDownloadCategory === "education") categoryLabel = "_교육";
+    else if (effectiveDownloadCategory === "accounting") categoryLabel = "_회계";
+    else if (effectiveDownloadCategory === "evangelism") categoryLabel = "_전도";
+    else if (effectiveDownloadCategory === "visitation") categoryLabel = "_심방";
 
     link.download = `출결관리_${safeMonth}_${safeWeek}주차${categoryLabel}.csv`;
     document.body.appendChild(link);
@@ -968,7 +978,8 @@ export default function AttendanceGrid() {
 
   const shouldShowColumn = (colName) => {
     if (hiddenAttendanceColumns.has(colName)) return false;
-    if (downloadCategory === "all") return true;
+    const effectiveDownloadCategory = isWorshipOnlyRole ? "worship" : downloadCategory;
+    if (effectiveDownloadCategory === "all") return true;
     if (colName === "name" || colName === "rank" || colName === "team" || colName === "zone_belong") return true;
     if (colName === "note") return true; // 공통 특이사항
 
@@ -990,19 +1001,19 @@ export default function AttendanceGrid() {
       "test"
     ];
 
-    if (downloadCategory === "worship") {
+    if (effectiveDownloadCategory === "worship") {
       return worshipCols.includes(colName);
     }
-    if (downloadCategory === "education") {
+    if (effectiveDownloadCategory === "education") {
       return ["zone", "test", "radio", "simon"].includes(colName);
     }
-    if (downloadCategory === "accounting") {
+    if (effectiveDownloadCategory === "accounting") {
       return ["tithing", "fee"].includes(colName);
     }
-    if (downloadCategory === "evangelism") {
+    if (effectiveDownloadCategory === "evangelism") {
       return ["evangelism", "activity"].includes(colName);
     }
-    if (downloadCategory === "visitation") {
+    if (effectiveDownloadCategory === "visitation") {
       return ["visit"].includes(colName);
     }
     return false;
@@ -1319,7 +1330,7 @@ export default function AttendanceGrid() {
     if (!names || names.length === 0) return "";
     const rows = [];
     for (let i = 0; i < names.length; i += countPerRow) {
-      rows.push(names.slice(i, i + countPerRow).join("   "));
+      rows.push(names.slice(i, i + countPerRow).join(" "));
     }
     return rows.join("\n");
   };
@@ -1343,6 +1354,8 @@ export default function AttendanceGrid() {
     const pad2 = (num) => String(num || 0).padStart(2, "0");
     
     const calculateGroupStats = (group, isConfessed) => {
+      const hwajeongEntries = [];
+      const moimroomEntries = [];
       const hwajeongNames = [];
       const moimroomNames = [];
       const brotherNames = [];
@@ -1366,9 +1379,11 @@ export default function AttendanceGrid() {
         const isPresentType = type && type !== "미보고" && type !== "미확인" && type !== "출결제외자" && !isAbsentType;
         
         if (isPresentType) {
-          if (type === "정규성전") {
+          if (type === "정규성전" || type === "사랑예배") {
+            hwajeongEntries.push({ name: m.name, type, time: parsed.time });
             hwajeongNames.push(m.name);
           } else if (type.startsWith("모임방")) {
+            moimroomEntries.push({ name: m.name, type, time: parsed.time });
             moimroomNames.push(m.name);
           } else if (type.startsWith("형제교회")) {
             brotherNames.push(m.name);
@@ -1411,7 +1426,9 @@ export default function AttendanceGrid() {
         presentCount,
         daemyeonCount,
         hwajeongNames,
+        hwajeongEntries,
         moimroomNames,
+        moimroomEntries,
         brotherNames,
         coopNames,
         zoomNames,
@@ -1437,11 +1454,81 @@ export default function AttendanceGrid() {
     const yy = String(today.getFullYear()).slice(-2);
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
-    const weekdays = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
-    const dayOfWeek = weekdays[today.getDay()];
+    const shortWeekdays = ["일", "월", "화", "수", "목", "금", "토"];
+    const dayOfWeek = shortWeekdays[today.getDay()];
     const todayStr = `${yy}${mm}${dd}(${dayOfWeek})`;
     
     const altLabel = ["월", "금", "토", "일"].includes(dayKey) ? "월대체" : "목대체";
+
+    const formatReportTime = (time) => {
+      const [hourRaw, minuteRaw = "00"] = String(time || "").split(":");
+      const hour = hourRaw.padStart(2, "0");
+      const minute = minuteRaw.padStart(2, "0");
+      return minute === "00" ? `${hour}시` : `${hour}시${minute}분`;
+    };
+
+    const getMoimroomLabel = (type) => {
+      const match = String(type || "").match(/^모임방\((.*)\)$/);
+      return match ? match[1] : "기타";
+    };
+
+    const groupEntriesBy = (entries, getKey) => {
+      const grouped = new Map();
+      entries.forEach(entry => {
+        const key = getKey(entry);
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(entry);
+      });
+      return grouped;
+    };
+
+    const compareReportTimes = (a, b) => {
+      const aIndex = worshipTimes.indexOf(a);
+      const bIndex = worshipTimes.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return String(a).localeCompare(String(b), "ko");
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    };
+
+    const buildHwajeongDetailText = (stats) => {
+      const regularEntries = stats.hwajeongEntries.filter(entry => entry.type === "정규성전");
+      const loveEntries = stats.hwajeongEntries.filter(entry => entry.type === "사랑예배");
+      const byTime = groupEntriesBy(regularEntries, entry => entry.time || "시간미정");
+      const timeGroups = [...byTime.entries()]
+        .sort(([a], [b]) => compareReportTimes(a, b))
+        .map(([time, entries]) => ({ time, entries }));
+
+      let text = "";
+      timeGroups.forEach(({ time, entries }) => {
+        text += `ㄴ ${time === "시간미정" ? "시간미정" : formatReportTime(time)} (${pad2(entries.length)}명)\n`;
+        text += formatNamesInRows(entries.map(entry => entry.name)) + "\n";
+      });
+
+      if (loveEntries.length > 0) {
+        text += `ㄴ 사랑예배 (${pad2(loveEntries.length)}명)\n`;
+        text += formatNamesInRows(loveEntries.map(entry => entry.name)) + "\n";
+      }
+
+      return text;
+    };
+
+    const buildMoimroomDetailText = (stats) => {
+      const byRoom = groupEntriesBy(stats.moimroomEntries, entry => getMoimroomLabel(entry.type));
+      let text = "";
+      [...byRoom.entries()].forEach(([room, entries]) => {
+        text += `*${room}\n`;
+        const byTime = groupEntriesBy(entries, entry => entry.time || "시간미정");
+        const timeGroups = [...byTime.entries()]
+          .sort(([a], [b]) => compareReportTimes(a, b))
+          .map(([time, timeEntries]) => ({ time, entries: timeEntries }));
+        timeGroups.forEach(({ time, entries: timeEntries }) => {
+          text += `ㄴ${time === "시간미정" ? "시간미정" : formatReportTime(time)} (${pad2(timeEntries.length)}명)\n`;
+          text += formatNamesInRows(timeEntries.map(entry => entry.name)) + "\n";
+        });
+      });
+      return text;
+    };
     
     const buildSectionText = (title, stats, isConfessed) => {
       // Header padding conditional rule
@@ -1453,12 +1540,12 @@ export default function AttendanceGrid() {
       t += `1. 대면 ${pad3(stats.daemyeonCount)}명\n`;
       t += `- 화정성전 ${pad3(stats.hwajeongNames.length)}명\n`;
       if (stats.hwajeongNames.length > 0) {
-        t += formatNamesInRows(stats.hwajeongNames) + "\n";
+        t += isConfessed ? formatNamesInRows(stats.hwajeongNames) + "\n" : buildHwajeongDetailText(stats);
       }
       
       t += `- 모임방 ${pad3(stats.moimroomNames.length)}명\n`;
       if (stats.moimroomNames.length > 0) {
-        t += formatNamesInRows(stats.moimroomNames) + "\n";
+        t += isConfessed ? formatNamesInRows(stats.moimroomNames) + "\n" : buildMoimroomDetailText(stats);
       }
       
       t += `- 형제교회 ${pad3(stats.brotherNames.length)}명\n`;
@@ -1583,8 +1670,9 @@ export default function AttendanceGrid() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end" }}>
             <select
-              value={downloadCategory}
+              value={isWorshipOnlyRole ? "worship" : downloadCategory}
               onChange={(e) => setDownloadCategory(e.target.value)}
+              disabled={isWorshipOnlyRole}
               className="filter-select"
               style={{
                 padding: "4px 10px",
@@ -1597,12 +1685,12 @@ export default function AttendanceGrid() {
                 cursor: "pointer"
               }}
             >
-              <option value="all">전체</option>
+              {!isWorshipOnlyRole && <option value="all">전체</option>}
               <option value="worship">예배</option>
-              <option value="education">교육</option>
-              <option value="accounting">회계</option>
-              <option value="evangelism">전도</option>
-              <option value="visitation">심방</option>
+              {!isWorshipOnlyRole && <option value="education">교육</option>}
+              {!isWorshipOnlyRole && <option value="accounting">회계</option>}
+              {!isWorshipOnlyRole && <option value="evangelism">전도</option>}
+              {!isWorshipOnlyRole && <option value="visitation">심방</option>}
             </select>
 
             <button
