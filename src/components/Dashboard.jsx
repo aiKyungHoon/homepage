@@ -1577,7 +1577,7 @@ export default function Dashboard() {
 
     const pageCountStyle = (pNum) => (
       <div className="report-page-footer">
-        <span>기독교대한감리회 주안교회 청년교구</span>
+        <span>화정교회 상암지역</span>
         <span>Page {pNum} of 5</span>
       </div>
     );
@@ -2147,7 +2147,7 @@ export default function Dashboard() {
 
             <div className="report-ending-logo-container">
               <div className="report-ending-logo">✝</div>
-              <h3 style={{ fontSize: "16px", fontWeight: "800", color: "#111", margin: 0 }}>기독교대한감리회 주안교회 청년교구</h3>
+              <h3 style={{ fontSize: "16px", fontWeight: "800", color: "#111", margin: 0 }}>화정교회 상암지역</h3>
               <p style={{ fontSize: "10px", color: "#666", marginTop: "4px" }}>오직 여호와를 앙망하는 자는 새 힘을 얻으리라 (이사야 40:31)</p>
             </div>
           </div>
