@@ -10,7 +10,6 @@ import OrgManagement from "./components/OrgManagement";
 import MonthClose from "./components/MonthClose";
 import HistoryLog from "./components/HistoryLog";
 import VisitManagement from "./components/VisitManagement";
-import Watermark from "./components/Watermark";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { isInAppBrowser, isIOS, openInExternalBrowser } from "./utils/browserEnv";
 
@@ -141,7 +140,6 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <Watermark />
       <Sidebar activePage={activePage} setActivePage={setActivePage} />
       <main className="main-content">
         <Header />
