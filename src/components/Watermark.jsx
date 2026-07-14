@@ -13,7 +13,7 @@ import { useAuth } from "../context/AuthContext";
 
 // 워터마크 진하기 (0~1). B안 = 뚜렷하게. 은은하게 하려면 0.06 정도로 낮추세요.
 // difference 블렌드로 배경을 반전시키므로 라이트/다크 어디서든 보입니다.
-const OPACITY = 0.14;
+const OPACITY = 0.09;
 // 글자 크기 / 타일 간격
 const FONT_SIZE = 15;
 const TILE_W = 240;
