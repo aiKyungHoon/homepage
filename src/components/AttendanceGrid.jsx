@@ -519,8 +519,6 @@ export default function AttendanceGrid() {
     });
   };
 
-  const filteredMembers = getFilteredMembers();
-
   // Helper: Retrieve weekly attendance value
   const getWeeklyValue = (memberId, category) => {
     const record = attendanceRecords.find(
@@ -538,6 +536,8 @@ export default function AttendanceGrid() {
 
     return "미보고";
   };
+
+  const filteredMembers = getFilteredMembers();
 
   // Helper: Retrieve monthly cumulative value (tithing, evangelism, fee)
   const getMonthlyAchievementValue = (memberId, category) => {
