@@ -3,6 +3,22 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search, RefreshCw, Eye, EyeOff } from "lucide-react";
 
+const maskName = (name) => {
+  if (!name) return "";
+  const parenIdx = name.indexOf(" (");
+  if (parenIdx !== -1) {
+    const realName = name.slice(0, parenIdx);
+    const suffix = name.slice(parenIdx);
+    return maskName(realName) + suffix;
+  }
+  const len = name.length;
+  if (len <= 1) return name;
+  if (len === 2) {
+    return name[0] + "O";
+  }
+  return name[0] + "O" + name.slice(2);
+};
+
 const REGISTRATION_TYPE_OPTIONS = ["총등", "교등", "입교"];
 const DEFAULT_REGISTRATION_TYPES = {
   박어진: "교등",
@@ -670,7 +686,7 @@ export default function OrgManagement() {
               <tbody>
                 {filteredMembers.map(m => (
                   <tr key={m.memberId}>
-                    <td style={{fontWeight: 600}}>{m.name}</td>
+                    <td style={{fontWeight: 600}}>{maskName(m.name)}</td>
                     <td>
                       <span className="badge status-normal">{getMemberRegistrationType(m)}</span>
                     </td>
@@ -732,7 +748,7 @@ export default function OrgManagement() {
                 {getSortedZones().map(z => {
                   const zMembersCount = members.filter(m => m.zoneId === z.zoneId && ["normal", "new"].includes(m.status)).length;
                   const leaderUser = users.find(u => u.userId === z.leaderId);
-                  const leaderName = leaderUser ? leaderUser.name : (z.leaderId || "리더 미정");
+                  const leaderName = leaderUser ? maskName(leaderUser.name) : (z.leaderId ? maskName(z.leaderId) : "리더 미정");
                   return (
                     <tr key={z.zoneId}>
                       <td style={{fontWeight: 600}}>{z.name}</td>
@@ -783,7 +799,7 @@ export default function OrgManagement() {
                 {teams.map(t => {
                   const teamZonesCount = zones.filter(z => z.teamId === t.teamId).length;
                   const leaderUser = users.find(u => u.userId === t.leaderId);
-                  const leaderName = leaderUser ? leaderUser.name : (t.leaderId || "팀장 미정");
+                  const leaderName = leaderUser ? maskName(leaderUser.name) : (t.leaderId ? maskName(t.leaderId) : "팀장 미정");
                   return (
                     <tr key={t.teamId}>
                       <td style={{fontWeight: 600}}>{t.name}</td>
@@ -843,7 +859,7 @@ export default function OrgManagement() {
               <tbody>
                 {users.map(u => (
                   <tr key={u.userId}>
-                    <td style={{fontWeight: 600}}>{u.name}</td>
+                    <td style={{fontWeight: 600}}>{maskName(u.name)}</td>
                     <td style={{fontFamily: "monospace"}}>{u.username}</td>
                     <td style={{fontFamily: "monospace"}}>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -1043,7 +1059,7 @@ export default function OrgManagement() {
                   <option value="">리더 없음 (공석)</option>
                   {users.map(u => (
                     <option key={u.userId} value={u.userId}>
-                      {u.name} ({u.role === "admin" ? "관리자" : u.role === "team" ? "팀장" : "리더"})
+                      {maskName(u.name)} ({u.role === "admin" ? "관리자" : u.role === "team" ? "팀장" : "리더"})
                     </option>
                   ))}
                 </select>
@@ -1089,7 +1105,7 @@ export default function OrgManagement() {
                   <option value="">팀장 없음 (공석)</option>
                   {users.map(u => (
                     <option key={u.userId} value={u.userId}>
-                      {u.name} ({u.role === "admin" ? "관리자" : u.role === "team" ? "팀장" : "리더"})
+                      {maskName(u.name)} ({u.role === "admin" ? "관리자" : u.role === "team" ? "팀장" : "리더"})
                     </option>
                   ))}
                 </select>

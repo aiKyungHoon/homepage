@@ -19,6 +19,22 @@ import {
   Copy
 } from "lucide-react";
 
+const maskName = (name) => {
+  if (!name) return "";
+  const parenIdx = name.indexOf(" (");
+  if (parenIdx !== -1) {
+    const realName = name.slice(0, parenIdx);
+    const suffix = name.slice(parenIdx);
+    return maskName(realName) + suffix;
+  }
+  const len = name.length;
+  if (len <= 1) return name;
+  if (len === 2) {
+    return name[0] + "O";
+  }
+  return name[0] + "O" + name.slice(2);
+};
+
 export default function VisitManagement() {
   const { currentUser } = useAuth();
   const { 
@@ -775,7 +791,7 @@ export default function VisitManagement() {
                         setMemberSearchQuery(m.name);
                       }}
                     >
-                      <span className="member-select-name">{m.name}</span>
+                      <span className="member-select-name">{maskName(m.name)}</span>
                       <span className="member-select-meta">
                         {[m.rank, getTeamName(m.teamId), getZoneName(m.zoneId)].filter(Boolean).join(" · ")}
                       </span>
@@ -786,7 +802,7 @@ export default function VisitManagement() {
                 </div>
                 {selectedMember && (
                   <div className="member-selected-chip">
-                    선택됨: <strong>{selectedMember.name}</strong>
+                    선택됨: <strong>{maskName(selectedMember.name)}</strong>
                     <span>{getZoneName(selectedMember.zoneId)}</span>
                   </div>
                 )}
@@ -982,7 +998,7 @@ export default function VisitManagement() {
                 {scopedMembers
                   .filter(m => !filterZoneId || m.zoneId === filterZoneId)
                   .map(m => (
-                    <option key={m.memberId} value={m.memberId}>{m.name}</option>
+                    <option key={m.memberId} value={m.memberId}>{maskName(m.name)}</option>
                   ))}
               </select>
             </div>
@@ -1023,7 +1039,7 @@ export default function VisitManagement() {
 
                           <div className="timeline-summary-main">
                             <div className="summary-title-row">
-                              <span className="summary-member">{r.memberName} 성도</span>
+                              <span className="summary-member">{maskName(r.memberName)} 성도</span>
                               <span
                                 className="type-badge"
                                 style={{
@@ -1062,7 +1078,7 @@ export default function VisitManagement() {
                   <div className="visit-detail-header">
                     <div>
                       <div className="member-meta">
-                        <span className="member-badge">{selectedRecord.memberName} 성도</span>
+                        <span className="member-badge">{maskName(selectedRecord.memberName)} 성도</span>
                         <span
                           className="type-badge"
                           style={{
@@ -1152,7 +1168,7 @@ export default function VisitManagement() {
                         >
                           {scopedMembers.map(m => (
                             <option key={m.memberId} value={m.memberId}>
-                              {m.name} ({m.rank} / {getZoneName(m.zoneId)})
+                              {maskName(m.name)} ({m.rank} / {getZoneName(m.zoneId)})
                             </option>
                           ))}
                         </select>
@@ -1402,7 +1418,7 @@ export default function VisitManagement() {
                 {parsedPreviewRecords.map((rec, i) => (
                   <div key={i} style={{ borderBottom: i < parsedPreviewRecords.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none", paddingBottom: "8px", marginBottom: "8px", fontSize: "11px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                      <strong>{rec.memberName} 성도</strong>
+                      <strong>{maskName(rec.memberName)} 성도</strong>
                       {rec.matchedMember ? (
                         <span style={{ color: "#34d399", fontWeight: "700" }}>
                           ✓ 매칭됨 ({getTeamName(rec.matchedMember.teamId)} {getZoneName(rec.matchedMember.zoneId)})

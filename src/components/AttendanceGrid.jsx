@@ -5,6 +5,22 @@ import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, 
 import { isMockEnabled, db } from "../firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
+const maskName = (name) => {
+  if (!name) return "";
+  const parenIdx = name.indexOf(" (");
+  if (parenIdx !== -1) {
+    const realName = name.slice(0, parenIdx);
+    const suffix = name.slice(parenIdx);
+    return maskName(realName) + suffix;
+  }
+  const len = name.length;
+  if (len <= 1) return name;
+  if (len === 2) {
+    return name[0] + "O";
+  }
+  return name[0] + "O" + name.slice(2);
+};
+
 const SIMON_SCHOOL_OPTIONS = ["월O", "목O", "둘다", "X"];
 const SIMON_SCHOOL_PRESENT_VALUES = SIMON_SCHOOL_OPTIONS.filter(option => option !== "X");
 const REGISTRATION_TYPE_OPTIONS = ["총등", "교등", "입교"];
@@ -2011,7 +2027,7 @@ export default function AttendanceGrid() {
                   <tr key={member.memberId} className="grid-row">
                     <td className="sticky-col member-name-col" style={getStickyStyle("name", false)}>
                       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span className={`member-name ${leadershipMember ? "leadership-member-name" : ""}`}>{member.name}</span>
+                        <span className={`member-name ${leadershipMember ? "leadership-member-name" : ""}`}>{maskName(member.name)}</span>
                         <span className={`status-dot status-${member.status}`}></span>
                         <button
                           type="button"
@@ -2363,7 +2379,7 @@ export default function AttendanceGrid() {
             <div className="note-modal-header">
               <div>
                 <p className="note-modal-eyebrow">개인별 특이사항</p>
-                <h3>{members.find(m => m.memberId === noteModalMemberId)?.name || "성도"}</h3>
+                <h3>{maskName(members.find(m => m.memberId === noteModalMemberId)?.name) || "성도"}</h3>
               </div>
               <button type="button" className="icon-button" onClick={closeNoteModal} aria-label="닫기">
                 <X size={18} />

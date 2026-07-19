@@ -10,6 +10,22 @@ import {
   HeartHandshake
 } from "lucide-react";
 
+const maskName = (name) => {
+  if (!name) return "";
+  const parenIdx = name.indexOf(" (");
+  if (parenIdx !== -1) {
+    const realName = name.slice(0, parenIdx);
+    const suffix = name.slice(parenIdx);
+    return maskName(realName) + suffix;
+  }
+  const len = name.length;
+  if (len <= 1) return name;
+  if (len === 2) {
+    return name[0] + "O";
+  }
+  return name[0] + "O" + name.slice(2);
+};
+
 function WhiteHorseIcon({ size = 32 }) {
   return (
     <svg
@@ -115,7 +131,7 @@ export default function Sidebar({ activePage, setActivePage }) {
 
         <div className="sidebar-footer">
           <div className="user-profile-info">
-            <p className="profile-name">{currentUser.name}</p>
+            <p className="profile-name">{maskName(currentUser.name)}</p>
             <p className="profile-role">
               {role === "admin" && "임원"}
               {role === "visit" && "심방팀장"}
