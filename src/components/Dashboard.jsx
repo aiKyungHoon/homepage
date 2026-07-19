@@ -250,6 +250,7 @@ export default function Dashboard() {
     { key: "online", label: "온라인예배", icon: "cyan" },
     { key: "video", label: "영상예배", icon: "blue" },
     { key: "substitute", label: "대체예배", icon: "purple" },
+    { key: "visit", label: "심방예배", icon: "emerald" },
     { key: "excused", label: "사유결석", icon: "gold" },
     { key: "excluded", label: "출결제외", icon: "purple" }
   ];

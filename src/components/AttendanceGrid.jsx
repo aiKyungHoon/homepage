@@ -175,6 +175,7 @@ export default function AttendanceGrid() {
     "온라인예배",
     "영상예배",
     "대체예배",
+    "심방예배",
     "사유결석",
     "출결제외"
   ];
@@ -794,8 +795,8 @@ export default function AttendanceGrid() {
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
-        "시험",
-        "특이사항"
+        "특이사항",
+        "시험"
       ];
       rowsCalculator = (member) => {
         const note = getMemberNote(member.memberId);
@@ -816,24 +817,24 @@ export default function AttendanceGrid() {
           sundayActualParsed.confirmMethod,
           sundayActualParsed.reason,
           sundayActualParsed.auth,
-          getWeeklyValue(member.memberId, "test"),
-          note?.text || ""
+          note?.text || "",
+          getWeeklyValue(member.memberId, "test")
         ];
       };
     } else if (effectiveDownloadCategory === "education") {
       worshipHeaders = [
-        "구역예배",
-        "시험",
         "특이사항",
+        "시험",
+        "구역예배",
         "심야라디오",
         "시몬스쿨"
       ];
       rowsCalculator = (member) => {
         const note = getMemberNote(member.memberId);
         return [
-          getWeeklyValue(member.memberId, "zone"),
-          getWeeklyValue(member.memberId, "test"),
           note?.text || "",
+          getWeeklyValue(member.memberId, "test"),
+          getWeeklyValue(member.memberId, "zone"),
           getWeeklyValue(member.memberId, "radio"),
           getWeeklyValue(member.memberId, "simon")
         ];
@@ -893,9 +894,9 @@ export default function AttendanceGrid() {
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
-        "구역예배",
-        "시험",
         "특이사항",
+        "시험",
+        "구역예배",
         "심야라디오",
         "시몬스쿨",
         "심방",
@@ -923,9 +924,9 @@ export default function AttendanceGrid() {
           sundayActualParsed.confirmMethod,
           sundayActualParsed.reason,
           sundayActualParsed.auth,
-          getWeeklyValue(member.memberId, "zone"),
-          getWeeklyValue(member.memberId, "test"),
           note?.text || "",
+          getWeeklyValue(member.memberId, "test"),
+          getWeeklyValue(member.memberId, "zone"),
           getWeeklyValue(member.memberId, "radio"),
           getWeeklyValue(member.memberId, "simon"),
           getWeeklyValue(member.memberId, "visit"),
@@ -1340,6 +1341,7 @@ export default function AttendanceGrid() {
     if (!tab) return "";
     
     const isPre = tab.category.endsWith("_pre");
+    const isSunday = tab.category.startsWith("sunday");
     const activeMembers = [...filteredMembers];
     
     const getWorshipData = (member) => {
@@ -1352,266 +1354,266 @@ export default function AttendanceGrid() {
     
     const pad3 = (num) => String(num || 0).padStart(3, "0");
     const pad2 = (num) => String(num || 0).padStart(2, "0");
+    const memberName = (member) => member?.name || "";
+    const getPreviousWorshipData = (member) => {
+      const record = prevWeekRecords.find(r =>
+        r.memberId === member.memberId &&
+        (r.category === tab.category || r.category === legacyWorshipCategoryMap[tab.category])
+      );
+      return isPre ? parsePreWorship(record?.value) : parseActualWorship(record?.value);
+    };
+    const isAbsent = (type) => ["일회성", "장기관리가능", "장기관리불가능", "결석"].includes(type);
     
-    const calculateGroupStats = (group, isConfessed) => {
+    const calculateGroupStats = (group) => {
       const hwajeongEntries = [];
       const moimroomEntries = [];
-      const hwajeongNames = [];
-      const moimroomNames = [];
       const brotherNames = [];
       const coopNames = [];
-      const zoomNames = [];
-      
-      // Alternative names
-      const alt1to1Names = []; // maps to 1:1 대체예배
-      const altMonthNames = []; // maps to 월대체 / 목대체 for 총교등자
-      const altMysimNames = []; // maps to 마이심 under 입교자
-      const altClassNames = []; // maps to 믿승교 under 입교자
-      
-      const absentNames = [];
-      const unreportedNames = [];
+      const centerNames = [];
+      const zoomOnNames = [];
+      const zoomOffNames = [];
+      const sameDayAltNames = [];
+      const laterAltNames = [];
+      const oneOffAbsentNames = [];
+      const consecutiveAbsentNames = [];
+      const longAbsentNames = [];
+      const newAbsentNames = [];
       
       group.forEach(m => {
         const parsed = getWorshipData(m);
         const type = parsed.type;
-        
-        const isAbsentType = ["일회성", "장기관리가능", "장기관리불가능", "결석"].includes(type);
-        const isPresentType = type && type !== "미보고" && type !== "미확인" && type !== "출결제외자" && !isAbsentType;
-        
-        if (isPresentType) {
-          if (type === "정규성전" || type === "사랑예배") {
-            hwajeongEntries.push({ name: m.name, type, time: parsed.time });
-            hwajeongNames.push(m.name);
-          } else if (type.startsWith("모임방")) {
-            moimroomEntries.push({ name: m.name, type, time: parsed.time });
-            moimroomNames.push(m.name);
-          } else if (type.startsWith("형제교회")) {
-            brotherNames.push(m.name);
-          } else if (type.startsWith("협력교회")) {
-            coopNames.push(m.name);
-          } else if (["줌/화면O", "줌/화면X"].includes(type)) {
-            zoomNames.push(m.name);
-          } else {
-            // Alternative worship types
-            if (isConfessed) {
-              if (type === "마이심대체예배(특이사항에 요일기재)") {
-                altMysimNames.push(m.name);
-              } else {
-                altClassNames.push(m.name);
-              }
-            } else {
-              if (type === "1:1대체예배(수주일)" || type === "대체1:1예배(수주일 외)") {
-                alt1to1Names.push(m.name);
-              } else {
-                altMonthNames.push(m.name);
-              }
-            }
-          }
-        } else if (isAbsentType) {
-          absentNames.push(m.name);
-        } else {
-          unreportedNames.push(m.name);
+        const name = memberName(m);
+
+        if (type === "정규성전" || type === "사랑예배" || type === "야외예배") {
+          hwajeongEntries.push({ name, type, time: parsed.time });
+        } else if (type.startsWith("모임방")) {
+          moimroomEntries.push({ name, type, time: parsed.time });
+        } else if (type.startsWith("형제교회")) {
+          brotherNames.push(name);
+        } else if (type.startsWith("협력교회")) {
+          coopNames.push(name);
+        } else if (
+          type.includes("센터") ||
+          (type === "그 외 예배(특이사항에 기재)" && /센터|수강/.test(parsed.reason || ""))
+        ) {
+          centerNames.push(name);
+        } else if (type === "줌/화면O") {
+          zoomOnNames.push(name);
+        } else if (type === "줌/화면X") {
+          zoomOffNames.push(name);
+        } else if (["1:1대체예배(수주일)", "만남대체예배(수주일)"].includes(type)) {
+          sameDayAltNames.push(name);
+        } else if (
+          type !== "미보고" &&
+          type !== "미확인" &&
+          type !== "출결제외자" &&
+          !isAbsent(type)
+        ) {
+          laterAltNames.push(name);
+        } else if (isAbsent(type)) {
+          if (type === "일회성" || type === "결석") oneOffAbsentNames.push(name);
+          else if (type === "장기관리가능") consecutiveAbsentNames.push(name);
+          else longAbsentNames.push(name);
+
+          const previousType = getPreviousWorshipData(m).type;
+          if (!isAbsent(previousType)) newAbsentNames.push(name);
         }
       });
       
-      const daemyeonCount = hwajeongNames.length + moimroomNames.length + brotherNames.length + coopNames.length;
-      const zoomCount = zoomNames.length;
-      const altCount = isConfessed 
-        ? (altMysimNames.length + altClassNames.length) 
-        : (alt1to1Names.length + altMonthNames.length);
+      const hwajeongCount = hwajeongEntries.length;
+      const moimroomCount = moimroomEntries.length;
+      const daemyeonCount = hwajeongCount + moimroomCount + brotherNames.length + coopNames.length + centerNames.length;
+      const zoomCount = zoomOnNames.length + zoomOffNames.length;
+      const altCount = sameDayAltNames.length + laterAltNames.length;
+      const absentCount = oneOffAbsentNames.length + consecutiveAbsentNames.length + longAbsentNames.length;
       const presentCount = daemyeonCount + zoomCount + altCount;
       
       return {
         totalCount: group.length,
         presentCount,
         daemyeonCount,
-        hwajeongNames,
+        hwajeongCount,
         hwajeongEntries,
-        moimroomNames,
+        moimroomCount,
         moimroomEntries,
         brotherNames,
         coopNames,
-        zoomNames,
-        alt1to1Names,
-        altMonthNames,
-        altMysimNames,
-        altClassNames,
-        absentNames,
-        unreportedNames
+        centerNames,
+        zoomCount,
+        zoomOnNames,
+        zoomOffNames,
+        altCount,
+        sameDayAltNames,
+        laterAltNames,
+        absentCount,
+        oneOffAbsentNames,
+        consecutiveAbsentNames,
+        longAbsentNames,
+        newAbsentNames
       };
     };
     
-    const regStats = calculateGroupStats(churgRegMembers, false);
-    const confStats = calculateGroupStats(confessedMembers, true);
+    const regStats = calculateGroupStats(churgRegMembers);
+    const confStats = calculateGroupStats(confessedMembers);
     
     const totalPresent = regStats.presentCount + confStats.presentCount;
-    const headerPresentCountText = isPre ? `${totalPresent}명` : "000명";
-    const actualPresentCountText = isPre ? "000명" : `${totalPresent}명`;
-    const presentText = isPre ? "확답" : "출석";
-    
-    // Date & Time info
-    const today = new Date();
-    const yy = String(today.getFullYear()).slice(-2);
-    const mm = String(today.getMonth() + 1).padStart(2, "0");
-    const dd = String(today.getDate()).padStart(2, "0");
-    const shortWeekdays = ["일", "월", "화", "수", "목", "금", "토"];
-    const dayOfWeek = shortWeekdays[today.getDay()];
-    const todayStr = `${yy}${mm}${dd}(${dayOfWeek})`;
-    
-    const altLabel = ["월", "금", "토", "일"].includes(dayKey) ? "월대체" : "목대체";
-
-    const formatReportTime = (time) => {
-      const [hourRaw, minuteRaw = "00"] = String(time || "").split(":");
-      const hour = hourRaw.padStart(2, "0");
-      const minute = minuteRaw.padStart(2, "0");
-      return minute === "00" ? `${hour}시` : `${hour}시${minute}분`;
+    const altLabel = isSunday ? "월대체" : "목 대체";
+    const getWorshipDate = () => {
+      const [year, month] = activeMonthId.split("-").map(Number);
+      const firstDay = new Date(year, month - 1, 1);
+      const weekStartDate = 1 - firstDay.getDay() + ((activeWeekNo - 1) * 7);
+      const worshipDayOffset = isSunday ? 0 : 3;
+      return new Date(year, month - 1, weekStartDate + worshipDayOffset);
     };
+    const worshipDate = getWorshipDate();
+    const worshipDateText = [
+      String(worshipDate.getFullYear()).slice(-2),
+      String(worshipDate.getMonth() + 1).padStart(2, "0"),
+      String(worshipDate.getDate()).padStart(2, "0")
+    ].join("");
+    const worshipDayText = isSunday ? "일" : "수";
+    const worshipName = isSunday ? "주일" : "삼일";
+    const reportStage = isPre
+      ? "사전 출결 보고"
+      : `당일 출결 보고_${isSunday ? "월대체" : "목대체"}`;
+    const reportTitle = `[ ${worshipDateText} (${worshipDayText}) ${worshipName} ${reportStage} ]`;
 
     const getMoimroomLabel = (type) => {
       const match = String(type || "").match(/^모임방\((.*)\)$/);
-      return match ? match[1] : "기타";
+      const raw = match ? match[1] : "기타";
+      if (/^홍대/.test(raw)) return "홍대";
+      return raw;
     };
 
-    const groupEntriesBy = (entries, getKey) => {
-      const grouped = new Map();
-      entries.forEach(entry => {
-        const key = getKey(entry);
-        if (!grouped.has(key)) grouped.set(key, []);
-        grouped.get(key).push(entry);
-      });
-      return grouped;
-    };
+    const filterEntries = (entries, time, roomNames = null) => entries.filter(entry => {
+      if (entry.time !== time) return false;
+      return !roomNames || roomNames.includes(getMoimroomLabel(entry.type));
+    });
+    const appendNames = (names) => names.length > 0 ? `${formatNamesInRows(names)}\n` : "";
 
-    const compareReportTimes = (a, b) => {
-      const aIndex = worshipTimes.indexOf(a);
-      const bIndex = worshipTimes.indexOf(b);
-      if (aIndex === -1 && bIndex === -1) return String(a).localeCompare(String(b), "ko");
-      if (aIndex === -1) return 1;
-      if (bIndex === -1) return -1;
-      return aIndex - bIndex;
-    };
-
-    const buildHwajeongDetailText = (stats) => {
-      const regularEntries = stats.hwajeongEntries.filter(entry => entry.type === "정규성전");
-      const loveEntries = stats.hwajeongEntries.filter(entry => entry.type === "사랑예배");
-      const byTime = groupEntriesBy(regularEntries, entry => entry.time || "시간미정");
-      const timeGroups = [...byTime.entries()]
-        .sort(([a], [b]) => compareReportTimes(a, b))
-        .map(([time, entries]) => ({ time, entries }));
+    const buildScheduledDetails = (stats) => {
+      const sanctuaryTimes = isSunday ? ["7:30", "9:00", "12:00", "15:00", "20:00"] : ["12:00", "19:30"];
+      const roomSchedules = isSunday
+        ? [
+            { label: "홍대/상수", rooms: ["홍대", "상수"], times: ["12:00", "17:00", "20:00"] },
+            { label: "주엽", rooms: ["주엽"], times: ["12:00"] }
+          ]
+        : [
+            { label: "홍대", rooms: ["홍대"], times: ["12:00", "19:30"] },
+            { label: "주엽", rooms: ["주엽"], times: ["12:00", "19:30"] },
+            { label: "상수", rooms: ["상수"], times: ["12:00", "19:30"] }
+          ];
+      const scheduledRooms = new Set(roomSchedules.flatMap(schedule => schedule.rooms));
+      const otherRooms = [...new Set(stats.moimroomEntries
+        .map(entry => getMoimroomLabel(entry.type))
+        .filter(room => !scheduledRooms.has(room)))];
 
       let text = "";
-      timeGroups.forEach(({ time, entries }) => {
-        text += `ㄴ ${time === "시간미정" ? "시간미정" : formatReportTime(time)} (${pad2(entries.length)}명)\n`;
-        text += formatNamesInRows(entries.map(entry => entry.name)) + "\n";
+      sanctuaryTimes.forEach(time => {
+        const entries = filterEntries(stats.hwajeongEntries, time);
+        const label = time === "19:30"
+          ? "19시30분"
+          : `${Number(time.split(":")[0])}시${time.endsWith(":30") ? "30분" : ""}`;
+        text += `*${label} ${pad2(entries.length)}\n`;
+        text += appendNames(entries.map(entry => entry.name));
       });
-
-      if (loveEntries.length > 0) {
-        text += `ㄴ 사랑예배 (${pad2(loveEntries.length)}명)\n`;
-        text += formatNamesInRows(loveEntries.map(entry => entry.name)) + "\n";
+      const otherSanctuaryEntries = stats.hwajeongEntries.filter(entry => !sanctuaryTimes.includes(entry.time));
+      if (otherSanctuaryEntries.length > 0) {
+        text += `*그외 시간 ${pad2(otherSanctuaryEntries.length)}\n`;
+        text += appendNames(otherSanctuaryEntries.map(entry => entry.name));
       }
 
-      return text;
-    };
-
-    const buildMoimroomDetailText = (stats) => {
-      const byRoom = groupEntriesBy(stats.moimroomEntries, entry => getMoimroomLabel(entry.type));
-      let text = "";
-      [...byRoom.entries()].forEach(([room, entries]) => {
-        text += `*${room}\n`;
-        const byTime = groupEntriesBy(entries, entry => entry.time || "시간미정");
-        const timeGroups = [...byTime.entries()]
-          .sort(([a], [b]) => compareReportTimes(a, b))
-          .map(([time, timeEntries]) => ({ time, entries: timeEntries }));
-        timeGroups.forEach(({ time, entries: timeEntries }) => {
-          text += `ㄴ${time === "시간미정" ? "시간미정" : formatReportTime(time)} (${pad2(timeEntries.length)}명)\n`;
-          text += formatNamesInRows(timeEntries.map(entry => entry.name)) + "\n";
+      text += "\n- 모임방 " + pad2(stats.moimroomCount) + "명\n";
+      roomSchedules.forEach(schedule => {
+        text += `*${schedule.label}\n`;
+        schedule.times.forEach(time => {
+          const entries = filterEntries(stats.moimroomEntries, time, schedule.rooms);
+          const label = time === "19:30" ? "19시 30분" : `${Number(time.split(":")[0])}시`;
+          text += `- ${label} ${pad2(entries.length)}\n`;
+          text += appendNames(entries.map(entry => entry.name));
         });
+        const otherTimeEntries = stats.moimroomEntries.filter(entry =>
+          schedule.rooms.includes(getMoimroomLabel(entry.type)) &&
+          !schedule.times.includes(entry.time)
+        );
+        if (otherTimeEntries.length > 0) {
+          text += `- 그외 시간 ${pad2(otherTimeEntries.length)}\n`;
+          text += appendNames(otherTimeEntries.map(entry => entry.name));
+        }
+        text += "\n";
       });
-      return text;
-    };
-    
-    const buildSectionText = (title, stats, isConfessed) => {
-      // Header padding conditional rule
-      const displayTotal = isConfessed ? pad3(stats.totalCount) : stats.totalCount;
-      const displayPresent = isConfessed ? pad3(stats.presentCount) : stats.presentCount;
-      
-      let t = `▪️${title} ${displayTotal}명/${presentText} ${displayPresent}명\n`;
-      
-      t += `1. 대면 ${pad3(stats.daemyeonCount)}명\n`;
-      t += `- 화정성전 ${pad3(stats.hwajeongNames.length)}명\n`;
-      if (stats.hwajeongNames.length > 0) {
-        t += isConfessed ? formatNamesInRows(stats.hwajeongNames) + "\n" : buildHwajeongDetailText(stats);
-      }
-      
-      t += `- 모임방 ${pad3(stats.moimroomNames.length)}명\n`;
-      if (stats.moimroomNames.length > 0) {
-        t += isConfessed ? formatNamesInRows(stats.moimroomNames) + "\n" : buildMoimroomDetailText(stats);
-      }
-      
-      t += `- 형제교회 ${pad3(stats.brotherNames.length)}명\n`;
-      if (stats.brotherNames.length > 0) {
-        t += formatNamesInRows(stats.brotherNames) + "\n";
-      }
-      
-      t += `- 협력교회 ${pad3(stats.coopNames.length)}명\n`;
-      if (stats.coopNames.length > 0) {
-        t += formatNamesInRows(stats.coopNames) + "\n";
-      }
-      t += `\n`;
-      
-      t += `2. 줌 ${pad3(stats.zoomCount)}명\n`;
-      if (stats.zoomNames.length > 0) {
-        t += formatNamesInRows(stats.zoomNames) + "\n";
-      }
-      t += `\n`;
-      
-      if (isConfessed) {
-        t += `3. 대체 ${pad3(stats.altMysimNames.length + stats.altClassNames.length)}명\n`;
-        t += `- 마이심 ${pad2(stats.altMysimNames.length)}명\n`;
-        if (stats.altMysimNames.length > 0) {
-          t += formatNamesInRows(stats.altMysimNames) + "\n";
-        }
-        t += `- 믿승교 ${pad2(stats.altClassNames.length)}명\n`;
-        if (stats.altClassNames.length > 0) {
-          t += formatNamesInRows(stats.altClassNames) + "\n";
-        }
+      text += "*그외 모임방\n";
+      if (otherRooms.length === 0) {
+        text += "- 장소 00\n";
       } else {
-        t += `3. 대체 ${pad3(stats.alt1to1Names.length + stats.altMonthNames.length)}명\n`;
-        t += `• 1:1 대체예배 ${pad2(stats.alt1to1Names.length)}명\n`;
-        if (stats.alt1to1Names.length > 0) {
-          t += formatNamesInRows(stats.alt1to1Names) + "\n";
-        }
-        t += `• ${altLabel} ${pad2(stats.altMonthNames.length)}명\n`;
-        if (stats.altMonthNames.length > 0) {
-          t += formatNamesInRows(stats.altMonthNames) + "\n";
-        }
+        otherRooms.forEach(room => {
+          const entries = stats.moimroomEntries.filter(entry => getMoimroomLabel(entry.type) === room);
+          text += `- ${room} ${pad2(entries.length)}\n`;
+          text += appendNames(entries.map(entry => entry.name));
+        });
       }
-      t += `\n`;
-      
-      t += `4. 결석 ${pad3(stats.absentNames.length)}명\n`;
-      if (stats.absentNames.length > 0) {
-        t += formatNamesInRows(stats.absentNames) + "\n";
-      }
-      t += `\n`;
-      
-      t += `5. 미보고 ${pad3(stats.unreportedNames.length)}명\n`;
-      if (stats.unreportedNames.length > 0) {
-        t += formatNamesInRows(stats.unreportedNames) + "\n";
-      }
-      
-      return t;
+      return text.trimEnd();
     };
     
-    let report = `[ ${todayStr} ${tab.title} ]\n\n`;
+    const buildSectionText = (title, stats) => {
+      let t = `▪️${title} ${pad3(stats.totalCount)}명/출석 ${pad3(stats.presentCount)}명\n`;
+      t += `1. 대면 ${pad3(stats.daemyeonCount)}명\n`;
+      t += `- 화정성전 ${pad2(stats.hwajeongCount)}명\n`;
+      t += `${buildScheduledDetails(stats)}\n\n`;
+      t += `- 기타\n`;
+      t += `*형제교회 ${pad2(stats.brotherNames.length)}명\n`;
+      t += appendNames(stats.brotherNames);
+      t += `*협력교회 ${pad2(stats.coopNames.length)}명\n`;
+      t += appendNames(stats.coopNames);
+      t += `*센터수강 ${pad2(stats.centerNames.length)}명\n`;
+      t += appendNames(stats.centerNames);
+      t += `\n`;
+      t += `2. 줌 ${pad3(stats.zoomCount)}명\n`;
+      if (isSunday) {
+        t += `- 화면 on : ${pad2(stats.zoomOnNames.length)}\n`;
+        t += appendNames(stats.zoomOnNames);
+        t += `- 화면 off : ${pad2(stats.zoomOffNames.length)}\n`;
+        t += appendNames(stats.zoomOffNames);
+      } else {
+        t += appendNames([...stats.zoomOnNames, ...stats.zoomOffNames]);
+      }
+      t += `\n`;
+      t += `3. 대체 ${pad2(stats.altCount)}명\n`;
+      t += `- 당일 ${pad2(stats.sameDayAltNames.length)}\n`;
+      t += appendNames(stats.sameDayAltNames);
+      t += `- ${altLabel} ${pad2(stats.laterAltNames.length)}\n`;
+      t += appendNames(stats.laterAltNames);
+      t += `\n`;
+      t += `4. 결석 ${pad2(stats.absentCount)}명\n`;
+      t += `- 일회성 ${pad2(stats.oneOffAbsentNames.length)}\n`;
+      t += appendNames(stats.oneOffAbsentNames);
+      if (isSunday) {
+        t += `- 연속 ${pad2(stats.consecutiveAbsentNames.length)}\n`;
+        t += appendNames(stats.consecutiveAbsentNames);
+        t += `- 장기 ${pad2(stats.longAbsentNames.length)}\n`;
+        t += appendNames(stats.longAbsentNames);
+      } else {
+        const samilLongAbsentNames = [...stats.consecutiveAbsentNames, ...stats.longAbsentNames];
+        t += `- 장기 ${pad2(samilLongAbsentNames.length)}\n`;
+        t += appendNames(samilLongAbsentNames);
+      }
+      t += `\n‼️전주 대비 신규 결석 ${pad2(stats.newAbsentNames.length)}명\n`;
+      if (stats.newAbsentNames.length > 0) {
+        t += formatNamesInRows(stats.newAbsentNames) + "\n";
+      }
+      return t.trimEnd();
+    };
+    
+    let report = `${reportTitle}\n\n`;
+    if (!isSunday) report += "#삼일예배 #텍스트보고\n\n";
     report += `상암지역\n\n`;
     report += `▪️출결재적(총교입) ${activeMembers.length}명\n`;
     report += `- 목표 ${activeMembers.length}명\n`;
-    report += `- (사전시)확답 ${headerPresentCountText}\n`;
-    report += `- (당일/최종) ${actualPresentCountText}\n\n`;
+    report += `- 출석 ${totalPresent}명\n\n`;
     
-    report += buildSectionText("총교등자", regStats, false);
-    report += `\n\n`;
-    report += buildSectionText("입교자", confStats, true);
+    report += buildSectionText("총교등자", regStats);
+    report += `\n\n➖➖➖➖➖➖\n`;
+    report += buildSectionText("입교자", confStats);
     
     return report;
   };
@@ -1893,9 +1895,9 @@ export default function AttendanceGrid() {
                 {shouldShowColumn("sunday_actual_confirm") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>예배확인<br/>방법</th>}
                 {shouldShowColumn("sunday_actual_reason") && <th className="worship-report-col" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>미확인/미보고 사유<br/>(미인증 사유)</th>}
                 {shouldShowColumn("sunday_actual_auth") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>인증분류<br/>(위아원)</th>}
-                {shouldShowColumn("zone") && <th>구역예배</th>}
-                {shouldShowColumn("test") && <th className="sep-col">시험</th>}
                 {shouldShowColumn("note") && <th className="sep-col note-header">특이사항</th>}
+                {shouldShowColumn("test") && <th>시험</th>}
+                {shouldShowColumn("zone") && <th>구역예배</th>}
                 {shouldShowColumn("radio") && <th>심야라디오</th>}
                 {shouldShowColumn("simon") && <th>시몬스쿨</th>}
                 {shouldShowColumn("visit") && <th className="sep-col">심방</th>}
@@ -2089,26 +2091,7 @@ export default function AttendanceGrid() {
                         {sundayActualParsed.auth || "-"}
                       </td>
                     )}
-                    {shouldShowColumn("zone") && (
-                      <td 
-                        onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
-                        className={`cell-click ${getCellStyle(zone, "zone")}`}
-                      >
-                        {zone}
-                      </td>
-                    )}
-
-                    {/* Weekly edu */}
-                    {shouldShowColumn("test") && (
-                      <td 
-                        onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
-                        className={`cell-click sep-col ${getCellStyle(test, "test")}`}
-                      >
-                        {test}
-                      </td>
-                    )}
-
-                    {shouldShowColumn("note") && (
+                     {shouldShowColumn("note") && (
                       <td className="sep-col note-cell">
                         <button
                           type="button"
@@ -2128,6 +2111,25 @@ export default function AttendanceGrid() {
                             </>
                           )}
                         </button>
+                      </td>
+                    )}
+
+                    {/* Weekly edu */}
+                    {shouldShowColumn("test") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
+                        className={`cell-click ${getCellStyle(test, "test")}`}
+                      >
+                        {test}
+                      </td>
+                    )}
+
+                    {shouldShowColumn("zone") && (
+                      <td 
+                        onClick={(e) => handleCellClick(e, member.memberId, "zone", false)}
+                        className={`cell-click ${getCellStyle(zone, "zone")}`}
+                      >
+                        {zone}
                       </td>
                     )}
 
