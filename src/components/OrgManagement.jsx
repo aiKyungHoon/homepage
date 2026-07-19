@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
-import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search, RefreshCw } from "lucide-react";
+import { Plus, Edit2, Trash2, X, Users, Compass, FolderPlus, Shield, Download, Search, RefreshCw, Eye, EyeOff } from "lucide-react";
 
 const REGISTRATION_TYPE_OPTIONS = ["총등", "교등", "입교"];
 const DEFAULT_REGISTRATION_TYPES = {
@@ -124,6 +124,14 @@ export default function OrgManagement() {
     password: "",
     role: "leader"
   });
+
+  // --- Password Masking & Account Tab Verification States ---
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
+  const [isUsersTabAuthorized, setIsUsersTabAuthorized] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authPassword, setAuthPassword] = useState("");
+  const [authError, setAuthError] = useState("");
 
   // Scope Filtering
   const getScopedMembers = () => {
@@ -423,6 +431,42 @@ export default function OrgManagement() {
     }
   };
 
+  // Tab click verification
+  const handleTabClick = (tab) => {
+    if (tab === "users") {
+      if (isUsersTabAuthorized) {
+        setActiveSubTab("users");
+      } else {
+        setShowAuthModal(true);
+        setAuthPassword("");
+        setAuthError("");
+      }
+    } else {
+      setActiveSubTab(tab);
+      setIsUsersTabAuthorized(false); // Reset auth status when switching away
+    }
+  };
+
+  // Submit Password Verification
+  const handleAuthSubmit = (e) => {
+    e.preventDefault();
+    const dbUser = users.find(u => u.userId === currentUser.userId);
+    const correctPassword = currentUser.password || dbUser?.password;
+    
+    if (!correctPassword) {
+      setAuthError("계정 정보를 불러올 수 없습니다. 다시 시도해 주세요.");
+      return;
+    }
+
+    if (authPassword === correctPassword) {
+      setIsUsersTabAuthorized(true);
+      setShowAuthModal(false);
+      setActiveSubTab("users");
+    } else {
+      setAuthError("비밀번호가 올바르지 않습니다.");
+    }
+  };
+
   const getRoleLabel = (userRole) => {
     if (userRole === "admin") return "임원";
     if (userRole === "visit") return "심방팀장";
@@ -470,14 +514,14 @@ export default function OrgManagement() {
       {/* Sub tabs header */}
       <div className="sub-tabs-container glass-panel" style={{ display: "flex", alignItems: "center" }}>
         <button
-          onClick={() => setActiveSubTab("members")}
+          onClick={() => handleTabClick("members")}
           className={`sub-tab-btn ${activeSubTab === "members" ? "active" : ""}`}
         >
           <Users size={16} />
           <span>성도 관리</span>
         </button>
         <button
-          onClick={() => setActiveSubTab("zones")}
+          onClick={() => handleTabClick("zones")}
           className={`sub-tab-btn ${activeSubTab === "zones" ? "active" : ""}`}
         >
           <Compass size={16} />
@@ -485,7 +529,7 @@ export default function OrgManagement() {
         </button>
         {role === "admin" && (
           <button
-            onClick={() => setActiveSubTab("teams")}
+            onClick={() => handleTabClick("teams")}
             className={`sub-tab-btn ${activeSubTab === "teams" ? "active" : ""}`}
           >
             <FolderPlus size={16} />
@@ -494,7 +538,7 @@ export default function OrgManagement() {
         )}
         {role === "admin" && (
           <button
-            onClick={() => setActiveSubTab("users")}
+            onClick={() => handleTabClick("users")}
             className={`sub-tab-btn ${activeSubTab === "users" ? "active" : ""}`}
           >
             <Shield size={16} />
@@ -801,7 +845,29 @@ export default function OrgManagement() {
                   <tr key={u.userId}>
                     <td style={{fontWeight: 600}}>{u.name}</td>
                     <td style={{fontFamily: "monospace"}}>{u.username}</td>
-                    <td style={{fontFamily: "monospace"}}>{u.password || "********"}</td>
+                    <td style={{fontFamily: "monospace"}}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span>{visiblePasswords[u.userId] ? (u.password || "********") : "••••••••"}</span>
+                        <button
+                          type="button"
+                          onClick={() => setVisiblePasswords(prev => ({ ...prev, [u.userId]: !prev[u.userId] }))}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: "4px",
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            color: "var(--text-secondary)",
+                            borderRadius: "4px",
+                            transition: "all 0.2s"
+                          }}
+                          title={visiblePasswords[u.userId] ? "비밀번호 숨기기" : "비밀번호 보기"}
+                        >
+                          {visiblePasswords[u.userId] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                    </td>
                     <td>
                       <span className={`badge badge-${u.role}`}>
                         {getRoleLabel(u.role)}
@@ -1087,13 +1153,34 @@ export default function OrgManagement() {
 
               <div className="form-group">
                 <label>비밀번호 (PW)</label>
-                <input
-                  type="text"
-                  placeholder="비밀번호 설정"
-                  value={userForm.password}
-                  onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                  required
-                />
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    type={showFormPassword ? "text" : "password"}
+                    placeholder="비밀번호 설정"
+                    value={userForm.password}
+                    onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                    required
+                    style={{ width: "100%", paddingRight: "36px" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFormPassword(prev => !prev)}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "var(--text-secondary)",
+                      padding: "4px",
+                      display: "inline-flex",
+                      alignItems: "center"
+                    }}
+                    title={showFormPassword ? "비밀번호 숨기기" : "비밀번호 보기"}
+                  >
+                    {showFormPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  </button>
+                </div>
               </div>
 
               <div className="form-group">
@@ -1113,6 +1200,80 @@ export default function OrgManagement() {
               <button type="submit" className="btn btn-primary submit-btn">
                 <span>{editingUser ? "저장하기" : "등록하기"}</span>
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5. Password Verification Modal for Account Management */}
+      {showAuthModal && (
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel animate-slide" style={{ borderColor: "var(--accent-amber)" }}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <Shield size={18} style={{ color: "var(--accent-amber)" }} />
+                <h3 style={{ fontSize: "16px", fontWeight: "700" }}>계정 관리 접근 인증</h3>
+              </div>
+              <button onClick={() => setShowAuthModal(false)} className="modal-close-btn">
+                <X size={16} />
+              </button>
+            </div>
+            
+            <p style={{ fontSize: "12px", color: "var(--text-secondary)", marginBottom: "16px", lineHeight: "1.5" }}>
+              민감정보(아이디/비밀번호 목록)가 포함되어 있어 추가 확인이 필요합니다. 현재 로그인된 계정의 비밀번호를 입력해주세요.
+            </p>
+
+            <form onSubmit={handleAuthSubmit} className="modal-form">
+              <div className="form-group">
+                <label>로그인한 임원 계정 비밀번호</label>
+                <input
+                  type="password"
+                  placeholder="비밀번호 입력"
+                  value={authPassword}
+                  onChange={(e) => {
+                    setAuthPassword(e.target.value);
+                    setAuthError("");
+                  }}
+                  autoFocus
+                  required
+                />
+                {authError && (
+                  <span style={{ color: "#f87171", fontSize: "11px", marginTop: "4px", fontWeight: "600" }}>
+                    {authError}
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", marginTop: "8px" }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowAuthModal(false)}
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    cursor: "pointer"
+                  }}
+                >
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{
+                    padding: "8px 16px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                    backgroundColor: "var(--accent-amber)",
+                    color: "#000",
+                    border: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  확인
+                </button>
+              </div>
             </form>
           </div>
         </div>
