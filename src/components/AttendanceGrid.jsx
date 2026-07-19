@@ -127,6 +127,7 @@ export default function AttendanceGrid() {
   const [filterZoneId, setFilterZoneId] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [filterRegistrationType, setFilterRegistrationType] = useState("");
+  const [filterUnreportedOnly, setFilterUnreportedOnly] = useState(false);
 
   // Cell popover/quick-select state
   const [activeCell, setActiveCell] = useState(null); // { memberId, category, x, y }
@@ -137,7 +138,8 @@ export default function AttendanceGrid() {
   const [worshipTypeSearch, setWorshipTypeSearch] = useState("");
   const [worshipTimeSearch, setWorshipTimeSearch] = useState("");
   const [noteModalMemberId, setNoteModalMemberId] = useState(null);
-  const [noteDraft, setNoteDraft] = useState("");
+  const [samilNoteDraft, setSamilNoteDraft] = useState("");
+  const [sundayNoteDraft, setSundayNoteDraft] = useState("");
   const [isLoadingPrevWeek, setIsLoadingPrevWeek] = useState(false);
   const popoverRef = useRef(null);
 
@@ -455,6 +457,22 @@ export default function AttendanceGrid() {
       list = list.filter(m => m.zoneId === filterZoneId);
     }
 
+    // Unreported Only Filter
+    if (filterUnreportedOnly) {
+      list = list.filter(member => {
+        const samilPre = getWeeklyValue(member.memberId, "samil_pre");
+        const samilActual = getWeeklyValue(member.memberId, "samil_actual");
+        const sundayPre = getWeeklyValue(member.memberId, "sunday_pre");
+        const sundayActual = getWeeklyValue(member.memberId, "sunday_actual");
+        return (
+          !samilPre || samilPre === "미보고" ||
+          !samilActual || samilActual === "미보고" ||
+          !sundayPre || sundayPre === "미보고" ||
+          !sundayActual || sundayActual === "미보고"
+        );
+      });
+    }
+
     // Search query (supports multiple names separated by comma or space)
     if (searchQuery) {
       const tokens = searchQuery.split(/[\s,]+/).map(t => t.trim().toLowerCase()).filter(t => t);
@@ -513,8 +531,15 @@ export default function AttendanceGrid() {
     return ach ? ach.achieved : false;
   };
 
-  const getMemberNote = (memberId) => {
-    return memberNotes.find(n => n.memberId === memberId && n.weekNo === activeWeekNo);
+  const getMemberNote = (memberId, type = "sunday") => {
+    const suffix = type ? `_${type}` : "";
+    const noteId = `${memberId}_${activeMonthId}_${activeWeekNo}${suffix}`;
+    const found = memberNotes.find(n => n.noteId === noteId);
+    if (!found && type === "sunday") {
+      const legacyNoteId = `${memberId}_${activeMonthId}_${activeWeekNo}`;
+      return memberNotes.find(n => n.noteId === legacyNoteId);
+    }
+    return found;
   };
 
   const parsePreWorship = (val) => {
@@ -789,6 +814,7 @@ export default function AttendanceGrid() {
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
+        "특이사항",
         "주일사전(분류)",
         "미확인/미보고 사유(사전)",
         "주일실제(분류)",
@@ -796,10 +822,12 @@ export default function AttendanceGrid() {
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
         "특이사항",
-        "시험"
+        "시험",
+        "구역예배"
       ];
       rowsCalculator = (member) => {
-        const note = getMemberNote(member.memberId);
+        const samilNote = getMemberNote(member.memberId, "samil");
+        const sundayNote = getMemberNote(member.memberId, "sunday");
         const samilPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "samil_pre"));
         const samilActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "samil_actual"));
         const sundayPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "sunday_pre"));
@@ -811,14 +839,16 @@ export default function AttendanceGrid() {
           samilActualParsed.confirmMethod,
           samilActualParsed.reason,
           samilActualParsed.auth,
+          samilNote?.text || "",
           sundayPreParsed.type === "미보고" ? "" : `${sundayPreParsed.type} ${sundayPreParsed.time}`.trim(),
           sundayPreParsed.reason,
           sundayActualParsed.type === "미보고" ? "" : `${sundayActualParsed.type} ${sundayActualParsed.time}`.trim(),
           sundayActualParsed.confirmMethod,
           sundayActualParsed.reason,
           sundayActualParsed.auth,
-          note?.text || "",
-          getWeeklyValue(member.memberId, "test")
+          sundayNote?.text || "",
+          getWeeklyValue(member.memberId, "test"),
+          getWeeklyValue(member.memberId, "zone")
         ];
       };
     } else if (effectiveDownloadCategory === "education") {
@@ -888,6 +918,7 @@ export default function AttendanceGrid() {
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
+        "특이사항",
         "주일사전(분류)",
         "미확인/미보고 사유(사전)",
         "주일실제(분류)",
@@ -906,7 +937,8 @@ export default function AttendanceGrid() {
         "전도단"
       ];
       rowsCalculator = (member) => {
-        const note = getMemberNote(member.memberId);
+        const samilNote = getMemberNote(member.memberId, "samil");
+        const sundayNote = getMemberNote(member.memberId, "sunday");
         const samilPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "samil_pre"));
         const samilActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "samil_actual"));
         const sundayPreParsed = parsePreWorship(getWeeklyValue(member.memberId, "sunday_pre"));
@@ -918,13 +950,14 @@ export default function AttendanceGrid() {
           samilActualParsed.confirmMethod,
           samilActualParsed.reason,
           samilActualParsed.auth,
+          samilNote?.text || "",
           sundayPreParsed.type === "미보고" ? "" : `${sundayPreParsed.type} ${sundayPreParsed.time}`.trim(),
           sundayPreParsed.reason,
           sundayActualParsed.type === "미보고" ? "" : `${sundayActualParsed.type} ${sundayActualParsed.time}`.trim(),
           sundayActualParsed.confirmMethod,
           sundayActualParsed.reason,
           sundayActualParsed.auth,
-          note?.text || "",
+          sundayNote?.text || "",
           getWeeklyValue(member.memberId, "test"),
           getWeeklyValue(member.memberId, "zone"),
           getWeeklyValue(member.memberId, "radio"),
@@ -980,9 +1013,17 @@ export default function AttendanceGrid() {
   const shouldShowColumn = (colName) => {
     if (hiddenAttendanceColumns.has(colName)) return false;
     const effectiveDownloadCategory = isWorshipOnlyRole ? "worship" : downloadCategory;
+
+    if (effectiveDownloadCategory === "all" || effectiveDownloadCategory === "worship") {
+      if (colName === "note") return false;
+      if (colName === "samil_note" || colName === "sunday_note") return true;
+    } else {
+      if (colName === "samil_note" || colName === "sunday_note") return false;
+      if (colName === "note") return true;
+    }
+
     if (effectiveDownloadCategory === "all") return true;
     if (colName === "name" || colName === "rank" || colName === "team" || colName === "zone_belong") return true;
-    if (colName === "note") return true; // 공통 특이사항
 
     const worshipCols = [
       "samil_pre",
@@ -992,6 +1033,7 @@ export default function AttendanceGrid() {
       "samil_actual_confirm",
       "samil_actual_reason",
       "samil_actual_auth",
+      "samil_note",
       "sunday_pre",
       "sunday_pre_confirm",
       "sunday_pre_reason",
@@ -999,7 +1041,9 @@ export default function AttendanceGrid() {
       "sunday_actual_confirm",
       "sunday_actual_reason",
       "sunday_actual_auth",
-      "test"
+      "sunday_note",
+      "test",
+      "zone"
     ];
 
     if (effectiveDownloadCategory === "worship") {
@@ -1032,6 +1076,7 @@ export default function AttendanceGrid() {
       "samil_actual_confirm",
       "samil_actual_reason",
       "samil_actual_auth",
+      "samil_note",
       "sunday_pre",
       "sunday_pre_confirm",
       "sunday_pre_reason",
@@ -1039,6 +1084,7 @@ export default function AttendanceGrid() {
       "sunday_actual_confirm",
       "sunday_actual_reason",
       "sunday_actual_auth",
+      "sunday_note",
       "zone",
       "test",
       "note",
@@ -1199,28 +1245,34 @@ export default function AttendanceGrid() {
   );
 
   const openNoteModal = (memberId) => {
-    const note = getMemberNote(memberId);
+    const samilN = getMemberNote(memberId, "samil");
+    const sundayN = getMemberNote(memberId, "sunday");
     setNoteModalMemberId(memberId);
-    setNoteDraft(note?.text || "");
+    setSamilNoteDraft(samilN?.text || "");
+    setSundayNoteDraft(sundayN?.text || "");
   };
 
   const closeNoteModal = () => {
     setNoteModalMemberId(null);
-    setNoteDraft("");
+    setSamilNoteDraft("");
+    setSundayNoteDraft("");
   };
 
   const handleSaveNote = async () => {
     if (!noteModalMemberId) return;
-    await saveMemberNote(noteModalMemberId, noteDraft);
+    await saveMemberNote(noteModalMemberId, samilNoteDraft, "samil");
+    await saveMemberNote(noteModalMemberId, sundayNoteDraft, "sunday");
     closeNoteModal();
   };
 
   const handleDeleteNote = async () => {
     if (!noteModalMemberId) return;
-    const note = getMemberNote(noteModalMemberId);
-    if (!note) return;
-    if (!window.confirm("특이사항을 삭제하시겠습니까?")) return;
-    await deleteMemberNote(noteModalMemberId);
+    const samilN = getMemberNote(noteModalMemberId, "samil");
+    const sundayN = getMemberNote(noteModalMemberId, "sunday");
+    if (!samilN && !sundayN) return;
+    if (!window.confirm("모든 특이사항을 삭제하시겠습니까?")) return;
+    if (samilN) await deleteMemberNote(noteModalMemberId, "samil");
+    if (sundayN) await deleteMemberNote(noteModalMemberId, "sunday");
     closeNoteModal();
   };
 
@@ -1838,6 +1890,18 @@ export default function AttendanceGrid() {
             ))}
           </select>
 
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)", cursor: "pointer", userSelect: "none", height: "30px", padding: "0 8px", backgroundColor: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--glass-border)", borderRadius: "var(--radius-sm)" }}>
+            <input
+              type="checkbox"
+              checked={filterUnreportedOnly}
+              onChange={(e) => setFilterUnreportedOnly(e.target.checked)}
+              style={{ cursor: "pointer", accentColor: "var(--accent-amber)" }}
+            />
+            <span style={{ fontWeight: "700", color: filterUnreportedOnly ? "var(--accent-amber)" : "var(--text-secondary)" }}>
+              미보고자만 보기
+            </span>
+          </label>
+
           <button
             type="button"
             className="refresh-data-btn"
@@ -1888,6 +1952,7 @@ export default function AttendanceGrid() {
                 {shouldShowColumn("samil_actual_confirm") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>예배확인<br/>방법</th>}
                 {shouldShowColumn("samil_actual_reason") && <th className="worship-report-col" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>미확인/미보고 사유<br/>(미인증 사유)</th>}
                 {shouldShowColumn("samil_actual_auth") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>인증분류<br/>(위아원)</th>}
+                {shouldShowColumn("samil_note") && <th className="worship-report-col note-header" style={{ whiteSpace: "nowrap" }}>특이사항</th>}
                 {shouldShowColumn("sunday_pre") && <th className="sep-col worship-report-col" style={{ whiteSpace: "nowrap" }}>주일사전<br/>(분류/시간)</th>}
                 {shouldShowColumn("sunday_pre_confirm") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>예배확인<br/>방법</th>}
                 {shouldShowColumn("sunday_pre_reason") && <th className="worship-report-col" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>미확인/미보고 사유<br/>(미인증 사유)</th>}
@@ -1895,8 +1960,8 @@ export default function AttendanceGrid() {
                 {shouldShowColumn("sunday_actual_confirm") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>예배확인<br/>방법</th>}
                 {shouldShowColumn("sunday_actual_reason") && <th className="worship-report-col" style={{ whiteSpace: "nowrap", minWidth: "120px" }}>미확인/미보고 사유<br/>(미인증 사유)</th>}
                 {shouldShowColumn("sunday_actual_auth") && <th className="worship-report-col" style={{ whiteSpace: "nowrap" }}>인증분류<br/>(위아원)</th>}
-                {shouldShowColumn("note") && <th className="sep-col note-header">특이사항</th>}
-                {shouldShowColumn("test") && <th>시험</th>}
+                {shouldShowColumn("sunday_note") && <th className="worship-report-col note-header" style={{ whiteSpace: "nowrap" }}>특이사항</th>}
+                {shouldShowColumn("test") && <th className="sep-col">시험</th>}
                 {shouldShowColumn("zone") && <th>구역예배</th>}
                 {shouldShowColumn("radio") && <th>심야라디오</th>}
                 {shouldShowColumn("simon") && <th>시몬스쿨</th>}
@@ -1919,7 +1984,8 @@ export default function AttendanceGrid() {
                 const simon = getWeeklyValue(member.memberId, "simon");
                 const visit = getWeeklyValue(member.memberId, "visit");
                 const activity = getWeeklyValue(member.memberId, "activity");
-                const memberNote = getMemberNote(member.memberId);
+                const samilNote = getMemberNote(member.memberId, "samil");
+                const sundayNote = getMemberNote(member.memberId, "sunday");
 
                 // Monthly Achievements
                 const evangelism = getMonthlyAchievementValue(member.memberId, "evangelism");
@@ -1948,12 +2014,16 @@ export default function AttendanceGrid() {
                             cursor: "pointer",
                             display: "inline-flex",
                             alignItems: "center",
-                            color: memberNote ? "var(--accent-amber)" : "rgba(255,255,255,0.15)",
+                            color: (samilNote || sundayNote) ? "var(--accent-amber)" : "rgba(255,255,255,0.15)",
                             transition: "color 0.2s"
                           }}
-                          title={memberNote ? `특이사항: ${memberNote.text}` : "특이사항 작성"}
+                          title={
+                            (samilNote || sundayNote)
+                              ? `특이사항:\n[삼일] ${samilNote?.text || "없음"}\n[주일] ${sundayNote?.text || "없음"}`
+                              : "특이사항 작성"
+                          }
                         >
-                          <MessageSquare size={13} style={{ fill: memberNote ? "rgba(245, 158, 11, 0.2)" : "none" }} />
+                          <MessageSquare size={13} style={{ fill: (samilNote || sundayNote) ? "rgba(245, 158, 11, 0.2)" : "none" }} />
                         </button>
                       </div>
                     </td>
@@ -2026,6 +2096,28 @@ export default function AttendanceGrid() {
                         {samilActualParsed.auth || "-"}
                       </td>
                     )}
+                    {shouldShowColumn("samil_note") && (
+                      <td className="note-cell worship-report-cell">
+                        <button
+                          type="button"
+                          className={`note-trigger ${samilNote ? "has-note" : ""}`}
+                          onClick={() => openNoteModal(member.memberId)}
+                          title={samilNote ? samilNote.text : "특이사항 입력"}
+                        >
+                          {samilNote ? (
+                            <>
+                              <MessageSquare size={13} />
+                              <span>있음</span>
+                            </>
+                          ) : (
+                            <>
+                              <Edit3 size={13} />
+                              <span>입력</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    )}
 
                     {shouldShowColumn("sunday_pre") && (
                       <td 
@@ -2091,15 +2183,37 @@ export default function AttendanceGrid() {
                         {sundayActualParsed.auth || "-"}
                       </td>
                     )}
+                    {shouldShowColumn("sunday_note") && (
+                      <td className="note-cell worship-report-cell">
+                        <button
+                          type="button"
+                          className={`note-trigger ${sundayNote ? "has-note" : ""}`}
+                          onClick={() => openNoteModal(member.memberId)}
+                          title={sundayNote ? sundayNote.text : "특이사항 입력"}
+                        >
+                          {sundayNote ? (
+                            <>
+                              <MessageSquare size={13} />
+                              <span>있음</span>
+                            </>
+                          ) : (
+                            <>
+                              <Edit3 size={13} />
+                              <span>입력</span>
+                            </>
+                          )}
+                        </button>
+                      </td>
+                    )}
                      {shouldShowColumn("note") && (
                       <td className="sep-col note-cell">
                         <button
                           type="button"
-                          className={`note-trigger ${memberNote ? "has-note" : ""}`}
+                          className={`note-trigger ${sundayNote ? "has-note" : ""}`}
                           onClick={() => openNoteModal(member.memberId)}
-                          title={memberNote ? memberNote.text : "특이사항 입력"}
+                          title={sundayNote ? sundayNote.text : "특이사항 입력"}
                         >
-                          {memberNote ? (
+                          {sundayNote ? (
                             <>
                               <MessageSquare size={13} />
                               <span>있음</span>
@@ -2118,7 +2232,7 @@ export default function AttendanceGrid() {
                     {shouldShowColumn("test") && (
                       <td 
                         onClick={(e) => handleCellClick(e, member.memberId, "test", false)}
-                        className={`cell-click ${getCellStyle(test, "test")}`}
+                        className={`cell-click sep-col ${getCellStyle(test, "test")}`}
                       >
                         {test}
                       </td>
@@ -2247,21 +2361,44 @@ export default function AttendanceGrid() {
               </button>
             </div>
 
-            <textarea
-              value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
-              placeholder="특이사항을 입력해 주세요."
-              disabled={!canEdit}
-              className="note-textarea"
-              rows={7}
-            />
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px", margin: "16px 0" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "var(--text-cyan)", marginBottom: "4px" }}>
+                  삼일예배 특이사항
+                </label>
+                <textarea
+                  value={samilNoteDraft}
+                  onChange={(e) => setSamilNoteDraft(e.target.value)}
+                  placeholder="삼일예배 관련 특이사항을 입력해 주세요."
+                  disabled={!canEdit}
+                  className="note-textarea"
+                  style={{ width: "100%", minHeight: "70px", resize: "vertical" }}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "var(--accent-cyan)", marginBottom: "4px" }}>
+                  주일예배 특이사항
+                </label>
+                <textarea
+                  value={sundayNoteDraft}
+                  onChange={(e) => setSundayNoteDraft(e.target.value)}
+                  placeholder="주일예배 관련 특이사항을 입력해 주세요."
+                  disabled={!canEdit}
+                  className="note-textarea"
+                  style={{ width: "100%", minHeight: "70px", resize: "vertical" }}
+                  rows={3}
+                />
+              </div>
+            </div>
 
             <div className="note-modal-actions">
               <button
                 type="button"
                 className="note-action secondary"
                 onClick={handleDeleteNote}
-                disabled={!canEdit || !getMemberNote(noteModalMemberId)}
+                disabled={!canEdit || (!getMemberNote(noteModalMemberId, "samil") && !getMemberNote(noteModalMemberId, "sunday"))}
               >
                 <Trash2 size={14} />
                 삭제
@@ -2273,10 +2410,10 @@ export default function AttendanceGrid() {
                 type="button"
                 className="note-action primary"
                 onClick={handleSaveNote}
-                disabled={!canEdit || !noteDraft.trim()}
+                disabled={!canEdit}
               >
                 <Save size={14} />
-                {getMemberNote(noteModalMemberId) ? "수정 저장" : "저장"}
+                {getMemberNote(noteModalMemberId, "samil") || getMemberNote(noteModalMemberId, "sunday") ? "수정 저장" : "저장"}
               </button>
             </div>
           </div>

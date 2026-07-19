@@ -173,9 +173,18 @@ export function DataProvider({ children }) {
           const achSnap = await getDocs(achQuery);
           setMonthlyAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
 
-          const notesQuery = query(collection(db, "memberNotes"), where("monthId", "==", targetMonthId));
-          const notesSnap = await getDocs(notesQuery);
-          setMemberNotes(notesSnap.docs.map(d => ({ noteId: d.id, ...d.data() })));
+          const samilQuery = query(collection(db, "samilMemberNotes"), where("monthId", "==", targetMonthId));
+          const sundayQuery = query(collection(db, "sundayMemberNotes"), where("monthId", "==", targetMonthId));
+          const legacyQuery = query(collection(db, "memberNotes"), where("monthId", "==", targetMonthId));
+          const [samilSnap, sundaySnap, legacySnap] = await Promise.all([
+            getDocs(samilQuery),
+            getDocs(sundayQuery),
+            getDocs(legacyQuery)
+          ]);
+          const samilNotes = samilSnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "samil" }));
+          const sundayNotes = sundaySnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "sunday" }));
+          const legacyNotes = legacySnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "sunday" }));
+          setMemberNotes([...samilNotes, ...sundayNotes, ...legacyNotes]);
         }
 
         setLoading(false);
@@ -278,10 +287,19 @@ export function DataProvider({ children }) {
           console.log(`Loaded ${achSnap.size} monthly achievements from Firestore for ${activeMonthId}`);
           setMonthlyAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
 
-          const notesQuery = query(collection(db, "memberNotes"), where("monthId", "==", activeMonthId));
-          const notesSnap = await getDocs(notesQuery);
-          console.log(`Loaded ${notesSnap.size} member notes from Firestore for ${activeMonthId}`);
-          setMemberNotes(notesSnap.docs.map(d => ({ noteId: d.id, ...d.data() })));
+          const samilQuery = query(collection(db, "samilMemberNotes"), where("monthId", "==", activeMonthId));
+          const sundayQuery = query(collection(db, "sundayMemberNotes"), where("monthId", "==", activeMonthId));
+          const legacyQuery = query(collection(db, "memberNotes"), where("monthId", "==", activeMonthId));
+          const [samilSnap, sundaySnap, legacySnap] = await Promise.all([
+            getDocs(samilQuery),
+            getDocs(sundayQuery),
+            getDocs(legacyQuery)
+          ]);
+          console.log(`Loaded ${samilSnap.size} samil and ${sundaySnap.size} sunday member notes from Firestore for ${activeMonthId}`);
+          const samilNotes = samilSnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "samil" }));
+          const sundayNotes = sundaySnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "sunday" }));
+          const legacyNotes = legacySnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "sunday" }));
+          setMemberNotes([...samilNotes, ...sundayNotes, ...legacyNotes]);
         } catch (error) {
           console.error("Error fetching month records:", error);
         }
@@ -585,11 +603,12 @@ export function DataProvider({ children }) {
   };
 
   // 5. Member Notes CRUD
-  const saveMemberNote = async (memberId, text) => {
+  const saveMemberNote = async (memberId, text, type = "sunday") => {
     const member = members.find(m => m.memberId === memberId);
     const memberName = member ? member.name : "성도";
     const noteText = text.trim();
-    const noteId = `${memberId}_${activeMonthId}_${activeWeekNo}`;
+    const suffix = type ? `_${type}` : "";
+    let noteId = `${memberId}_${activeMonthId}_${activeWeekNo}${suffix}`;
 
     const activeMonth = months.find(m => m.monthId === activeMonthId);
     const isClosed = activeMonth && activeMonth.status === "closed";
@@ -598,12 +617,23 @@ export function DataProvider({ children }) {
       return;
     }
 
-    if (!noteText) {
-      alert("특이사항 내용을 입력해 주세요.");
-      return;
+    let existing = memberNotes.find(n => n.noteId === noteId);
+    let isLegacyNote = false;
+    let legacyNoteId = `${memberId}_${activeMonthId}_${activeWeekNo}`;
+    if (!existing && type === "sunday") {
+      const legacyExisting = memberNotes.find(n => n.noteId === legacyNoteId);
+      if (legacyExisting) {
+        existing = legacyExisting;
+        isLegacyNote = true;
+      }
     }
 
-    const existing = memberNotes.find(n => n.noteId === noteId);
+    if (!noteText) {
+      if (existing || isLegacyNote) {
+        await deleteMemberNote(memberId, type);
+      }
+      return;
+    }
     const oldText = existing ? existing.text : "";
     if (oldText === noteText) return;
 
@@ -622,27 +652,24 @@ export function DataProvider({ children }) {
 
     if (isMockEnabled) {
       const allNotes = JSON.parse(localStorage.getItem("mock_member_notes")) || [];
-      const index = allNotes.findIndex(n => n.noteId === noteId);
+      const index = allNotes.findIndex(n => n.noteId === noteId || (type === "sunday" && n.noteId === legacyNoteId));
 
       if (index >= 0) {
-        allNotes[index] = newNote;
+        allNotes[index] = { ...newNote, noteId };
       } else {
         allNotes.push(newNote);
       }
 
       localStorage.setItem("mock_member_notes", JSON.stringify(allNotes));
       setMemberNotes(prev => {
-        const idx = prev.findIndex(n => n.noteId === noteId);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = newNote;
-          return next;
-        }
-        return [...prev, newNote];
+        const cleaned = prev.filter(n => n.noteId !== noteId && n.noteId !== legacyNoteId);
+        return [...cleaned, newNote];
       });
     } else {
       try {
-        await setDoc(doc(db, "memberNotes", noteId), {
+        const targetCollection = type === "samil" ? "samilMemberNotes" : "sundayMemberNotes";
+        
+        await setDoc(doc(db, targetCollection, noteId), {
           memberId,
           monthId: activeMonthId,
           weekNo: activeWeekNo,
@@ -652,14 +679,18 @@ export function DataProvider({ children }) {
           updatedAt: newNote.updatedAt,
           updatedBy: newNote.updatedBy
         });
-        setMemberNotes(prev => {
-          const idx = prev.findIndex(n => n.noteId === noteId);
-          if (idx >= 0) {
-            const next = [...prev];
-            next[idx] = newNote;
-            return next;
+
+        if (type === "sunday" || isLegacyNote) {
+          try {
+            await deleteDoc(doc(db, "memberNotes", legacyNoteId));
+          } catch (e) {
+            console.warn("Could not delete legacy memberNotes doc:", e);
           }
-          return [...prev, newNote];
+        }
+
+        setMemberNotes(prev => {
+          const cleaned = prev.filter(n => n.noteId !== noteId && n.noteId !== legacyNoteId);
+          return [...cleaned, newNote];
         });
       } catch (error) {
         console.error("Firestore member note save failed:", error);
@@ -670,12 +701,21 @@ export function DataProvider({ children }) {
     logChange(memberId, memberName, `${activeMonthId.split("-")[1]}월 ${activeWeekNo}주차 특이사항 ${existing ? "수정" : "저장"}: ${noteText}`);
   };
 
-  const deleteMemberNote = async (memberId) => {
+  const deleteMemberNote = async (memberId, type = "sunday") => {
     const member = members.find(m => m.memberId === memberId);
     const memberName = member ? member.name : "성도";
-    const noteId = `${memberId}_${activeMonthId}_${activeWeekNo}`;
-    const existing = memberNotes.find(n => n.noteId === noteId);
-    if (!existing) return;
+    const suffix = type ? `_${type}` : "";
+    let noteId = `${memberId}_${activeMonthId}_${activeWeekNo}${suffix}`;
+    let legacyNoteId = `${memberId}_${activeMonthId}_${activeWeekNo}`;
+    let existing = memberNotes.find(n => n.noteId === noteId);
+    let hasLegacy = false;
+    if (type === "sunday") {
+      const legacyExisting = memberNotes.find(n => n.noteId === legacyNoteId);
+      if (legacyExisting) {
+        hasLegacy = true;
+      }
+    }
+    if (!existing && !hasLegacy) return;
 
     const activeMonth = months.find(m => m.monthId === activeMonthId);
     const isClosed = activeMonth && activeMonth.status === "closed";
@@ -686,13 +726,24 @@ export function DataProvider({ children }) {
 
     if (isMockEnabled) {
       const allNotes = JSON.parse(localStorage.getItem("mock_member_notes")) || [];
-      const nextNotes = allNotes.filter(n => n.noteId !== noteId);
+      const nextNotes = allNotes.filter(n => n.noteId !== noteId && n.noteId !== legacyNoteId);
       localStorage.setItem("mock_member_notes", JSON.stringify(nextNotes));
-      setMemberNotes(prev => prev.filter(n => n.noteId !== noteId));
+      setMemberNotes(prev => prev.filter(n => n.noteId !== noteId && n.noteId !== legacyNoteId));
     } else {
       try {
-        await deleteDoc(doc(db, "memberNotes", noteId));
-        setMemberNotes(prev => prev.filter(n => n.noteId !== noteId));
+        const targetCollection = type === "samil" ? "samilMemberNotes" : "sundayMemberNotes";
+        
+        await deleteDoc(doc(db, targetCollection, noteId));
+        
+        if (type === "sunday" || hasLegacy) {
+          try {
+            await deleteDoc(doc(db, "memberNotes", legacyNoteId));
+          } catch (e) {
+            console.warn("Could not delete legacy memberNotes doc:", e);
+          }
+        }
+        
+        setMemberNotes(prev => prev.filter(n => n.noteId !== noteId && n.noteId !== legacyNoteId));
       } catch (error) {
         console.error("Firestore member note delete failed:", error);
         return;

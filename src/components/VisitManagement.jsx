@@ -37,6 +37,9 @@ export default function VisitManagement() {
   } = useData();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isPasteModalOpen, setIsPasteModalOpen] = useState(false);
+  const [pastedText, setPastedText] = useState("");
+  const [parsedPreviewRecords, setParsedPreviewRecords] = useState([]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -386,6 +389,140 @@ export default function VisitManagement() {
     alert(`현재 목록의 심방 기록 ${visibleRecords.length}건이 클립보드에 복사되었습니다.`);
   };
 
+  const handleAnalyzePastedText = () => {
+    if (!pastedText.trim()) {
+      alert("분석할 텍스트를 입력해 주세요.");
+      return;
+    }
+
+    const blocks = pastedText.split(/----+/);
+    const parsed = [];
+
+    for (let block of blocks) {
+      if (!block.trim()) continue;
+
+      const memberNameMatch = block.match(/■ 대상 성도:\s*([^\n(]+)/);
+      const dateMatch = block.match(/■ 심방일:\s*([^\n]+)/);
+      const visitorMatch = block.match(/■ 심방자:\s*([^\n]+)/);
+      const typeMatch = block.match(/■ 심방형태:\s*([^\n]+)/);
+
+      let notes = "";
+      const notesIndex = block.indexOf("■ 심방 상세 내용:");
+      if (notesIndex !== -1) {
+        const remaining = block.substring(notesIndex + "■ 심방 상세 내용:".length).trim();
+        const nextHeadingIndex = remaining.search(/\n■/);
+        notes = nextHeadingIndex !== -1 ? remaining.substring(0, nextHeadingIndex).trim() : remaining;
+      }
+
+      let leaderFeedback = "";
+      const leaderIndex = block.indexOf("■ 구역장 자가성찰 및 기도제목:");
+      if (leaderIndex !== -1) {
+        const remaining = block.substring(leaderIndex + "■ 구역장 자가성찰 및 기도제목:".length).trim();
+        const nextHeadingIndex = remaining.search(/\n■/);
+        leaderFeedback = nextHeadingIndex !== -1 ? remaining.substring(0, nextHeadingIndex).trim() : remaining;
+      }
+
+      let teamFeedback = "";
+      let teamFeedbackBy = "팀장";
+      const teamIndex = block.indexOf("■ 팀장 격려 피드백:");
+      if (teamIndex !== -1) {
+        const remaining = block.substring(teamIndex + "■ 팀장 격려 피드백:".length).trim();
+        const nextHeadingIndex = remaining.search(/\n■/);
+        let rawTeamFeedback = nextHeadingIndex !== -1 ? remaining.substring(0, nextHeadingIndex).trim() : remaining;
+        const writerMatch = rawTeamFeedback.match(/\(작성:\s*([^)]+)\)\s*$/);
+        if (writerMatch) {
+          teamFeedbackBy = writerMatch[1].trim();
+          rawTeamFeedback = rawTeamFeedback.replace(/\(작성:\s*[^)]+\)\s*$/, "").trim();
+        }
+        teamFeedback = rawTeamFeedback;
+      }
+
+      let adminFeedback = "";
+      let adminFeedbackBy = "임원";
+      const adminIndex = block.indexOf("■ 임원 사역 피드백:");
+      if (adminIndex !== -1) {
+        const remaining = block.substring(adminIndex + "■ 임원 사역 피드백:".length).trim();
+        const nextHeadingIndex = remaining.search(/\n■/);
+        let rawAdminFeedback = nextHeadingIndex !== -1 ? remaining.substring(0, nextHeadingIndex).trim() : remaining;
+        const writerMatch = rawAdminFeedback.match(/\(작성:\s*([^)]+)\)\s*$/);
+        if (writerMatch) {
+          adminFeedbackBy = writerMatch[1].trim();
+          rawAdminFeedback = rawAdminFeedback.replace(/\(작성:\s*[^)]+\)\s*$/, "").trim();
+        }
+        adminFeedback = rawAdminFeedback;
+      }
+
+      if (memberNameMatch) {
+        const mName = memberNameMatch[1].trim();
+        // Try matching member
+        const matchedMember = members.find(m => m.name === mName && ["normal", "new"].includes(m.status));
+        parsed.push({
+          memberName: mName,
+          matchedMember: matchedMember || null,
+          date: dateMatch ? dateMatch[1].trim() : new Date().toISOString().split("T")[0],
+          visitor: visitorMatch ? visitorMatch[1].trim() : "구역장",
+          type: typeMatch ? typeMatch[1].trim() : "전화심방",
+          notes: notes === "(내용 없음)" ? "" : notes,
+          leaderFeedback,
+          teamFeedback,
+          teamFeedbackBy,
+          adminFeedback,
+          adminFeedbackBy
+        });
+      }
+    }
+
+    if (parsed.length === 0) {
+      alert("분석 결과, 일치하는 심방 양식을 찾을 수 없습니다. 양식을 다시 확인해 주세요.");
+    } else {
+      setParsedPreviewRecords(parsed);
+    }
+  };
+
+  const handleImportParsedRecords = async () => {
+    const importable = parsedPreviewRecords.filter(r => r.matchedMember);
+    if (importable.length === 0) {
+      alert("가져올 수 있는 매칭된 성도가 없습니다.");
+      return;
+    }
+
+    if (!window.confirm(`매칭된 성도 ${importable.length}명의 심방 이력을 등록하시겠습니까?`)) {
+      return;
+    }
+
+    let successCount = 0;
+    for (let item of importable) {
+      try {
+        const newRecord = {
+          memberId: item.matchedMember.memberId,
+          memberName: item.matchedMember.name,
+          teamId: item.matchedMember.teamId,
+          zoneId: item.matchedMember.zoneId,
+          date: item.date,
+          visitor: item.visitor,
+          type: item.type,
+          notes: item.notes,
+          feedback: item.leaderFeedback,
+          teamFeedback: item.teamFeedback,
+          teamFeedbackBy: item.teamFeedbackBy,
+          adminFeedback: item.adminFeedback,
+          adminFeedbackBy: item.adminFeedbackBy,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser?.name || "사용자"
+        };
+        await addVisitationRecord(newRecord);
+        successCount++;
+      } catch (err) {
+        console.error("Import failed for", item.memberName, err);
+      }
+    }
+
+    alert(`${successCount}건의 심방 기록이 등록되었습니다.`);
+    setIsPasteModalOpen(false);
+    setPastedText("");
+    setParsedPreviewRecords([]);
+  };
+
   // Filtered Visitation Records
   const getFilteredRecords = () => {
     let list = [...visitationRecords];
@@ -585,9 +722,28 @@ export default function VisitManagement() {
       <div className="visit-main-grid">
         {/* Left Column: Register Form */}
         <div className="visit-form-panel glass-panel">
-          <div className="panel-header">
-            <Plus size={16} style={{ color: "var(--accent-cyan)" }} />
-            <h4>신규 심방기록 등록</h4>
+          <div className="panel-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Plus size={16} style={{ color: "var(--accent-cyan)" }} />
+              <h4>신규 심방기록 등록</h4>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => setIsPasteModalOpen(true)}
+              style={{
+                fontSize: "11px",
+                padding: "4px 8px",
+                backgroundColor: "rgba(255, 255, 255, 0.08)",
+                color: "var(--text-cyan)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                fontWeight: "700"
+              }}
+            >
+              텍스트 붙여넣기 등록
+            </button>
           </div>
           <div className="form-mode-guide">
             <span>구역장성찰 일기</span>
@@ -1180,6 +1336,115 @@ export default function VisitManagement() {
           </div>
         </div>
       </div>
+
+      {isPasteModalOpen && (
+        <div className="note-modal-backdrop" onMouseDown={() => { setIsPasteModalOpen(false); setPastedText(""); setParsedPreviewRecords([]); }}>
+          <div className="note-modal glass-panel" onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(680px, 90vw)", maxWidth: "100%", display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="note-modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p className="note-modal-eyebrow">텍스트 분석 등록</p>
+                <h3 style={{ fontSize: "16px", fontWeight: "700" }}>심방 상세 내역 붙여넣기</h3>
+              </div>
+              <button type="button" className="icon-button" onClick={() => { setIsPasteModalOpen(false); setPastedText(""); setParsedPreviewRecords([]); }} aria-label="닫기">
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: "11px", color: "var(--text-secondary)", margin: 0 }}>
+              심방 상세 내역 복사 또는 목록 복사한 텍스트를 그대로 아래에 붙여넣어 주세요.<br />
+              성도 이름이 DB에 있는 이름과 일치해야 매칭 및 등록이 가능합니다.
+            </p>
+
+            <textarea
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              placeholder="[심방 상세 내역]&#13;■ 대상 성도: 홍길동 (상암1팀 상암1구역)&#13;■ 심방일: 2026-07-19&#13;■ 심방자: 김길동&#13;■ 심방형태: 전화심방&#13;..."
+              style={{
+                width: "100%",
+                minHeight: "180px",
+                backgroundColor: "rgba(0, 0, 0, 0.2)",
+                border: "1px solid var(--glass-border)",
+                borderRadius: "var(--radius-sm)",
+                padding: "10px",
+                color: "var(--text-primary)",
+                fontSize: "12px",
+                fontFamily: "monospace",
+                resize: "vertical"
+              }}
+              rows={8}
+            />
+
+            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={handleAnalyzePastedText}
+                style={{
+                  padding: "8px 16px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                  backgroundColor: "rgba(255, 255, 255, 0.08)",
+                  border: "1px solid var(--glass-border)",
+                  borderRadius: "var(--radius-sm)",
+                  color: "var(--text-primary)",
+                  cursor: "pointer"
+                }}
+              >
+                분석 및 프리뷰
+              </button>
+            </div>
+
+            {parsedPreviewRecords.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", maxHeight: "250px", overflowY: "auto", border: "1px solid var(--glass-border)", padding: "10px", borderRadius: "var(--radius-sm)", backgroundColor: "rgba(0, 0, 0, 0.1)" }}>
+                <h4 style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-primary)", margin: "0 0 4px 0" }}>
+                  분석된 심방 기록 ({parsedPreviewRecords.length}건)
+                </h4>
+                {parsedPreviewRecords.map((rec, i) => (
+                  <div key={i} style={{ borderBottom: i < parsedPreviewRecords.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none", paddingBottom: "8px", marginBottom: "8px", fontSize: "11px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                      <strong>{rec.memberName} 성도</strong>
+                      {rec.matchedMember ? (
+                        <span style={{ color: "#34d399", fontWeight: "700" }}>
+                          ✓ 매칭됨 ({getTeamName(rec.matchedMember.teamId)} {getZoneName(rec.matchedMember.zoneId)})
+                        </span>
+                      ) : (
+                        <span style={{ color: "#f87171", fontWeight: "700" }}>
+                          ✗ 매칭 실패 (성도명 없음)
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: "var(--text-secondary)", display: "flex", gap: "12px" }}>
+                      <span>날짜: {rec.date}</span>
+                      <span>심방자: {rec.visitor}</span>
+                      <span>형태: {rec.type}</span>
+                    </div>
+                    {rec.notes && <div style={{ color: "var(--text-muted)", marginTop: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>내용: {rec.notes}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="note-modal-actions" style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "8px" }}>
+              <button
+                type="button"
+                className="note-action ghost"
+                onClick={() => { setIsPasteModalOpen(false); setPastedText(""); setParsedPreviewRecords([]); }}
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                className="note-action primary"
+                onClick={handleImportParsedRecords}
+                disabled={parsedPreviewRecords.filter(r => r.matchedMember).length === 0}
+              >
+                <Plus size={14} />
+                등록 완료 ({parsedPreviewRecords.filter(r => r.matchedMember).length}건)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .visit-management-container {
