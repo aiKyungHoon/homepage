@@ -1430,6 +1430,7 @@ export default function AttendanceGrid() {
       const consecutiveAbsentNames = [];
       const longAbsentNames = [];
       const newAbsentNames = [];
+      const unreportedNames = [];
       
       group.forEach(m => {
         const parsed = getWorshipData(m);
@@ -1469,6 +1470,8 @@ export default function AttendanceGrid() {
 
           const previousType = getPreviousWorshipData(m).type;
           if (!isAbsent(previousType)) newAbsentNames.push(name);
+        } else if (!type || type === "미보고" || type === "미확인") {
+          unreportedNames.push(name);
         }
       });
       
@@ -1479,6 +1482,7 @@ export default function AttendanceGrid() {
       const altCount = sameDayAltNames.length + laterAltNames.length;
       const absentCount = oneOffAbsentNames.length + consecutiveAbsentNames.length + longAbsentNames.length;
       const presentCount = daemyeonCount + zoomCount + altCount;
+      const unreportedCount = unreportedNames.length;
       
       return {
         totalCount: group.length,
@@ -1501,7 +1505,9 @@ export default function AttendanceGrid() {
         oneOffAbsentNames,
         consecutiveAbsentNames,
         longAbsentNames,
-        newAbsentNames
+        newAbsentNames,
+        unreportedCount,
+        unreportedNames
       };
     };
     
@@ -1649,6 +1655,9 @@ export default function AttendanceGrid() {
         t += `- 장기 ${pad2(samilLongAbsentNames.length)}\n`;
         t += appendNames(samilLongAbsentNames);
       }
+      t += `\n`;
+      t += `5. 미보고 ${pad2(stats.unreportedCount)}명\n`;
+      t += appendNames(stats.unreportedNames);
       t += `\n‼️전주 대비 신규 결석 ${pad2(stats.newAbsentNames.length)}명\n`;
       if (stats.newAbsentNames.length > 0) {
         t += formatNamesInRows(stats.newAbsentNames) + "\n";
