@@ -481,7 +481,7 @@ export default function OrgManagement() {
     const rows = users.map(u => [
       u.name,
       u.username,
-      u.password || "********",
+      "",
       getRoleLabel(u.role)
     ]);
     const csvContent = "\uFEFF" + [headers, ...rows].map(e => e.map(val => `"${val.replace(/"/g, '""')}"`).join(",")).join("\n");
