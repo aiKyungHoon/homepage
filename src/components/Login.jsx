@@ -184,7 +184,7 @@ export default function Login() {
                       {user.role === "team" && "해봄 팀장"}
                       {user.role === "leader" && (user.userId === "zone8_leader" ? "8구역장" : "9구역장")}
                     </span>
-                    <span className="quick-credentials">ID: {user.username} / PW: {user.password}</span>
+                    <span className="quick-credentials">ID: {user.username}</span>
                   </div>
                 </button>
               ))}
