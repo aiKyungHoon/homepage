@@ -109,7 +109,7 @@ export default function Sidebar({ activePage, setActivePage }) {
       <aside className="desktop-sidebar glass-panel">
         <div className="sidebar-logo">
           <WhiteHorseIcon />
-          <h2>백마 상암 관리 시스템</h2>
+          <h2>WHSMS</h2>
         </div>
         
         <nav className="sidebar-nav">

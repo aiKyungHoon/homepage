@@ -123,8 +123,8 @@ export default function Login() {
           <div className="login-logo">
             <WhiteHorseIcon />
           </div>
-          <h1>백마 상암 출결 관리 시스템</h1>
-          <p className="login-subtitle">스프레드시트에서 혁신적인 웹 대시보드로</p>
+          <h1 style={{ letterSpacing: "1px", fontWeight: "800" }}>WHSMS</h1>
+          <p className="login-subtitle">백마 상암 출결 관리 시스템</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
