@@ -10,6 +10,7 @@ import OrgManagement from "./components/OrgManagement";
 import MonthClose from "./components/MonthClose";
 import HistoryLog from "./components/HistoryLog";
 import VisitManagement from "./components/VisitManagement";
+import HelpGuide from "./components/HelpGuide";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { isInAppBrowser, isIOS, openInExternalBrowser } from "./utils/browserEnv";
 
@@ -151,6 +152,7 @@ function AppContent() {
         {activePage === "org" && <OrgManagement />}
         {activePage === "month" && <MonthClose />}
         {activePage === "history" && <HistoryLog />}
+        {activePage === "help" && <HelpGuide />}
       </main>
     </div>
   );

@@ -4,10 +4,11 @@ import {
   LayoutDashboard, 
   CalendarCheck, 
   Users, 
-  Lock, 
-  History, 
+  Lock,
+  History,
   LogOut,
-  HeartHandshake
+  HeartHandshake,
+  BookOpen
 } from "lucide-react";
 
 const maskName = (name) => {
@@ -98,7 +99,8 @@ export default function Sidebar({ activePage, setActivePage }) {
     { id: "visit_manage", label: "심방 관리", icon: HeartHandshake, roles: ["admin", "visit", "team", "leader"] },
     { id: "org", label: "조직/성도 관리", icon: Users, roles: ["admin", "team"] },
     { id: "month", label: "월 마감 설정", icon: Lock, roles: ["admin"] },
-    { id: "history", label: "수정 이력", icon: History, roles: ["admin"] }
+    { id: "history", label: "수정 이력", icon: History, roles: ["admin"] },
+    { id: "help", label: "사용 설명서", icon: BookOpen, roles: ["admin", "team", "team_secretary", "leader", "visit"] }
   ];
 
   const visibleItems = menuItems.filter(item => item.roles.includes(role));
