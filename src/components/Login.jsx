@@ -124,7 +124,7 @@ export default function Login() {
             <WhiteHorseIcon />
           </div>
           <h1 style={{ letterSpacing: "1px", fontWeight: "800" }}>WHSMS</h1>
-          <p className="login-subtitle">백마 상암 출결 관리 시스템</p>
+          <p className="login-subtitle">White Horse Sangam Management System</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
