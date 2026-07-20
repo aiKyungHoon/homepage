@@ -83,6 +83,36 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // 미활동 자동 로그아웃: 로그인 상태에서 30분간 아무 조작이 없으면 자동 로그아웃한다.
+  // (자리를 비운 세션이 무단으로 열려 있는 것을 방지)
+  useEffect(() => {
+    if (!currentUser) return; // 로그인 상태에서만 동작
+
+    const INACTIVITY_LIMIT_MS = 30 * 60 * 1000; // 30분
+    const activityEvents = ["mousemove", "mousedown", "keydown", "touchstart", "scroll", "click"];
+    let lastActivity = Date.now();
+
+    const onActivity = () => { lastActivity = Date.now(); };
+    activityEvents.forEach(evt => window.addEventListener(evt, onActivity, { passive: true }));
+
+    // 30초마다 미활동 시간을 확인
+    const checkInterval = setInterval(() => {
+      if (Date.now() - lastActivity >= INACTIVITY_LIMIT_MS) {
+        clearInterval(checkInterval);
+        activityEvents.forEach(evt => window.removeEventListener(evt, onActivity));
+        try { alert("30분간 활동이 없어 자동 로그아웃되었습니다. 다시 로그인해 주세요."); } catch (e) { /* noop */ }
+        logout();
+      }
+    }, 30 * 1000);
+
+    return () => {
+      clearInterval(checkInterval);
+      activityEvents.forEach(evt => window.removeEventListener(evt, onActivity));
+    };
+    // logout 은 매 렌더마다 재생성되므로 deps 에서 제외(포함 시 타이머가 계속 초기화됨). currentUser 변화에만 반응.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
   // Login
   async function login(username, password) {
     setLoading(true);
