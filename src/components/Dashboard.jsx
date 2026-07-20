@@ -3,6 +3,7 @@ import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { db, isMockEnabled } from "../firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import DashboardTour from "./DashboardTour";
 import { 
   Users, 
   CheckCircle, 
@@ -35,6 +36,7 @@ export default function Dashboard() {
   } = useData();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
   const [selectedCriteria, setSelectedCriteria] = useState("sunday_actual");
   const [dashboardTab, setDashboardTab] = useState("weekly");
   const [previousMonthRecords, setPreviousMonthRecords] = useState([]);
@@ -2161,8 +2163,9 @@ export default function Dashboard() {
   return (
     <>
       <div className="dashboard-wrapper animate-fade">
+      {tourActive && <DashboardTour onClose={() => setTourActive(false)} />}
       {/* Scope Info Banner */}
-      <div className="dashboard-banner glass-panel">
+      <div className="dashboard-banner glass-panel" data-tour="banner">
         <TrendingUp size={20} className="banner-icon" />
         <div>
           <h3>{getScopeLabel()} {dashboardTab === "monthly" ? "월별 대시보드" : "주차별 대시보드"}</h3>
@@ -2172,12 +2175,29 @@ export default function Dashboard() {
               : `2026년 ${activeMonthId.split("-")[1]}월 ${activeWeekNo}주차 기준으로 자동 집계된 수치입니다.`}
           </p>
         </div>
-        <button 
-          onClick={handleRefresh} 
+        <button
+          onClick={() => { setDashboardTab("weekly"); setTourActive(true); }}
           className="btn btn-secondary btn-sm no-print"
-          style={{ 
-            marginLeft: "auto", 
-            marginRight: "8px", 
+          style={{
+            marginLeft: "auto",
+            marginRight: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            backgroundColor: "rgba(6, 182, 212, 0.15)",
+            color: "var(--accent-cyan)",
+            border: "1px solid var(--accent-cyan)"
+          }}
+          title="대시보드 사용법을 자동으로 시연합니다"
+        >
+          <span>▶ 자동 시연</span>
+        </button>
+        <button
+          data-tour="sync"
+          onClick={handleRefresh}
+          className="btn btn-secondary btn-sm no-print"
+          style={{
+            marginRight: "8px",
             display: "flex", 
             alignItems: "center", 
             gap: "6px",
@@ -2189,8 +2209,9 @@ export default function Dashboard() {
           <RefreshCw size={12} className={isRefreshing ? "spin" : ""} />
           <span>실시간 동기화</span>
         </button>
-        <button 
-          onClick={() => setShowWeeklyReportModal(true)} 
+        <button
+          data-tour="report"
+          onClick={() => setShowWeeklyReportModal(true)}
           className="btn btn-secondary btn-sm no-print"
           style={{ marginRight: "16px" }}
         >
@@ -2203,7 +2224,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="dashboard-tab-switch no-print">
+      <div className="dashboard-tab-switch no-print" data-tour="tabswitch">
         <button
           type="button"
           className={dashboardTab === "weekly" ? "active" : ""}
@@ -2223,7 +2244,7 @@ export default function Dashboard() {
       {dashboardTab === "monthly" ? renderMonthlyDashboard() : (
       <>
       {/* General Summary Cards */}
-      <div className="dashboard-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+      <div className="dashboard-grid" data-tour="cards" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         <div 
           onClick={() => handleCardClick("교구 총원", "total")}
           className="stats-card glass-panel clickable-card" 
@@ -2258,7 +2279,7 @@ export default function Dashboard() {
       </div>
 
       {/* 예배 현황 Section */}
-      <div className="dashboard-section-group">
+      <div className="dashboard-section-group" data-tour="worship">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "10px" }}>
           <h3 className="section-group-title" style={{ margin: 0 }}>
             <span className="title-decorator"></span> 예배 현황 ({getCriteriaLabel(selectedCriteria)})
