@@ -107,7 +107,7 @@ export function DataProvider({ children }) {
           parsedMockUsers = [];
         }
       }
-      if (parsedMockUsers.length === 0 || !parsedMockUsers.some(u => u.username === "kkh9172")) {
+      if (parsedMockUsers.length === 0 || !parsedMockUsers.some(u => u.username === "admin3")) {
         localStorage.setItem("mock_users", JSON.stringify(mockInitData.demoUsers));
       }
       setUsers(JSON.parse(localStorage.getItem("mock_users")));

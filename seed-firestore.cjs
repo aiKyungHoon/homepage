@@ -9,7 +9,7 @@ const demoUsers = [
     userId: "admin_user",
     username: "admin",
     password: "admin123",
-    name: "김관리 (총괄 관리자)",
+    name: "관리자",
     role: "admin",
     teamId: "",
     zoneId: ""
@@ -18,7 +18,7 @@ const demoUsers = [
     userId: "haebom_leader",
     username: "team_haebom",
     password: "haebom123",
-    name: "이태양 (해봄 팀장)",
+    name: "해봄 팀장",
     role: "team",
     teamId: "team_haebom",
     zoneId: ""
@@ -27,7 +27,7 @@ const demoUsers = [
     userId: "zone8_leader",
     username: "leader8",
     password: "leader123",
-    name: "박영광 (해봄 8구역장)",
+    name: "해봄 8구역장",
     role: "leader",
     teamId: "team_haebom",
     zoneId: "zone_haebom_8"
@@ -36,7 +36,7 @@ const demoUsers = [
     userId: "zone9_leader",
     username: "leader9",
     password: "leader123",
-    name: "최은혜 (해봄 9구역장)",
+    name: "해봄 9구역장",
     role: "leader",
     teamId: "team_haebom",
     zoneId: "zone_haebom_9"
@@ -61,45 +61,45 @@ const initialZones = [
 
 const initialMembers = [
   // 해봄 8구역원 (11명)
-  { memberId: "m1", name: "강민우", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m2", name: "김지아", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m3", name: "이준호", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m4", name: "박소윤", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "new" },
-  { memberId: "m5", name: "정우진", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m6", name: "최다현", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m7", name: "한지민", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m8", name: "윤성민", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m9", name: "임수빈", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m10", name: "조현우", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "excluded" },
-  { memberId: "m11", name: "황보라", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m1", name: "회원1", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m2", name: "회원2", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m3", name: "회원3", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m4", name: "회원4", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "new" },
+  { memberId: "m5", name: "회원5", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m6", name: "회원6", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m7", name: "회원7", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m8", name: "회원8", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m9", name: "회원9", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m10", name: "회원10", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "excluded" },
+  { memberId: "m11", name: "회원11", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
 
   // 해봄 9구역원 (9명)
-  { memberId: "m12", name: "배재희", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m13", name: "송지석", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m14", name: "신유진", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m15", name: "안성원", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m16", name: "오혜선", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m17", name: "유민재", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "new" },
-  { memberId: "m18", name: "홍하은", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m19", name: "서도윤", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m20", name: "권나래", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m12", name: "회원12", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m13", name: "회원13", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m14", name: "회원14", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m15", name: "회원15", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m16", name: "회원16", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m17", name: "회원17", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "new" },
+  { memberId: "m18", name: "회원18", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m19", name: "회원19", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m20", name: "회원20", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
 
   // 해봄 10구역원 (5명)
-  { memberId: "m21", name: "백승우", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m22", name: "서아름", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m23", name: "손민서", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m24", name: "양지훈", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m25", name: "엄지안", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m21", name: "회원21", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m22", name: "회원22", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m23", name: "회원23", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m24", name: "회원24", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m25", name: "회원25", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
 
   // 사랑 1구역원 (8명)
-  { memberId: "m26", name: "김철수", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m27", name: "이영희", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m28", name: "박성호", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m29", name: "최미영", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m30", name: "정다은", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m31", name: "오건우", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m32", name: "유서현", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "new" },
-  { memberId: "m33", name: "신동엽", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" }
+  { memberId: "m26", name: "회원26", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m27", name: "회원27", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m28", name: "회원28", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m29", name: "회원29", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m30", name: "회원30", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m31", name: "회원31", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m32", name: "회원32", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "new" },
+  { memberId: "m33", name: "회원33", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" }
 ];
 
 const initialMonths = [
@@ -227,19 +227,19 @@ const initialAuditLogs = [
   {
     logId: "l1",
     operatorId: "admin_user",
-    operatorName: "김관리 (총괄 관리자)",
+    operatorName: "관리자",
     timestamp: "2026-06-18T10:30:00Z",
     memberId: "m1",
-    memberName: "강민우",
+    memberName: "회원1",
     details: "6월 1주차 주일예배 상태 변경: 미보고 -> 대면"
   },
   {
     logId: "l2",
     operatorId: "haebom_leader",
-    operatorName: "이태양 (해봄 팀장)",
+    operatorName: "해봄 팀장",
     timestamp: "2026-06-18T14:22:00Z",
     memberId: "m12",
-    memberName: "배재희",
+    memberName: "회원12",
     details: "6월 2주차 십일조 달성 상태 추가"
   }
 ];

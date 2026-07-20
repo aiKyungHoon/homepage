@@ -5,7 +5,7 @@ export const demoUsers = [
     userId: "admin_user",
     username: "admin",
     password: "admin123",
-    name: "김관리 (임원)",
+    name: "관리자",
     role: "admin",
     teamId: "",
     zoneId: ""
@@ -29,10 +29,10 @@ export const demoUsers = [
     zoneId: ""
   },
   {
-    userId: "kkh9172_user",
-    username: "kkh9172",
+    userId: "admin_user_3",
+    username: "admin3",
     password: "admin1234!",
-    name: "김경훈 (임원)",
+    name: "임원3",
     role: "admin",
     teamId: "",
     zoneId: ""
@@ -41,7 +41,7 @@ export const demoUsers = [
     userId: "haebom_leader",
     username: "team_haebom",
     password: "haebom123",
-    name: "이태양 (해봄 팀장)",
+    name: "해봄 팀장",
     role: "team",
     teamId: "team_haebom",
     zoneId: ""
@@ -50,7 +50,7 @@ export const demoUsers = [
     userId: "zone8_leader",
     username: "leader8",
     password: "leader123",
-    name: "박영광 (해봄 8구역장)",
+    name: "해봄 8구역장",
     role: "leader",
     teamId: "team_haebom",
     zoneId: "zone_haebom_8"
@@ -59,7 +59,7 @@ export const demoUsers = [
     userId: "zone9_leader",
     username: "leader9",
     password: "leader123",
-    name: "최은혜 (해봄 9구역장)",
+    name: "해봄 9구역장",
     role: "leader",
     teamId: "team_haebom",
     zoneId: "zone_haebom_9"
@@ -84,45 +84,45 @@ export const initialZones = [
 
 export const initialMembers = [
   // 해봄 8구역원 (11명)
-  { memberId: "m1", name: "강민우", phone: "010-1234-5678", birthDate: "1994-05-12", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m2", name: "김지아", phone: "010-2345-6789", birthDate: "1996-08-22", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m3", name: "이준호", phone: "010-3456-7890", birthDate: "1992-03-15", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m4", name: "박소윤", phone: "010-4567-8901", birthDate: "1997-11-30", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "new" },
-  { memberId: "m5", name: "정우진", phone: "010-5678-9012", birthDate: "1995-02-18", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m6", name: "최다현", phone: "010-6789-0123", birthDate: "1993-07-25", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m7", name: "한지민", phone: "010-7890-1234", birthDate: "1998-09-05", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m8", name: "윤성민", phone: "010-8901-2345", birthDate: "1991-12-08", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m9", name: "임수빈", phone: "010-9012-3456", birthDate: "1995-04-14", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
-  { memberId: "m10", name: "조현우", phone: "010-1111-2222", birthDate: "1993-10-10", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "excluded" },
-  { memberId: "m11", name: "황보라", phone: "010-2222-3333", birthDate: "1996-01-27", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m1", name: "회원1", phone: "010-0000-0001", birthDate: "1994-05-12", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m2", name: "회원2", phone: "010-0000-0002", birthDate: "1996-08-22", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m3", name: "회원3", phone: "010-0000-0003", birthDate: "1992-03-15", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m4", name: "회원4", phone: "010-0000-0004", birthDate: "1997-11-30", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "new" },
+  { memberId: "m5", name: "회원5", phone: "010-0000-0005", birthDate: "1995-02-18", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m6", name: "회원6", phone: "010-0000-0006", birthDate: "1993-07-25", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m7", name: "회원7", phone: "010-0000-0007", birthDate: "1998-09-05", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m8", name: "회원8", phone: "010-0000-0008", birthDate: "1991-12-08", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m9", name: "회원9", phone: "010-0000-0009", birthDate: "1995-04-14", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
+  { memberId: "m10", name: "회원10", phone: "010-0000-0010", birthDate: "1993-10-10", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "excluded" },
+  { memberId: "m11", name: "회원11", phone: "010-0000-0011", birthDate: "1996-01-27", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_8", status: "normal" },
 
   // 해봄 9구역원 (9명)
-  { memberId: "m12", name: "배재희", phone: "010-3333-4444", birthDate: "1994-02-14", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m13", name: "송지석", phone: "010-4444-5555", birthDate: "1992-06-18", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m14", name: "신유진", phone: "010-5555-6666", birthDate: "1997-09-09", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m15", name: "안성원", phone: "010-6666-7777", birthDate: "1991-03-24", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m16", name: "오혜선", phone: "010-7777-8888", birthDate: "1995-10-31", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m17", name: "유민재", phone: "010-8888-9999", birthDate: "1993-05-05", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "new" },
-  { memberId: "m18", name: "홍하은", phone: "010-9999-0000", birthDate: "1998-01-12", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m19", name: "서도윤", phone: "010-1234-1111", birthDate: "1994-07-29", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
-  { memberId: "m20", name: "권나래", phone: "010-2345-2222", birthDate: "1996-12-04", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m12", name: "회원12", phone: "010-0000-0012", birthDate: "1994-02-14", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m13", name: "회원13", phone: "010-0000-0013", birthDate: "1992-06-18", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m14", name: "회원14", phone: "010-0000-0014", birthDate: "1997-09-09", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m15", name: "회원15", phone: "010-0000-0015", birthDate: "1991-03-24", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m16", name: "회원16", phone: "010-0000-0016", birthDate: "1995-10-31", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m17", name: "회원17", phone: "010-0000-0017", birthDate: "1993-05-05", rank: "새가족", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "new" },
+  { memberId: "m18", name: "회원18", phone: "010-0000-0018", birthDate: "1998-01-12", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m19", name: "회원19", phone: "010-0000-0019", birthDate: "1994-07-29", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
+  { memberId: "m20", name: "회원20", phone: "010-0000-0020", birthDate: "1996-12-04", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_9", status: "normal" },
 
   // 해봄 10구역원 (5명)
-  { memberId: "m21", name: "백승우", phone: "010-3456-3333", birthDate: "1992-09-17", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m22", name: "서아름", phone: "010-4567-4444", birthDate: "1997-04-20", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m23", name: "손민서", phone: "010-5678-5555", birthDate: "1995-11-11", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m24", name: "양지훈", phone: "010-6789-6666", birthDate: "1993-03-03", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
-  { memberId: "m25", name: "엄지안", phone: "010-7890-7777", birthDate: "1996-06-06", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m21", name: "회원21", phone: "010-0000-0021", birthDate: "1992-09-17", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m22", name: "회원22", phone: "010-0000-0022", birthDate: "1997-04-20", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m23", name: "회원23", phone: "010-0000-0023", birthDate: "1995-11-11", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m24", name: "회원24", phone: "010-0000-0024", birthDate: "1993-03-03", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
+  { memberId: "m25", name: "회원25", phone: "010-0000-0025", birthDate: "1996-06-06", rank: "청년", teamId: "team_haebom", zoneId: "zone_haebom_10", status: "normal" },
 
   // 사랑 1구역원 (8명)
-  { memberId: "m26", name: "김철수", phone: "010-8888-1111", birthDate: "1985-05-15", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m27", name: "이영희", phone: "010-8888-2222", birthDate: "1988-06-22", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m28", name: "박성호", phone: "010-8888-3333", birthDate: "1983-02-18", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m29", name: "최미영", phone: "010-8888-4444", birthDate: "1989-11-09", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m30", name: "정다은", phone: "010-8888-5555", birthDate: "1990-10-12", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m31", name: "오건우", phone: "010-8888-6666", birthDate: "1987-03-31", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
-  { memberId: "m32", name: "유서현", phone: "010-8888-7777", birthDate: "1991-01-20", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "new" },
-  { memberId: "m33", name: "신동엽", phone: "010-8888-8888", birthDate: "1986-07-07", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" }
+  { memberId: "m26", name: "회원26", phone: "010-0000-0026", birthDate: "1985-05-15", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m27", name: "회원27", phone: "010-0000-0027", birthDate: "1988-06-22", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m28", name: "회원28", phone: "010-0000-0028", birthDate: "1983-02-18", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m29", name: "회원29", phone: "010-0000-0029", birthDate: "1989-11-09", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m30", name: "회원30", phone: "010-0000-0030", birthDate: "1990-10-12", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m31", name: "회원31", phone: "010-0000-0031", birthDate: "1987-03-31", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" },
+  { memberId: "m32", name: "회원32", phone: "010-0000-0032", birthDate: "1991-01-20", rank: "청년", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "new" },
+  { memberId: "m33", name: "회원33", phone: "010-0000-0033", birthDate: "1986-07-07", rank: "집사", teamId: "team_sarang", zoneId: "zone_sarang_1", status: "normal" }
 ];
 
 export const initialMonths = [
@@ -256,19 +256,19 @@ export const initialAuditLogs = [
   {
     logId: "l1",
     operatorId: "admin_user",
-    operatorName: "김관리 (임원)",
+    operatorName: "관리자",
     timestamp: "2026-06-18T10:30:00Z",
     memberId: "m1",
-    memberName: "강민우",
+    memberName: "회원1",
     details: "6월 1주차 주일예배 상태 변경: 미보고 -> 대면"
   },
   {
     logId: "l2",
     operatorId: "haebom_leader",
-    operatorName: "이태양 (해봄 팀장)",
+    operatorName: "해봄 팀장",
     timestamp: "2026-06-18T14:22:00Z",
     memberId: "m12",
-    memberName: "배재희",
+    memberName: "회원12",
     details: "6월 2주차 십일조 달성 상태 추가"
   }
 ];

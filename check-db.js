@@ -30,7 +30,7 @@ async function checkDatabase() {
       console.log(`[${log.timestamp}] User: ${log.operatorName} | Target: ${log.memberName} | Action: ${log.details}`);
     });
 
-    // 2. Query for 강민우 (m1) attendance records
+    // 2. Query for 회원1 (m1) attendance records
     console.log("\n--- MONTHS COLLECTION ---");
     const monthsSnap = await getDocs(collection(db, "months"));
     console.log(`Total months found: ${monthsSnap.size}`);
@@ -38,7 +38,7 @@ async function checkDatabase() {
       console.log(`Month Document ID: ${d.id} -> ${JSON.stringify(d.data())}`);
     });
 
-    console.log("\n--- ATTENDANCE RECORDS FOR 강민우 (m1) ---");
+    console.log("\n--- ATTENDANCE RECORDS FOR 회원1 (m1) ---");
     const attSnap = await getDocs(collection(db, "attendanceRecords"));
     attSnap.forEach(d => {
       const rec = d.data();
