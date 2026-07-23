@@ -2,73 +2,100 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Play, Pause, ChevronRight, ChevronLeft, X } from "lucide-react";
 
 /* ------------------------------------------------------------------ *
- * 대시보드 자동 시연 투어
- * 실제 대시보드의 요소([data-tour="..."])를 스포트라이트로 짚으며
- * 자막과 함께 자동으로 다음 단계로 넘어간다. (반복 재생)
+ * 출결관리 자동 시연 투어
  * ------------------------------------------------------------------ */
 const STEPS = [
-  {
-    selector: '[data-tour="banner"]',
-    title: "대시보드 한눈에 보기",
-    text: "우리 교구의 예배·출석 현황이 모이는 화면이에요. 오른쪽에 평균 출석률이 표시됩니다."
-  },
-  {
-    selector: '[data-tour="tabswitch"]',
-    title: "주차별 · 월별 전환",
-    text: "한 주 기준(주차별)과 한 달 누적(월별) 대시보드를 여기서 전환해요. 시연을 위해 월별 대시보드를 클릭해 봅니다.",
+  { 
+    selector: '[data-tour="attendance-filters"]', 
+    title: "성도 검색 및 필터", 
+    text: "이름, 팀, 구역, 등록구분별로 성도를 검색할 수 있어요. 시연을 위해 검색창에 이름의 첫 글자를 쳐 봅니다.",
     action: (el) => {
-      const btns = el.querySelectorAll("button");
-      if (btns.length > 1) {
-        btns[1].click();
+      const input = el.querySelector("input");
+      if (input) {
+        input.value = "이";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
       }
     },
     cleanup: () => {
-      const el = document.querySelector('[data-tour="tabswitch"]');
+      const el = document.querySelector('[data-tour="attendance-filters"]');
       if (el) {
-        const btns = el.querySelectorAll("button");
-        if (btns.length > 0) btns[0].click();
+        const input = el.querySelector("input");
+        if (input) {
+          input.value = "";
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
       }
     }
   },
-  {
-    selector: '[data-tour="cards"]',
-    title: "핵심 숫자 카드",
-    text: "교구 총원·출결 제외 등 핵심 숫자예요. 카드를 클릭하면 상세 명단 팝업이 뜹니다. 시연을 위해 교구 총원 카드를 클릭합니다.",
+  { 
+    selector: '[data-tour="attendance-unreported"]', 
+    title: "미보고자만 따로 보기", 
+    text: "이 항목을 켜면 이번 주 예배 결과 보고가 누락되었거나 아직 입력하지 않은 미보고 성도들만 추려볼 수 있어요.",
     action: (el) => {
-      const cards = el.querySelectorAll(".dashboard-card");
-      if (cards.length > 0) {
-        cards[0].click();
+      const checkbox = el.querySelector("input[type='checkbox']");
+      if (checkbox) {
+        checkbox.click();
       }
     },
     cleanup: () => {
-      const closeBtn = document.querySelector(".modal-close-btn") || document.querySelector(".note-modal-header button");
+      const el = document.querySelector('[data-tour="attendance-unreported"]');
+      if (el) {
+        const checkbox = el.querySelector("input[type='checkbox']");
+        if (checkbox && checkbox.checked) {
+          checkbox.click();
+        }
+      }
+    }
+  },
+  { 
+    selector: '[data-tour="attendance-notes-btn"]', 
+    title: "개인별 특이사항 기록", 
+    text: "이름 옆에 있는 말풍선 단추를 누르면 예배 중 특이점이나 기도제목을 삼일/주일예배 별로 남길 수 있어요.",
+    action: (el) => {
+      el.click();
+    },
+    cleanup: () => {
+      const closeBtn = document.querySelector(".note-modal-header button") || document.querySelector(".icon-button");
       if (closeBtn) closeBtn.click();
     }
   },
-  {
-    selector: '[data-tour="worship"]',
-    title: "예배 현황",
-    text: "기준(주일실제·삼일 등)을 골라 대면·비대면·결석·미보고 분류를 실시간 차트로 확인해요. 시연을 위해 기준을 삼일실제로 변경해 봅니다.",
+  { 
+    selector: '[data-tour="attendance-cell"]', 
+    title: "예배 출결 입력", 
+    text: "예배 셀을 마우스로 클릭하면 대면, 비대면, 결석, 미보고 등 출결 상태를 신속히 전환하여 저장할 수 있습니다.",
     action: (el) => {
-      const select = el.querySelector("select");
-      if (select) {
-        select.value = "samil_actual";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      el.click();
     },
     cleanup: () => {
-      const select = document.querySelector('[data-tour="worship"] select');
-      if (select) {
-        select.value = "sunday_actual";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      const event = new MouseEvent("mousedown", { bubbles: true });
+      document.body.dispatchEvent(event);
+    }
+  },
+  { 
+    selector: '[data-tour="attendance-report-btn"]', 
+    title: "결과 텍스트 자동 복사", 
+    text: "출결 취합을 마치면 [결과텍스트 복사] 버튼으로 총 등반 인원, 예배별 대면/비대면 수치 및 미보고자 명단이 포함된 양식을 1초 만에 생성해 클립보드에 복사할 수 있습니다.",
+    action: (el) => {
+      el.click();
+    },
+    cleanup: () => {
+      const closeBtn = document.querySelector(".note-modal-header button") || document.querySelector(".icon-button");
+      if (closeBtn) closeBtn.click();
+    }
+  },
+  { 
+    selector: '[data-tour="attendance-sync"]', 
+    title: "실시간 데이터 동기화", 
+    text: "여러 구역장과 팀장들이 동시에 출결을 기입하므로, 이 버튼을 눌러 언제든 최신 입력 현황을 당겨올 수 있어요.",
+    action: (el) => {
+      // Highlight only, do not click to avoid repeating heavy sync requests
     }
   },
 ];
 
 const STEP_MS = 3800;
 
-export default function DashboardTour({ onClose }) {
+export default function AttendanceTour({ onClose }) {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [rect, setRect] = useState(null);
@@ -77,14 +104,13 @@ export default function DashboardTour({ onClose }) {
   const next = useCallback(() => {
     if (idx === STEPS.length - 1) {
       onClose();
-      window.dispatchEvent(new CustomEvent("change-page", { detail: { page: "attendance", autoStartTour: true } }));
+      window.dispatchEvent(new CustomEvent("change-page", { detail: { page: "visit_manage", autoStartTour: true } }));
     } else {
       setIdx(idx + 1);
     }
   }, [idx, onClose]);
   const prev = useCallback(() => setIdx(i => (i - 1 + STEPS.length) % STEPS.length), []);
 
-  // 현재 단계 대상 요소를 화면 중앙으로 스크롤 및 액션 실행
   useEffect(() => {
     const currentStep = STEPS[idx];
     const el = document.querySelector(currentStep.selector);
@@ -106,7 +132,6 @@ export default function DashboardTour({ onClose }) {
     };
   }, [idx]);
 
-  // 매 프레임 대상 위치를 추적해 스포트라이트를 붙여둔다(스크롤/리사이즈에도 정렬 유지)
   useEffect(() => {
     let raf;
     const track = () => {
@@ -125,14 +150,12 @@ export default function DashboardTour({ onClose }) {
     return () => cancelAnimationFrame(raf);
   }, [idx]);
 
-  // 자동 진행
   useEffect(() => {
     if (!playing) return;
     const t = setTimeout(next, STEP_MS);
     return () => clearTimeout(t);
   }, [idx, playing, next]);
 
-  // ESC 로 닫기
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
@@ -151,7 +174,6 @@ export default function DashboardTour({ onClose }) {
     height: rect.height + pad * 2,
   };
 
-  // 툴팁 위치: 대상이 화면 아래쪽이면 위로, 아니면 아래로
   const tipBelow = rect ? rect.top + rect.height < window.innerHeight - 200 : true;
   const tipStyle = rect && {
     top: tipBelow ? rect.top + rect.height + 16 : undefined,
@@ -161,7 +183,6 @@ export default function DashboardTour({ onClose }) {
 
   return (
     <div className="tour-root">
-      {/* 클릭 캐처: 배경 클릭 시 다음 단계 (실제 UI 오작동 방지) */}
       <div className="tour-catcher" onClick={next} />
 
       {spot && <div className="tour-spot" style={spot} />}

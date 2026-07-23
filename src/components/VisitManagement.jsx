@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import VisitTour from "./VisitTour";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import { 
@@ -103,6 +104,17 @@ export default function VisitManagement() {
   const [filterTeamId, setFilterTeamId] = useState("");
   const [periodFilter, setPeriodFilter] = useState("week"); // "week" | "month" | "all"
   const [selectedRecordId, setSelectedRecordId] = useState("");
+  const [tourActive, setTourActive] = useState(false);
+
+  useEffect(() => {
+    const handleStartTour = (e) => {
+      if (e.detail?.page === "visit_manage") {
+        setTourActive(true);
+      }
+    };
+    window.addEventListener("start-tour", handleStartTour);
+    return () => window.removeEventListener("start-tour", handleStartTour);
+  }, []);
 
   // Default filters based on role
   useEffect(() => {
@@ -671,6 +683,7 @@ export default function VisitManagement() {
 
   return (
     <div className="visit-management-container animate-fade">
+      {tourActive && <VisitTour onClose={() => setTourActive(false)} />}
       {/* 1. Header & Summary Stats */}
       <div className="visit-header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
@@ -757,6 +770,7 @@ export default function VisitManagement() {
                 cursor: "pointer",
                 fontWeight: "700"
               }}
+              data-tour="visit-import-btn"
             >
               텍스트 붙여넣기 등록
             </button>
@@ -769,7 +783,7 @@ export default function VisitManagement() {
           <form onSubmit={handleSubmit} className="visit-form">
             <div className="form-group">
               <label>심방 대상 성도</label>
-              <div className="member-search-select">
+              <div className="member-search-select" data-tour="visit-form-member">
                 <div className="member-search-box">
                   <Search size={15} />
                   <input
@@ -823,7 +837,7 @@ export default function VisitManagement() {
 
             <div className="form-group">
               <label>심방자 (누가)</label>
-              <div className="btn-selector-group">
+              <div className="btn-selector-group" data-tour="visit-form-visitor">
                 {["구역장", "팀장", "임원"].map(v => (
                   <button
                     key={v}
@@ -856,6 +870,7 @@ export default function VisitManagement() {
             <div className="form-group">
               <label>심방 상세 내용 (대화 요약 등)</label>
               <textarea
+                data-tour="visit-form-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="어떤 대화를 나누었고 성도님의 형편은 어떠한지 구체적으로 기록해 주세요..."
@@ -954,7 +969,7 @@ export default function VisitManagement() {
               ))}
             </div>
 
-            <div className="filters-selectors">
+            <div className="filters-selectors" data-tour="visit-filters">
               {canManageAllVisits && (
                 <select 
                   value={filterTeamId} 
@@ -1006,7 +1021,7 @@ export default function VisitManagement() {
 
           {/* Timeline Feed */}
           <div className="visit-history-layout">
-            <div className="timeline-container">
+            <div className="timeline-container" data-tour="visit-list">
               {visibleRecords.length === 0 ? (
                 <div className="empty-state">
                   <MessageSquare size={36} className="empty-icon" />
@@ -1072,7 +1087,7 @@ export default function VisitManagement() {
               )}
             </div>
 
-            <aside className="visit-detail-panel glass-panel">
+            <aside className="visit-detail-panel glass-panel" data-tour="visit-detail">
               {selectedRecord ? (
                 <>
                   <div className="visit-detail-header">

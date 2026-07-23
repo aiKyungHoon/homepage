@@ -2,73 +2,123 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Play, Pause, ChevronRight, ChevronLeft, X } from "lucide-react";
 
 /* ------------------------------------------------------------------ *
- * 대시보드 자동 시연 투어
- * 실제 대시보드의 요소([data-tour="..."])를 스포트라이트로 짚으며
- * 자막과 함께 자동으로 다음 단계로 넘어간다. (반복 재생)
+ * 심방관리 자동 시연 투어
  * ------------------------------------------------------------------ */
 const STEPS = [
-  {
-    selector: '[data-tour="banner"]',
-    title: "대시보드 한눈에 보기",
-    text: "우리 교구의 예배·출석 현황이 모이는 화면이에요. 오른쪽에 평균 출석률이 표시됩니다."
-  },
-  {
-    selector: '[data-tour="tabswitch"]',
-    title: "주차별 · 월별 전환",
-    text: "한 주 기준(주차별)과 한 달 누적(월별) 대시보드를 여기서 전환해요. 시연을 위해 월별 대시보드를 클릭해 봅니다.",
+  { 
+    selector: '[data-tour="visit-filters"]', 
+    title: "심방 검색 및 범위 필터", 
+    text: "이번 주, 이번 달, 전체 범위로 기간을 설정하고 특정 팀/구역/성도별 심방 내역만 필터링하여 찾아볼 수 있습니다. 시연을 위해 기간 필터를 '전체'로 임시 변경합니다.",
     action: (el) => {
-      const btns = el.querySelectorAll("button");
-      if (btns.length > 1) {
-        btns[1].click();
+      const periodSwitch = document.querySelector(".visit-period-switch");
+      if (periodSwitch) {
+        const btns = periodSwitch.querySelectorAll("button");
+        if (btns.length > 2) btns[2].click();
       }
     },
     cleanup: () => {
-      const el = document.querySelector('[data-tour="tabswitch"]');
+      const periodSwitch = document.querySelector(".visit-period-switch");
+      if (periodSwitch) {
+        const btns = periodSwitch.querySelectorAll("button");
+        if (btns.length > 0) btns[0].click();
+      }
+    }
+  },
+  { 
+    selector: '[data-tour="visit-list"]', 
+    title: "심방 타임라인 피드", 
+    text: "등록된 모든 심방 내역과 구역장 성찰 일기가 최신 날짜 순으로 카드 형태로 정렬됩니다. 시연을 위해 첫 번째 심방 카드를 클릭해 상세 내역을 불러옵니다.",
+    action: (el) => {
+      const cards = el.querySelectorAll(".timeline-summary-card");
+      if (cards.length > 0) {
+        cards[0].click();
+      }
+    }
+  },
+  { 
+    selector: '[data-tour="visit-detail"]', 
+    title: "상세 내용 조회 및 피드백", 
+    text: "선택한 심방 카드의 면담 기록을 상세히 확인하고, 복사 버튼으로 단톡방 공유 양식을 생성합니다. 또한 팀장과 임원은 이곳에 격려와 기도의 피드백을 실시간으로 달아줄 수 있어요.",
+    action: (el) => {
+      const editBtn = el.querySelector(".detail-header-actions button[title='수정']");
+      if (editBtn) editBtn.click();
+    },
+    cleanup: () => {
+      const cancelBtn = document.querySelector(".detail-edit-form button[type='button']") || document.querySelector(".detail-action-icon-btn.delete");
+      if (cancelBtn) cancelBtn.click();
+    }
+  },
+  { 
+    selector: '[data-tour="visit-form-member"]', 
+    title: "심방 대상 성도 선택", 
+    text: "새로운 심방 내용을 기입할 때 대상 성도를 이름 또는 팀/구역 명으로 간편히 검색하여 매핑할 수 있어요.",
+    action: (el) => {
+      const input = el.querySelector("input");
+      if (input) {
+        input.value = "이";
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    },
+    cleanup: () => {
+      const el = document.querySelector('[data-tour="visit-form-member"]');
+      if (el) {
+        const input = el.querySelector("input");
+        if (input) {
+          input.value = "";
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    }
+  },
+  { 
+    selector: '[data-tour="visit-form-visitor"]', 
+    title: "심방 자격 구분", 
+    text: "심방을 직접 다녀온 사람이 구역장, 팀장, 임원인지 버튼을 눌러 지정합니다. 시연을 위해 '팀장'으로 변경해 봅니다.",
+    action: (el) => {
+      const btns = el.querySelectorAll("button");
+      if (btns.length > 1) btns[1].click();
+    },
+    cleanup: () => {
+      const el = document.querySelector('[data-tour="visit-form-visitor"]');
       if (el) {
         const btns = el.querySelectorAll("button");
         if (btns.length > 0) btns[0].click();
       }
     }
   },
-  {
-    selector: '[data-tour="cards"]',
-    title: "핵심 숫자 카드",
-    text: "교구 총원·출결 제외 등 핵심 숫자예요. 카드를 클릭하면 상세 명단 팝업이 뜹니다. 시연을 위해 교구 총원 카드를 클릭합니다.",
+  { 
+    selector: '[data-tour="visit-form-notes"]', 
+    title: "심방 요약 대화 내용", 
+    text: "기도 제목, 나누었던 고민, 건강 상태 등을 꼼꼼하게 텍스트로 적어 영구히 기도로 누적 보존합니다.",
     action: (el) => {
-      const cards = el.querySelectorAll(".dashboard-card");
-      if (cards.length > 0) {
-        cards[0].click();
-      }
+      el.value = "새로운 심방 내용을 자동으로 타이핑하는 데모입니다.";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
     },
     cleanup: () => {
-      const closeBtn = document.querySelector(".modal-close-btn") || document.querySelector(".note-modal-header button");
-      if (closeBtn) closeBtn.click();
+      const textarea = document.querySelector('[data-tour="visit-form-notes"]');
+      if (textarea) {
+        textarea.value = "";
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      }
     }
   },
-  {
-    selector: '[data-tour="worship"]',
-    title: "예배 현황",
-    text: "기준(주일실제·삼일 등)을 골라 대면·비대면·결석·미보고 분류를 실시간 차트로 확인해요. 시연을 위해 기준을 삼일실제로 변경해 봅니다.",
+  { 
+    selector: '[data-tour="visit-import-btn"]', 
+    title: "카톡 대화 복사글로 일괄 등록", 
+    text: "[텍스트 붙여넣기 등록] 팝업창을 통하면, 단톡방에 보냈던 여러 명의 심방 보고 텍스트를 한 번에 복사-붙여넣기하여 여러 건을 일괄 추출·등록할 수 있는 스마트 추출 엔진을 시연합니다.",
     action: (el) => {
-      const select = el.querySelector("select");
-      if (select) {
-        select.value = "samil_actual";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      el.click();
     },
     cleanup: () => {
-      const select = document.querySelector('[data-tour="worship"] select');
-      if (select) {
-        select.value = "sunday_actual";
-        select.dispatchEvent(new Event("change", { bubbles: true }));
-      }
+      const closeBtn = document.querySelector(".note-modal-header button") || document.querySelector(".icon-button");
+      if (closeBtn) closeBtn.click();
     }
   },
 ];
 
 const STEP_MS = 3800;
 
-export default function DashboardTour({ onClose }) {
+export default function VisitTour({ onClose }) {
   const [idx, setIdx] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [rect, setRect] = useState(null);
@@ -77,14 +127,13 @@ export default function DashboardTour({ onClose }) {
   const next = useCallback(() => {
     if (idx === STEPS.length - 1) {
       onClose();
-      window.dispatchEvent(new CustomEvent("change-page", { detail: { page: "attendance", autoStartTour: true } }));
+      window.dispatchEvent(new CustomEvent("change-page", { detail: { page: "dashboard", autoStartTour: false } }));
     } else {
       setIdx(idx + 1);
     }
   }, [idx, onClose]);
   const prev = useCallback(() => setIdx(i => (i - 1 + STEPS.length) % STEPS.length), []);
 
-  // 현재 단계 대상 요소를 화면 중앙으로 스크롤 및 액션 실행
   useEffect(() => {
     const currentStep = STEPS[idx];
     const el = document.querySelector(currentStep.selector);
@@ -106,7 +155,6 @@ export default function DashboardTour({ onClose }) {
     };
   }, [idx]);
 
-  // 매 프레임 대상 위치를 추적해 스포트라이트를 붙여둔다(스크롤/리사이즈에도 정렬 유지)
   useEffect(() => {
     let raf;
     const track = () => {
@@ -125,14 +173,12 @@ export default function DashboardTour({ onClose }) {
     return () => cancelAnimationFrame(raf);
   }, [idx]);
 
-  // 자동 진행
   useEffect(() => {
     if (!playing) return;
     const t = setTimeout(next, STEP_MS);
     return () => clearTimeout(t);
   }, [idx, playing, next]);
 
-  // ESC 로 닫기
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") onClose();
@@ -151,7 +197,6 @@ export default function DashboardTour({ onClose }) {
     height: rect.height + pad * 2,
   };
 
-  // 툴팁 위치: 대상이 화면 아래쪽이면 위로, 아니면 아래로
   const tipBelow = rect ? rect.top + rect.height < window.innerHeight - 200 : true;
   const tipStyle = rect && {
     top: tipBelow ? rect.top + rect.height + 16 : undefined,
@@ -161,7 +206,6 @@ export default function DashboardTour({ onClose }) {
 
   return (
     <div className="tour-root">
-      {/* 클릭 캐처: 배경 클릭 시 다음 단계 (실제 UI 오작동 방지) */}
       <div className="tour-catcher" onClick={next} />
 
       {spot && <div className="tour-spot" style={spot} />}

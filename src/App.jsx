@@ -25,6 +25,21 @@ function AppContent() {
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    const handleChangePage = (e) => {
+      if (e.detail?.page) {
+        setActivePage(e.detail.page);
+        if (e.detail.autoStartTour) {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent("start-tour", { detail: { page: e.detail.page } }));
+          }, 500);
+        }
+      }
+    };
+    window.addEventListener("change-page", handleChangePage);
+    return () => window.removeEventListener("change-page", handleChangePage);
+  }, []);
+
   const isAppLoading = authLoading || (currentUser && dataLoading);
 
   // 로딩이 너무 오래 걸리면(인앱 브라우저에서 Firestore 연결이 막히는 등)

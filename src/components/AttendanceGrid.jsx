@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import AttendanceTour from "./AttendanceTour";
 import { useData } from "../context/DataContext";
 import { useAuth } from "../context/AuthContext";
 import { Search, Filter, Lock, Edit3, Save, Trash2, X, MessageSquare, Download, RefreshCw, Copy } from "lucide-react";
@@ -144,6 +145,17 @@ export default function AttendanceGrid() {
   const [filterStatus, setFilterStatus] = useState("");
   const [filterRegistrationType, setFilterRegistrationType] = useState("");
   const [filterUnreportedOnly, setFilterUnreportedOnly] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
+
+  useEffect(() => {
+    const handleStartTour = (e) => {
+      if (e.detail?.page === "attendance") {
+        setTourActive(true);
+      }
+    };
+    window.addEventListener("start-tour", handleStartTour);
+    return () => window.removeEventListener("start-tour", handleStartTour);
+  }, []);
 
   // Cell popover/quick-select state
   const [activeCell, setActiveCell] = useState(null); // { memberId, category, x, y }
@@ -200,6 +212,7 @@ export default function AttendanceGrid() {
 
   const worshipTypes = [
     "정규성전",
+    "센터예배",
     "모임방(상수)",
     "모임방(홍대/좌)",
     "모임방(홍대/우)",
@@ -825,14 +838,12 @@ export default function AttendanceGrid() {
     if (effectiveDownloadCategory === "worship") {
       worshipHeaders = [
         "삼일사전(분류)",
-        "미확인/미보고 사유(사전)",
         "삼일실제(분류)",
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
         "특이사항",
         "주일사전(분류)",
-        "미확인/미보고 사유(사전)",
         "주일실제(분류)",
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
@@ -850,14 +861,12 @@ export default function AttendanceGrid() {
         const sundayActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "sunday_actual"));
         return [
           samilPreParsed.type === "미보고" ? "" : `${samilPreParsed.type} ${samilPreParsed.time}`.trim(),
-          samilPreParsed.reason,
           samilActualParsed.type === "미보고" ? "" : `${samilActualParsed.type} ${samilActualParsed.time}`.trim(),
           samilActualParsed.confirmMethod,
           samilActualParsed.reason,
           samilActualParsed.auth,
           samilNote?.text || "",
           sundayPreParsed.type === "미보고" ? "" : `${sundayPreParsed.type} ${sundayPreParsed.time}`.trim(),
-          sundayPreParsed.reason,
           sundayActualParsed.type === "미보고" ? "" : `${sundayActualParsed.type} ${sundayActualParsed.time}`.trim(),
           sundayActualParsed.confirmMethod,
           sundayActualParsed.reason,
@@ -873,7 +882,7 @@ export default function AttendanceGrid() {
         "시험",
         "구역예배",
         "심야라디오",
-        "시몬스쿨"
+        "전도단"
       ];
       rowsCalculator = (member) => {
         const note = getMemberNote(member.memberId);
@@ -882,7 +891,7 @@ export default function AttendanceGrid() {
           getWeeklyValue(member.memberId, "test"),
           getWeeklyValue(member.memberId, "zone"),
           getWeeklyValue(member.memberId, "radio"),
-          getWeeklyValue(member.memberId, "simon")
+          getWeeklyValue(member.memberId, "activity")
         ];
       };
     } else if (effectiveDownloadCategory === "accounting") {
@@ -929,14 +938,12 @@ export default function AttendanceGrid() {
       // Default: "all"
       worshipHeaders = [
         "삼일사전(분류)",
-        "미확인/미보고 사유(사전)",
         "삼일실제(분류)",
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
         "인증분류(위아원)",
         "특이사항",
         "주일사전(분류)",
-        "미확인/미보고 사유(사전)",
         "주일실제(분류)",
         "예배확인방법(실제)",
         "미확인/미보고 사유(실제)",
@@ -945,12 +952,11 @@ export default function AttendanceGrid() {
         "시험",
         "구역예배",
         "심야라디오",
-        "시몬스쿨",
+        "전도단",
         "심방",
         "전도",
         "십일조",
-        "청체비",
-        "전도단"
+        "청체비"
       ];
       rowsCalculator = (member) => {
         const samilNote = getMemberNote(member.memberId, "samil");
@@ -961,14 +967,12 @@ export default function AttendanceGrid() {
         const sundayActualParsed = parseActualWorship(getWeeklyValue(member.memberId, "sunday_actual"));
         return [
           samilPreParsed.type === "미보고" ? "" : `${samilPreParsed.type} ${samilPreParsed.time}`.trim(),
-          samilPreParsed.reason,
           samilActualParsed.type === "미보고" ? "" : `${samilActualParsed.type} ${samilActualParsed.time}`.trim(),
           samilActualParsed.confirmMethod,
           samilActualParsed.reason,
           samilActualParsed.auth,
           samilNote?.text || "",
           sundayPreParsed.type === "미보고" ? "" : `${sundayPreParsed.type} ${sundayPreParsed.time}`.trim(),
-          sundayPreParsed.reason,
           sundayActualParsed.type === "미보고" ? "" : `${sundayActualParsed.type} ${sundayActualParsed.time}`.trim(),
           sundayActualParsed.confirmMethod,
           sundayActualParsed.reason,
@@ -977,12 +981,11 @@ export default function AttendanceGrid() {
           getWeeklyValue(member.memberId, "test"),
           getWeeklyValue(member.memberId, "zone"),
           getWeeklyValue(member.memberId, "radio"),
-          getWeeklyValue(member.memberId, "simon"),
+          getWeeklyValue(member.memberId, "activity"),
           getWeeklyValue(member.memberId, "visit"),
           formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "evangelism")),
           formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "tithing")),
-          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee")),
-          getWeeklyValue(member.memberId, "activity")
+          formatCheckboxValue(getMonthlyAchievementValue(member.memberId, "fee"))
         ];
       };
     }
@@ -1028,6 +1031,7 @@ export default function AttendanceGrid() {
 
   const shouldShowColumn = (colName) => {
     if (hiddenAttendanceColumns.has(colName)) return false;
+    if (["samil_pre_reason", "sunday_pre_reason", "simon"].includes(colName)) return false;
     const effectiveDownloadCategory = isWorshipOnlyRole ? "worship" : downloadCategory;
 
     if (effectiveDownloadCategory === "all" || effectiveDownloadCategory === "worship") {
@@ -1066,13 +1070,13 @@ export default function AttendanceGrid() {
       return worshipCols.includes(colName);
     }
     if (effectiveDownloadCategory === "education") {
-      return ["zone", "test", "radio", "simon"].includes(colName);
+      return ["zone", "test", "radio", "activity"].includes(colName);
     }
     if (effectiveDownloadCategory === "accounting") {
       return ["tithing", "fee"].includes(colName);
     }
     if (effectiveDownloadCategory === "evangelism") {
-      return ["evangelism", "activity"].includes(colName);
+      return ["evangelism"].includes(colName);
     }
     if (effectiveDownloadCategory === "visitation") {
       return ["visit"].includes(colName);
@@ -1316,11 +1320,36 @@ export default function AttendanceGrid() {
       ? (isPre ? parsePreWorship(val).type : parseActualWorship(val).type)
       : val;
 
+    if (worshipCategories.includes(category)) {
+      if (typeof worshipTypeValue === "string") {
+        const type = worshipTypeValue;
+        if (type.includes("정규성전") || type.includes("모임방") || type.includes("협력교회") || type.includes("센터예배") || type.includes("정식예배")) {
+          return "cell-present"; // 초록색
+        }
+        if (type.includes("형제교회")) {
+          return "cell-online"; // 파란색
+        }
+        if (type.includes("대체")) {
+          return "cell-orange"; // 주황색
+        }
+        if (type.includes("줌")) {
+          return "cell-substitute"; // 하늘색
+        }
+        if (type === "결석" || type.includes("결석") || type.includes("일회성") || type.includes("장기관리") || type === "X") {
+          return "cell-absent"; // 빨간색
+        }
+        if (type.includes("미보고") || type === "미확인" || !type) {
+          return "cell-unreported"; // 회색
+        }
+        // 기타 예외 처리
+        if (["야외예배", "사랑예배", "영상예배", "온라인예배"].some(k => type.includes(k))) {
+          return "cell-substitute";
+        }
+      }
+      return "cell-unreported";
+    }
+
     const greenByCategory = {
-      samil_pre: ["정규성전", "정식예배"],
-      samil_actual: ["정규성전", "정식예배"],
-      sunday_pre: ["정규성전", "정식예배"],
-      sunday_actual: ["정규성전", "정식예배"],
       zone: ["대면"],
       test: ["정규시험", "개별시험"],
       radio: ["O"],
@@ -1330,12 +1359,6 @@ export default function AttendanceGrid() {
 
     if (greenByCategory[category]?.includes(worshipTypeValue)) return "cell-present";
     if (worshipTypeValue === "결석" || worshipTypeValue === "X") return "cell-absent";
-
-    if (worshipCategories.includes(category)) {
-      if (["줌/화면O", "줌/화면X", "대체줌", "비대면", "온라인예배"].includes(worshipTypeValue)) return "cell-online";
-      if (worshipTypeValue.includes("대체") || worshipTypeValue.startsWith("모임방(") || ["야외예배", "사랑예배", "일회성"].includes(worshipTypeValue)) return "cell-substitute";
-      return "cell-unreported";
-    }
 
     if (category === "zone") {
       if (val === "줌" || val === "개별전달") return "cell-online";
@@ -1794,6 +1817,7 @@ export default function AttendanceGrid() {
 
             <button
               type="button"
+              data-tour="attendance-report-btn"
               className="btn btn-secondary btn-sm"
               onClick={() => setIsReportModalOpen(true)}
               style={{
@@ -1847,7 +1871,7 @@ export default function AttendanceGrid() {
           </div>
         </div>
 
-        <div className="filters-row">
+        <div className="filters-row" data-tour="attendance-filters">
           <div className="search-box">
             <Search size={14} className="search-icon" />
             <input
@@ -1915,7 +1939,7 @@ export default function AttendanceGrid() {
             ))}
           </select>
 
-          <label style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)", cursor: "pointer", userSelect: "none", height: "30px", padding: "0 8px", backgroundColor: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--glass-border)", borderRadius: "var(--radius-sm)" }}>
+          <label data-tour="attendance-unreported" style={{ display: "inline-flex", alignItems: "center", gap: "6px", fontSize: "12px", color: "var(--text-secondary)", cursor: "pointer", userSelect: "none", height: "30px", padding: "0 8px", backgroundColor: "rgba(255, 255, 255, 0.03)", border: "1px solid var(--glass-border)", borderRadius: "var(--radius-sm)" }}>
             <input
               type="checkbox"
               checked={filterUnreportedOnly}
@@ -1929,6 +1953,7 @@ export default function AttendanceGrid() {
 
           <button
             type="button"
+            data-tour="attendance-sync"
             className="refresh-data-btn"
             onClick={handleRefresh}
             style={{
@@ -1989,12 +2014,11 @@ export default function AttendanceGrid() {
                 {shouldShowColumn("test") && <th className="sep-col">시험</th>}
                 {shouldShowColumn("zone") && <th>구역예배</th>}
                 {shouldShowColumn("radio") && <th>심야라디오</th>}
-                {shouldShowColumn("simon") && <th>시몬스쿨</th>}
+                {shouldShowColumn("activity") && <th>전도단</th>}
                 {shouldShowColumn("visit") && <th className="sep-col">심방</th>}
                 {shouldShowColumn("evangelism") && <th className="sep-col monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">전도*</th>}
                 {shouldShowColumn("tithing") && <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">십일조*</th>}
                 {shouldShowColumn("fee") && <th className="monthly-header" title="월간 누적 (어느 한 주라도 체크 시 해당 월 전체 자동 적용)">청체비*</th>}
-                {shouldShowColumn("activity") && <th className="sep-col">전도단</th>}
               </tr>
             </thead>
             <tbody>
@@ -2031,6 +2055,7 @@ export default function AttendanceGrid() {
                         <span className={`status-dot status-${member.status}`}></span>
                         <button
                           type="button"
+                          data-tour="attendance-notes-btn"
                           onClick={() => openNoteModal(member.memberId)}
                           style={{
                             background: "none",
@@ -2059,6 +2084,7 @@ export default function AttendanceGrid() {
                     {/* Weekly worship */}
                     {shouldShowColumn("samil_pre") && (
                       <td 
+                        data-tour="attendance-cell"
                         onClick={(e) => handleCellClick(e, member.memberId, "samil_pre", false)}
                         className={`cell-click sep-col worship-report-cell ${getCellStyle(samilPre, "samil_pre")}`}
                         title={formatWorshipValue(samilPre)}
@@ -2280,12 +2306,12 @@ export default function AttendanceGrid() {
                         {radio}
                       </td>
                     )}
-                    {shouldShowColumn("simon") && (
+                    {shouldShowColumn("activity") && (
                       <td 
-                        onClick={(e) => handleCellClick(e, member.memberId, "simon", false)}
-                        className={`cell-click ${getCellStyle(simon, "simon")}`}
+                        onClick={(e) => handleCellClick(e, member.memberId, "activity", false)}
+                        className={`cell-click ${getCellStyle(activity, "activity")}`}
                       >
-                        {simon}
+                        {activity}
                       </td>
                     )}
 
@@ -2344,15 +2370,6 @@ export default function AttendanceGrid() {
                       </td>
                     )}
 
-                    {/* Weekly activity */}
-                    {shouldShowColumn("activity") && (
-                      <td 
-                        onClick={(e) => handleCellClick(e, member.memberId, "activity", false)}
-                        className={`cell-click sep-col ${getCellStyle(activity, "activity")}`}
-                      >
-                        {activity}
-                      </td>
-                    )}
                   </tr>
                 );
               })}
@@ -2444,6 +2461,8 @@ export default function AttendanceGrid() {
           </div>
         </div>
       )}
+
+      {tourActive && <AttendanceTour onClose={() => setTourActive(false)} />}
 
       {isReportModalOpen && (
         <div className="note-modal-backdrop" onMouseDown={() => setIsReportModalOpen(false)}>
@@ -3414,6 +3433,11 @@ export default function AttendanceGrid() {
         .cell-online {
           background-color: hsla(210, 100%, 55%, 0.15) !important;
           color: var(--accent-blue);
+        }
+
+        .cell-orange {
+          background-color: hsla(25, 95%, 50%, 0.18) !important;
+          color: hsl(25, 95%, 60%) !important;
         }
 
         .cell-substitute {

@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { isMockEnabled, db, auth } from "../firebase";
 import { useAuth } from "./AuthContext";
-import { 
-  collection, getDocs, doc, getDoc, setDoc, updateDoc, addDoc, 
-  query, where, deleteDoc, writeBatch, orderBy, limit 
+import {
+  collection, getDocs, doc, getDoc, setDoc, updateDoc, addDoc,
+  query, where, deleteDoc, writeBatch, orderBy, limit
 } from "firebase/firestore";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import * as mockInitData from "../utils/mockData";
@@ -16,7 +16,7 @@ export function useData() {
 
 export function DataProvider({ children }) {
   const { currentUser } = useAuth();
-  
+
   // App-wide state
   const [teams, setTeams] = useState([]);
   const [zones, setZones] = useState([]);
@@ -32,7 +32,7 @@ export function DataProvider({ children }) {
     attendanceDownloadNames: [],
     attendanceDownloadTargets: []
   });
-  
+
   const [activeMonthId, setActiveMonthId] = useState("");
   const [activeWeekNo, setActiveWeekNo] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -78,10 +78,10 @@ export function DataProvider({ children }) {
       setTeams(JSON.parse(localStorage.getItem("mock_teams")));
       setZones(JSON.parse(localStorage.getItem("mock_zones")));
       setMembers(JSON.parse(localStorage.getItem("mock_members")));
-      
+
       const loadedMonths = JSON.parse(localStorage.getItem("mock_months"));
       setMonths(loadedMonths);
-      
+
       const openMonth = loadedMonths.find(m => m.status === "open") || loadedMonths[loadedMonths.length - 1];
       if (openMonth && !activeMonthId) {
         setActiveMonthId(openMonth.monthId);
@@ -97,7 +97,7 @@ export function DataProvider({ children }) {
       setMemberNotes(allNotes.filter(n => n.monthId === (activeMonthId || openMonth?.monthId)));
 
       setAuditLogs(JSON.parse(localStorage.getItem("mock_audit_logs")));
-      
+
       const storedMockUsers = localStorage.getItem("mock_users");
       let parsedMockUsers = [];
       if (storedMockUsers) {
@@ -111,7 +111,7 @@ export function DataProvider({ children }) {
         localStorage.setItem("mock_users", JSON.stringify(mockInitData.demoUsers));
       }
       setUsers(JSON.parse(localStorage.getItem("mock_users")));
-      
+
       const mockVisits = JSON.parse(localStorage.getItem("mock_visitation_records")) || [];
       setVisitationRecords(mockVisits);
       const mockSettings = JSON.parse(localStorage.getItem("mock_app_settings")) || {};
@@ -119,21 +119,41 @@ export function DataProvider({ children }) {
         attendanceDownloadNames: mockSettings.attendanceDownloadNames || [],
         attendanceDownloadTargets: mockSettings.attendanceDownloadTargets || []
       });
-      
+
       setLoading(false);
     } else {
       // --- REAL FIREBASE MODE ---
       try {
-        const teamsSnap = await getDocs(collection(db, "teams"));
+        const monthsQuery = query(collection(db, "months"), orderBy("monthId", "asc"));
+        const logsQuery = query(collection(db, "auditLogs"), orderBy("timestamp", "desc"), limit(200));
+
+        const [
+          teamsSnap,
+          zonesSnap,
+          membersSnap,
+          monthsSnap,
+          usersSnap,
+          settingsSnap,
+          visitsSnap,
+          logsSnap
+        ] = await Promise.all([
+          getDocs(collection(db, "teams")),
+          getDocs(collection(db, "zones")),
+          getDocs(collection(db, "members")),
+          getDocs(monthsQuery),
+          getDocs(collection(db, "users")),
+          getDoc(doc(db, "appSettings", "attendanceDownload")),
+          getDocs(collection(db, "visitationRecords")),
+          getDocs(logsQuery).catch(e => {
+            console.error("Failed to fetch audit logs:", e);
+            return { docs: [] };
+          })
+        ]);
+
         setTeams(teamsSnap.docs.map(d => ({ teamId: d.id, ...d.data() })));
-
-        const zonesSnap = await getDocs(collection(db, "zones"));
         setZones(zonesSnap.docs.map(d => ({ zoneId: d.id, ...d.data() })));
-
-        const membersSnap = await getDocs(collection(db, "members"));
         setMembers(membersSnap.docs.map(d => ({ memberId: d.id, ...d.data() })));
 
-        const monthsSnap = await getDocs(query(collection(db, "months"), orderBy("monthId", "asc")));
         const loadedMonths = monthsSnap.docs.map(d => ({ monthId: d.id, ...d.data() }));
         setMonths(loadedMonths);
 
@@ -143,44 +163,35 @@ export function DataProvider({ children }) {
           setActiveMonthId(openMonth.monthId);
         }
 
-        const usersSnap = await getDocs(collection(db, "users"));
         setUsers(usersSnap.docs.map(d => ({ userId: d.id, ...d.data() })));
 
-        const settingsSnap = await getDoc(doc(db, "appSettings", "attendanceDownload"));
         const settingsData = settingsSnap.exists() ? settingsSnap.data() : {};
         setAppSettings({
           attendanceDownloadNames: Array.isArray(settingsData.names) ? settingsData.names : [],
           attendanceDownloadTargets: Array.isArray(settingsData.targets) ? settingsData.targets : []
         });
 
-        const visitsSnap = await getDocs(collection(db, "visitationRecords"));
         setVisitationRecords(visitsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
-        try {
-          const logsQuery = query(collection(db, "auditLogs"), orderBy("timestamp", "desc"), limit(200));
-          const logsSnap = await getDocs(logsQuery);
-          setAuditLogs(logsSnap.docs.map(d => ({ logId: d.id, ...d.data() })));
-        } catch (e) {
-          console.error("Failed to fetch audit logs from Firestore:", e);
-        }
+        setAuditLogs(logsSnap.docs.map(d => ({ logId: d.id, ...d.data() })));
 
         if (targetMonthId) {
           const attQuery = query(collection(db, "attendanceRecords"), where("monthId", "==", targetMonthId));
-          const attSnap = await getDocs(attQuery);
-          setAttendanceRecords(attSnap.docs.map(d => ({ recordId: d.id, ...d.data() })));
-
           const achQuery = query(collection(db, "monthlyAchievements"), where("monthId", "==", targetMonthId));
-          const achSnap = await getDocs(achQuery);
-          setMonthlyAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
-
           const samilQuery = query(collection(db, "samilMemberNotes"), where("monthId", "==", targetMonthId));
           const sundayQuery = query(collection(db, "sundayMemberNotes"), where("monthId", "==", targetMonthId));
           const legacyQuery = query(collection(db, "memberNotes"), where("monthId", "==", targetMonthId));
-          const [samilSnap, sundaySnap, legacySnap] = await Promise.all([
+
+          const [attSnap, achSnap, samilSnap, sundaySnap, legacySnap] = await Promise.all([
+            getDocs(attQuery),
+            getDocs(achQuery),
             getDocs(samilQuery),
             getDocs(sundayQuery),
             getDocs(legacyQuery)
           ]);
+
+          setAttendanceRecords(attSnap.docs.map(d => ({ recordId: d.id, ...d.data() })));
+          setMonthlyAchievements(achSnap.docs.map(d => ({ achievementId: d.id, ...d.data() })));
+
           const samilNotes = samilSnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "samil" }));
           const sundayNotes = sundaySnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "sunday" }));
           const legacyNotes = legacySnap.docs.map(d => ({ noteId: d.id, ...d.data(), type: "sunday" }));
@@ -364,7 +375,7 @@ export function DataProvider({ children }) {
     const member = members.find(m => m.memberId === memberId);
     const memberName = member ? member.name : "성도";
     const recordId = `${memberId}_${activeMonthId}_${activeWeekNo}_${category}`;
-    
+
     // Check if month is closed
     const activeMonth = months.find(m => m.monthId === activeMonthId);
     const isClosed = activeMonth && activeMonth.status === "closed";
@@ -376,7 +387,7 @@ export function DataProvider({ children }) {
     // Get old value
     const existing = attendanceRecords.find(r => r.recordId === recordId);
     const oldValue = existing ? existing.value : "미보고";
-    
+
     if (oldValue === value) return;
 
     const newRecord = {
@@ -392,7 +403,7 @@ export function DataProvider({ children }) {
       // Get all records from storage
       const allAtt = JSON.parse(localStorage.getItem("mock_attendance")) || [];
       const index = allAtt.findIndex(r => r.recordId === recordId);
-      
+
       if (index >= 0) {
         allAtt[index] = newRecord;
       } else {
@@ -668,7 +679,7 @@ export function DataProvider({ children }) {
     } else {
       try {
         const targetCollection = type === "samil" ? "samilMemberNotes" : "sundayMemberNotes";
-        
+
         await setDoc(doc(db, targetCollection, noteId), {
           memberId,
           monthId: activeMonthId,
@@ -732,9 +743,9 @@ export function DataProvider({ children }) {
     } else {
       try {
         const targetCollection = type === "samil" ? "samilMemberNotes" : "sundayMemberNotes";
-        
+
         await deleteDoc(doc(db, targetCollection, noteId));
-        
+
         if (type === "sunday" || hasLegacy) {
           try {
             await deleteDoc(doc(db, "memberNotes", legacyNoteId));
@@ -742,7 +753,7 @@ export function DataProvider({ children }) {
             console.warn("Could not delete legacy memberNotes doc:", e);
           }
         }
-        
+
         setMemberNotes(prev => prev.filter(n => n.noteId !== noteId && n.noteId !== legacyNoteId));
       } catch (error) {
         console.error("Firestore member note delete failed:", error);
@@ -1098,7 +1109,7 @@ export function DataProvider({ children }) {
       // Mark current month as closed
       const loadedMonths = JSON.parse(localStorage.getItem("mock_months")) || [];
       const updatedMonths = loadedMonths.map(m => m.monthId === monthId ? { ...m, status: "closed" } : m);
-      
+
       // Check if next month already exists
       const exists = updatedMonths.some(m => m.monthId === nextMonthId);
       if (!exists) {
@@ -1116,15 +1127,15 @@ export function DataProvider({ children }) {
 
       localStorage.setItem("mock_months", JSON.stringify(updatedMonths));
       setMonths(updatedMonths);
-      
+
       // Auto-create initial records for the next month by carrying over existing structures
       // For a new month, tithing, evangelism, and weekly attendance are defaulted to blank/false
       const allAch = JSON.parse(localStorage.getItem("mock_achievements")) || [];
       const nextMonthAchievements = [];
       const activeMembers = members.filter(m => m.status !== "excluded");
-      
+
       activeMembers.forEach(m => {
-        // Tithing & fee carry over if they are checked? 
+        // Tithing & fee carry over if they are checked?
         // No, the specification says "monthly cumulative check is automatically applied to all weeks of that month."
         // For a new month, they start clean (unchecked)
         nextMonthAchievements.push({
@@ -1183,7 +1194,7 @@ export function DataProvider({ children }) {
         // Initialize accomplishments
         const batch = writeBatch(db);
         const activeMembers = members.filter(m => m.status !== "excluded");
-        
+
         activeMembers.forEach(m => {
           const achCats = ["evangelism", "tithing", "fee"];
           achCats.forEach(cat => {
@@ -1202,7 +1213,7 @@ export function DataProvider({ children }) {
         // Refresh months
         const monthsSnap = await getDocs(query(collection(db, "months"), orderBy("monthId", "asc")));
         setMonths(monthsSnap.docs.map(d => ({ monthId: d.id, ...d.data() })));
-        
+
         setActiveMonthId(nextMonthId);
         setActiveWeekNo(1);
       } catch (err) {

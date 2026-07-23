@@ -37,6 +37,17 @@ export default function Dashboard() {
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [tourActive, setTourActive] = useState(false);
+
+  useEffect(() => {
+    const handleStartTour = (e) => {
+      if (e.detail?.page === "dashboard") {
+        setDashboardTab("weekly");
+        setTourActive(true);
+      }
+    };
+    window.addEventListener("start-tour", handleStartTour);
+    return () => window.removeEventListener("start-tour", handleStartTour);
+  }, []);
   const [selectedCriteria, setSelectedCriteria] = useState("sunday_actual");
   const [dashboardTab, setDashboardTab] = useState("weekly");
   const [previousMonthRecords, setPreviousMonthRecords] = useState([]);
@@ -1127,7 +1138,6 @@ export default function Dashboard() {
     { key: "zone", label: "구역예배 참석률", category: "zone", type: "zone", icon: "blue" },
     { key: "test", label: "시험 응시율", category: "test", type: "test", icon: "purple" },
     { key: "radio", label: "심야라디오 참여율", category: "radio", type: "simple", icon: "gold" },
-    { key: "school", label: "시몬스쿨 참여율", category: "school", type: "simple", icon: "emerald" },
     { key: "activity", label: "전도단 참여율", category: "activity", type: "activity", icon: "cyan" },
     { key: "evangelism", label: "전도 실적률", category: "evangelism", type: "achievement", icon: "blue" },
     { key: "tithing", label: "십일조 참여율", category: "tithing", type: "achievement", icon: "gold" },
@@ -2176,27 +2186,11 @@ export default function Dashboard() {
           </p>
         </div>
         <button
-          onClick={() => { setDashboardTab("weekly"); setTourActive(true); }}
-          className="btn btn-secondary btn-sm no-print"
-          style={{
-            marginLeft: "auto",
-            marginRight: "8px",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            backgroundColor: "rgba(6, 182, 212, 0.15)",
-            color: "var(--accent-cyan)",
-            border: "1px solid var(--accent-cyan)"
-          }}
-          title="대시보드 사용법을 자동으로 시연합니다"
-        >
-          <span>▶ 자동 시연</span>
-        </button>
-        <button
           data-tour="sync"
           onClick={handleRefresh}
           className="btn btn-secondary btn-sm no-print"
           style={{
+            marginLeft: "auto",
             marginRight: "8px",
             display: "flex", 
             alignItems: "center", 

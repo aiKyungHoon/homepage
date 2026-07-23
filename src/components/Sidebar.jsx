@@ -130,6 +130,33 @@ export default function Sidebar({ activePage, setActivePage }) {
         </nav>
 
         <div className="sidebar-footer">
+          {["dashboard", "attendance", "visit_manage"].includes(activePage) && (
+            <button
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("start-tour", { detail: { page: activePage } }));
+              }}
+              className="btn-sidebar-tour"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                width: "100%",
+                padding: "8px 12px",
+                marginBottom: "12px",
+                fontSize: "12px",
+                fontWeight: "700",
+                color: "var(--accent-cyan)",
+                backgroundColor: "rgba(6, 182, 212, 0.12)",
+                border: "1px solid var(--accent-cyan)",
+                borderRadius: "var(--radius-sm)",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              <span>▶ 자동 시연</span>
+            </button>
+          )}
           <div className="user-profile-info">
             <p className="profile-name">{maskName(currentUser.name)}</p>
             <p className="profile-role">
